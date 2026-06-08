@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnePlan - Deine Planungsapp</title>
+    <link rel="icon" type="image/x-icon" href="Logo_Oneplan.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="[cdnjs.cloudflare.com](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <img src="Logo_Oneplan.png" alt="Firmenlogo" class="logo_sidebar">
+                <span>OnePlan</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-section="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </li>
+                <li data-section="kalender">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Kalender</span>
+                </li>
+                <li data-section="stundenplan">
+                    <i class="fas fa-clock"></i>
+                    <span>Stundenplan</span>
+                </li>
+                <li data-section="vertretungsplan">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Vertretungsplan</span>
+                </li>
+                <li data-section="hausaufgaben">
+                    <i class="fas fa-book"></i>
+                    <span>Hausaufgaben</span>
+                </li>
+                <li data-section="noten">
+                    <i class="fas fa-calculator"></i>
+                    <span>Notenrechner</span>
+                </li>
+                <li data-section="feedback">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedback</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard -->
+            <section id="dashboard" class="section active">
+                <h1>OnePlan - Dashboard</h1>
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-bell"></i> Anstehende Termine</h3>
+                        <div id="upcoming-events"></div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-tasks"></i> Offene Hausaufgaben</h3>
+                        <div id="pending-homework"></div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-chart-line"></i> Notendurchschnitt</h3>
+                        <div id="grade-overview"></div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-info-circle"></i> Vertretungen heute</h3>
+                        <div id="today-substitutions"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Kalender -->
+            <section id="kalender" class="section">
+                <h1>Kalender</h1>
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button id="prev-month" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
+                        <h2 id="current-month"></h2>
+                        <button id="next-month" class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="calendar-weekdays">
+                            <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
+                        </div>
+                        <div id="calendar-days" class="calendar-days"></div>
+                    </div>
+                    <div class="event-form">
+                        <h3>Neuer Termin</h3>
+                        <input type="text" id="event-title" placeholder="Titel">
+                        <input type="date" id="event-date">
+                        <input type="time" id="event-time">
+                        <select id="event-reminder">
+                            <option value="0">Keine Erinnerung</option>
+                            <option value="5">5 Minuten vorher</option>
+                            <option value="15">15 Minuten vorher</option>
+                            <option value="30">30 Minuten vorher</option>
+                            <option value="60">1 Stunde vorher</option>
+                            <option value="1440">1 Tag vorher</option>
+                        </select>
+                        <textarea id="event-description" placeholder="Beschreibung"></textarea>
+                        <button id="add-event" class="btn-primary">Termin hinzufügen</button>
+                    </div>
+                    <div id="event-list" class="event-list"></div>
+                </div>
+            </section>
+
+            <!-- Stundenplan -->
+            <section id="stundenplan" class="section">
+                <h1>Stundenplan</h1>
+                <div class="timetable-container">
+                    <table class="timetable">
+                        <thead>
+                            <tr>
+                                <th>Stunde</th>
+                                <th>Montag</th>
+                                <th>Dienstag</th>
+                                <th>Mittwoch</th>
+                                <th>Donnerstag</th>
+                                <th>Freitag</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable-body"></tbody>
+                    </table>
+                    <div class="timetable-edit">
+                        <h3>Stunde bearbeiten</h3>
+                        <select id="edit-day">
+                            <option value="0">Montag</option>
+                            <option value="1">Dienstag</option>
+                            <option value="2">Mittwoch</option>
+                            <option value="3">Donnerstag</option>
+                            <option value="4">Freitag</option>
+                        </select>
+                        <select id="edit-period"></select>
+                        <input type="text" id="edit-subject" placeholder="Fach">
+                        <input type="text" id="edit-teacher" placeholder="Lehrer/in">
+                        <input type="text" id="edit-room" placeholder="Raum">
+                        <button id="save-timetable" class="btn-primary">Speichern</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vertretungsplan -->
+            <section id="vertretungsplan" class="section">
+                <h1>Vertretungsplan</h1>
+                <div class="substitution-container">
+                    <div class="substitution-form">
+                        <h3>Neue Vertretung</h3>
+                        <input type="date" id="sub-date">
+                        <select id="sub-period"></select>
+                        <input type="text" id="sub-original" placeholder="Ursprüngliches Fach">
+                        <input type="text" id="sub-replacement" placeholder="Vertretung / Entfall">
+                        <input type="text" id="sub-room" placeholder="Raum">
+                        <textarea id="sub-note" placeholder="Bemerkung"></textarea>
+                        <button id="add-substitution" class="btn-primary">Hinzufügen</button>
+                    </div>
+                    <div id="substitution-list" class="substitution-list"></div>
+                </div>
+            </section>
+
+            <!-- Hausaufgaben -->
+            <section id="hausaufgaben" class="section">
+                <h1>Hausaufgaben</h1>
+                <div class="homework-container">
+                    <div class="homework-form">
+                        <h3>Neue Hausaufgabe</h3>
+                        <input type="text" id="hw-subject" placeholder="Fach">
+                        <textarea id="hw-task" placeholder="Aufgabe"></textarea>
+                        <input type="date" id="hw-due">
+                        <select id="hw-priority">
+                            <option value="low">Niedrig</option>
+                            <option value="medium">Mittel</option>
+                            <option value="high">Hoch</option>
+                        </select>
+                        <button id="add-homework" class="btn-primary">Hinzufügen</button>
+                    </div>
+                    <div class="homework-filters">
+                        <button class="filter-btn active" data-filter="all">Alle</button>
+                        <button class="filter-btn" data-filter="pending">Offen</button>
+                        <button class="filter-btn" data-filter="done">Erledigt</button>
+                    </div>
+                    <div id="homework-list" class="homework-list"></div>
+                </div>
+            </section>
+
+            <!-- Notenrechner -->
+            <section id="noten" class="section">
+                <h1>Notendurchschnittsrechner</h1>
+                <div class="grades-container">
+                    <div class="grade-form">
+                        <h3>Neue Note</h3>
+                        <input type="text" id="grade-subject" placeholder="Fach">
+                        <select id="grade-type">
+                            <option value="written">Schriftlich</option>
+                            <option value="oral">Mündlich</option>
+                            <option value="other">Sonstige</option>
+                        </select>
+                        <input type="number" id="grade-value" placeholder="Note (1-6)" min="1" max="6" step="0.1">
+                        <input type="number" id="grade-weight" placeholder="Gewichtung (%)" min="1" max="100" value="100">
+                        <input type="text" id="grade-description" placeholder="Beschreibung (z.B. Klassenarbeit 1)">
+                        <button id="add-grade" class="btn-primary">Hinzufügen</button>
+                    </div>
+                    <div id="grades-overview" class="grades-overview"></div>
+                    <div id="grades-list" class="grades-list"></div>
+                </div>
+            </section>
+
+            <!-- Feedback -->
+            <section id="feedback" class="section">
+                <h1>Feedback für Lehrer/-innen</h1>
+                <div class="feedback-container">
+                    <div class="feedback-form">
+                        <h3>Neues Feedback</h3>
+                        <input type="text" id="feedback-teacher" placeholder="Lehrer/in">
+                        <input type="text" id="feedback-subject" placeholder="Fach">
+                        <select id="feedback-type">
+                            <option value="positive">Positiv</option>
+                            <option value="constructive">Konstruktiv</option>
+                            <option value="question">Frage</option>
+                            <option value="suggestion">Vorschlag</option>
+                        </select>
+                        <div class="rating-input">
+                            <span>Bewertung:</span>
+                            <div id="star-rating" class="star-rating">
+                                <i class="fas fa-star" data-rating="1"></i>
+                                <i class="fas fa-star" data-rating="2"></i>
+                                <i class="fas fa-star" data-rating="3"></i>
+                                <i class="fas fa-star" data-rating="4"></i>
+                                <i class="fas fa-star" data-rating="5"></i>
+                            </div>
+                        </div>
+                        <textarea id="feedback-message" placeholder="Dein Feedback..."></textarea>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="feedback-anonymous">
+                            Anonym senden
+                        </label>
+                        <button id="send-feedback" class="btn-primary">Feedback senden</button>
+                    </div>
+                    <div id="feedback-list" class="feedback-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
