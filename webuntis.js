@@ -5,9 +5,9 @@ const WebUntisAPI = {
     // Konfiguration (wird aus localStorage geladen)
     config: null,
 
-    // Lokaler Proxy-Server (server.js muss laufen)
-    PROXIES: ['http://localhost:3001/proxy?url='],
-    PROXY: 'http://localhost:3001/proxy?url=',
+    // Proxy-Server auf Render
+    PROXIES: ['https://oneplan.onrender.com/proxy?url='],
+    PROXY: 'https://oneplan.onrender.com/proxy?url=',
 
     // ===== Konfiguration =====
     loadConfig() {
