@@ -10,7 +10,7 @@ const ALLOWED_ORIGINS = [
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:3000',
-    'https://iamera.github.io'
+    'https://iamera.github.io/OnePlan'
 ];
 
 const server = http.createServer((req, res) => {
