@@ -39,7 +39,9 @@ const WebUntisAPI = {
     },
 
     async rpc(method, params = {}, sessionId = null) {
-        const targetUrl = `https://${this.config.server}/WebUntis/jsonrpc.do`;
+        let targetUrl = `https://${this.config.server}/WebUntis/jsonrpc.do`;
+        if (sessionId) targetUrl += `?school=&sessionId=${sessionId}`;
+
         const body = JSON.stringify({
             id: String(Date.now()),
             method,
@@ -50,12 +52,9 @@ const WebUntisAPI = {
         let lastError = null;
         for (const proxy of this.PROXIES) {
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (sessionId) headers['Cookie'] = `JSESSIONID=${sessionId}`;
-
                 const res = await fetch(proxy + encodeURIComponent(targetUrl), {
                     method: 'POST',
-                    headers,
+                    headers: { 'Content-Type': 'application/json' },
                     body,
                     credentials: 'omit'
                 });
@@ -63,7 +62,7 @@ const WebUntisAPI = {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 if (data.error) throw new Error(data.error.message || 'API Fehler');
-                this.PROXY = proxy; // merken welcher Proxy funktioniert hat
+                this.PROXY = proxy;
                 return data.result;
             } catch (err) {
                 lastError = err;
@@ -76,7 +75,7 @@ const WebUntisAPI = {
     // ===== Session =====
     async login() {
         const { username, password } = this.config;
-        const result = await this.rpc('authenticate', { user: username, password, client: 'OnePlan' });
+        const result = await this.rpc('authenticate', { user: username, password: password, client: 'OnePlan' });
         const session = { sessionId: result.sessionId, klasseId: result.klasseId, personId: result.personId };
         sessionStorage.setItem('schulOrganizer_webuntis_session', JSON.stringify(session));
         return session;
