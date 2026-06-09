@@ -25,6 +25,7 @@ const App = {
         this.setupFeedback();
         this.setupSubstitution();
         this.setupModal();
+        this.setupWebUntis();
         this.updateDashboard();
         this.checkReminders();
         // Check reminders every minute
@@ -87,6 +88,7 @@ const App = {
             case 'noten': this.renderGrades(); break;
             case 'feedback': this.renderFeedback(); break;
             case 'vertretungsplan': this.renderSubstitutions(); break;
+            case 'webuntis': this.renderWebUntisStatus(); break;
         }
     },
 
@@ -921,5 +923,130 @@ const App = {
             notification.style.animation = 'slideIn 0.3s ease reverse';
             setTimeout(() => notification.remove(), 300);
         }, 3000);
+    },
+
+    // ===== WebUntis =====
+    setupWebUntis() {
+        document.getElementById('wu-save-btn').addEventListener('click', () => this.webUntisConnect());
+        document.getElementById('wu-disconnect-btn').addEventListener('click', () => this.webUntisDisconnect());
+        document.getElementById('wu-test-btn').addEventListener('click', () => this.webUntisTest());
+        document.getElementById('wu-sync-timetable').addEventListener('click', () => this.webUntisSyncTimetable());
+        document.getElementById('wu-sync-substitutions').addEventListener('click', () => this.webUntisSyncSubstitutions());
+        this.renderWebUntisStatus();
+    },
+
+    renderWebUntisStatus() {
+        const configured = WebUntisAPI.isConfigured();
+        document.getElementById('webuntis-form').style.display = configured ? 'none' : 'flex';
+        document.getElementById('webuntis-connected-info').style.display = configured ? 'block' : 'none';
+        document.getElementById('wu-test-btn').style.display = configured ? 'none' : 'none';
+        document.getElementById('wu-sync-timetable').disabled = !configured;
+        document.getElementById('wu-sync-substitutions').disabled = !configured;
+
+        if (configured) {
+            document.getElementById('wu-connected-school').textContent =
+                `${WebUntisAPI.config.username} @ ${WebUntisAPI.config.server}`;
+        }
+    },
+
+    webUntisConnect() {
+        const server = document.getElementById('wu-server').value.trim();
+        const username = document.getElementById('wu-username').value.trim();
+        const password = document.getElementById('wu-password').value.trim();
+
+        if (!server || !username || !password) {
+            this.showNotification('Bitte alle Felder ausfüllen', 'error');
+            return;
+        }
+
+        WebUntisAPI.saveConfig('', username, password, server);
+        this.renderWebUntisStatus();
+        this.showNotification('Zugangsdaten gespeichert', 'success');
+        document.getElementById('wu-password').value = '';
+    },
+
+    async webUntisTest() {
+        const btn = document.getElementById('wu-test-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Teste...';
+        this.webUntisLog('Verbindungstest läuft...', 'info');
+
+        try {
+            const session = await WebUntisAPI.login();
+            await WebUntisAPI.logout(session.sessionId);
+            this.webUntisLog('✅ Verbindung erfolgreich! Login hat funktioniert.', 'success');
+            this.showNotification('Verbindung erfolgreich!', 'success');
+            document.getElementById('wu-sync-timetable').disabled = false;
+            document.getElementById('wu-sync-substitutions').disabled = false;
+        } catch (err) {
+            this.webUntisLog(`❌ Verbindung fehlgeschlagen: ${err.message}`, 'error');
+            this.showNotification('Verbindung fehlgeschlagen: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plug"></i> Verbindung testen';
+        }
+    },
+
+    webUntisDisconnect() {
+        WebUntisAPI.clearConfig();
+        this.renderWebUntisStatus();
+        this.showNotification('WebUntis-Verbindung getrennt', 'success');
+    },
+
+    webUntisLog(message, type = 'info') {
+        const log = document.getElementById('wu-sync-log');
+        const entry = document.createElement('div');
+        entry.className = `wu-log-entry ${type}`;
+        const time = new Date().toLocaleTimeString('de-DE');
+        entry.innerHTML = `<span class="wu-log-time">${time}</span> ${message}`;
+        log.prepend(entry);
+    },
+
+    async webUntisSyncTimetable() {
+        const btn = document.getElementById('wu-sync-timetable');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+        this.webUntisLog('Verbinde mit WebUntis...', 'info');
+
+        try {
+            const timetable = await WebUntisAPI.fetchTimetable();
+            this.timetable = timetable;
+            this.saveData('timetable', this.timetable);
+            this.webUntisLog('✅ Stundenplan erfolgreich geladen!', 'success');
+            this.showNotification('Stundenplan aus WebUntis geladen', 'success');
+        } catch (err) {
+            this.webUntisLog(`❌ Fehler: ${err.message}`, 'error');
+            this.showNotification('Fehler beim Laden: ' + err.message, 'error');
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Stundenplan laden';
+        }
+    },
+
+    async webUntisSyncSubstitutions() {
+        const btn = document.getElementById('wu-sync-substitutions');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lädt...';
+        this.webUntisLog('Lade Vertretungsplan...', 'info');
+
+        try {
+            const subs = await WebUntisAPI.fetchSubstitutions();
+
+            // Alte WebUntis-Einträge entfernen, neue hinzufügen
+            this.substitutions = this.substitutions.filter(s => !s.fromWebUntis);
+            this.substitutions.push(...subs);
+            this.saveData('substitutions', this.substitutions);
+
+            this.webUntisLog(`✅ ${subs.length} Vertretung(en) geladen`, 'success');
+            this.showNotification(`${subs.length} Vertretung(en) synchronisiert`, 'success');
+        } catch (err) {
+            this.webUntisLog(`❌ Fehler: ${err.message}`, 'error');
+            this.showNotification('Fehler beim Laden: ' + err.message, 'error');
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Vertretungen laden';
+        }
     }
 };

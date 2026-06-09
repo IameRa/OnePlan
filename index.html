@@ -47,6 +47,10 @@
                     <i class="fas fa-comments"></i>
                     <span>Feedback</span>
                 </li>
+                <li data-section="webuntis">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>WebUntis Sync</span>
+                </li>
             </ul>
         </nav>
 
@@ -244,10 +248,70 @@
                     <div id="feedback-list" class="feedback-list"></div>
                 </div>
             </section>
-        </main>
-    </div>
+            <!-- WebUntis Sync -->
+            <section id="webuntis" class="section">
+                <h1>WebUntis Synchronisation</h1>
+                <div class="webuntis-container">
 
-    <!-- Notification Container -->
+                    <!-- Login-Karte -->
+                    <div class="dashboard-card" id="webuntis-login-card">
+                        <h3><i class="fas fa-key"></i> Zugangsdaten</h3>
+                        <div id="webuntis-status-badge"></div>
+                        <div class="webuntis-form" id="webuntis-form">
+                            <input type="text" id="wu-server" placeholder="Server (z.B. voss.webuntis.com)">
+                            <input type="text" id="wu-username" placeholder="Benutzername">
+                            <input type="password" id="wu-password" placeholder="Passwort">
+                            <small style="color:var(--text-secondary)">
+                                <i class="fas fa-info-circle"></i>
+                                Den Server findest du in der URL von WebUntis (z.B. voss.webuntis.com).
+                            </small>
+                            <button id="wu-save-btn" class="btn-primary">
+                                <i class="fas fa-save"></i> Zugangsdaten speichern
+                            </button>
+                            <button id="wu-test-btn" class="btn-secondary" style="display:none">
+                                <i class="fas fa-plug"></i> Verbindung testen
+                            </button>
+                        </div>
+                        <div id="webuntis-connected-info" style="display:none">
+                            <p><i class="fas fa-check-circle" style="color:var(--success-color)"></i>
+                                Verbunden mit <strong id="wu-connected-school"></strong>
+                            </p>
+                            <button id="wu-disconnect-btn" class="btn-small btn-danger" style="margin-top:8px">
+                                <i class="fas fa-unlink"></i> Verbindung trennen
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sync-Aktionen -->
+                    <div class="dashboard-card">
+                        <h3><i class="fas fa-cloud-download-alt"></i> Daten synchronisieren</h3>
+                        <div class="webuntis-actions">
+                            <div class="webuntis-action-item">
+                                <div>
+                                    <strong><i class="fas fa-clock"></i> Stundenplan</strong>
+                                    <p>Lädt den aktuellen Wochenplan direkt aus WebUntis und überschreibt den manuellen Stundenplan.</p>
+                                </div>
+                                <button id="wu-sync-timetable" class="btn-primary" disabled>
+                                    <i class="fas fa-sync-alt"></i> Stundenplan laden
+                                </button>
+                            </div>
+                            <div class="webuntis-action-item">
+                                <div>
+                                    <strong><i class="fas fa-exchange-alt"></i> Vertretungsplan</strong>
+                                    <p>Lädt Vertretungen der nächsten 7 Tage und fügt sie zum Vertretungsplan hinzu.</p>
+                                </div>
+                                <button id="wu-sync-substitutions" class="btn-primary" disabled>
+                                    <i class="fas fa-sync-alt"></i> Vertretungen laden
+                                </button>
+                            </div>
+                        </div>
+                        <div id="wu-sync-log" class="wu-log"></div>
+                    </div>
+
+                </div>
+            </section>
+
+
     <div id="notification-container"></div>
 
     <!-- Modal -->
@@ -258,6 +322,7 @@
         </div>
     </div>
 
+    <script src="webuntis.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
