@@ -939,7 +939,6 @@ const App = {
         const configured = WebUntisAPI.isConfigured();
         document.getElementById('webuntis-form').style.display = configured ? 'none' : 'flex';
         document.getElementById('webuntis-connected-info').style.display = configured ? 'block' : 'none';
-        document.getElementById('wu-test-btn').style.display = configured ? 'none' : 'none';
         document.getElementById('wu-sync-timetable').disabled = !configured;
         document.getElementById('wu-sync-substitutions').disabled = !configured;
 
