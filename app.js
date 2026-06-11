@@ -287,6 +287,7 @@ const App = {
         this.setupGrades();
         this.setupFeedback();
         this.setupSubstitution();
+        this.setupFlashcards();
         this.setupModal();
         this.updateDashboard();
         this.checkReminders();
@@ -311,6 +312,7 @@ const App = {
         this.grades = map['grades'] || [];
         this.feedback = map['feedback'] || [];
         this.substitutions = map['substitutions'] || [];
+        this.flashcards = map['flashcards'] || [];
     },
 
     async saveData(key, data) {
@@ -364,6 +366,7 @@ const App = {
             case 'noten': this.renderGrades(); break;
             case 'feedback': this.renderFeedback(); break;
             case 'vertretungsplan': this.renderSubstitutions(); break;
+            case 'karteikarten': this.renderFlashcardDecks(); break;
         }
     },
 
@@ -1209,6 +1212,186 @@ const App = {
                 </div>
             `).join('')
             : '<p style="color: var(--text-secondary);">Keine Vertretungen heute</p>';
+    },
+
+    // ===== Flashcards =====
+    setupFlashcards() {
+        document.getElementById('add-flashcard').addEventListener('click', () => this.addFlashcard());
+        document.getElementById('fc-back-to-decks').addEventListener('click', () => this.exitLearnMode());
+        this.renderFlashcardDecks();
+    },
+
+    addFlashcard() {
+        const subject = document.getElementById('fc-subject').value.trim();
+        const front = document.getElementById('fc-front').value.trim();
+        const back = document.getElementById('fc-back').value.trim();
+
+        if (!subject || !front || !back) {
+            this.showNotification('Bitte alle Felder ausfüllen', 'error');
+            return;
+        }
+
+        const card = { id: Date.now(), subject, front, back, known: false };
+        this.flashcards.push(card);
+        this.saveData('flashcards', this.flashcards);
+
+        document.getElementById('fc-subject').value = '';
+        document.getElementById('fc-front').value = '';
+        document.getElementById('fc-back').value = '';
+
+        this.renderFlashcardDecks();
+        this.showNotification('Karteikarte hinzugefügt', 'success');
+    },
+
+    renderFlashcardDecks() {
+        document.getElementById('flashcard-learn-mode').style.display = 'none';
+        document.getElementById('flashcard-decks').style.display = 'grid';
+
+        const container = document.getElementById('flashcard-decks');
+        const subjects = {};
+        this.flashcards.forEach(c => {
+            if (!subjects[c.subject]) subjects[c.subject] = [];
+            subjects[c.subject].push(c);
+        });
+
+        if (Object.keys(subjects).length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column:1/-1;">
+                    <i class="fas fa-layer-group"></i>
+                    <p>Noch keine Karteikarten erstellt</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = Object.entries(subjects).map(([subject, cards]) => {
+            const known = cards.filter(c => c.known).length;
+            return `
+                <div class="fc-deck-card">
+                    <h4><i class="fas fa-layer-group" style="color:var(--primary-color);margin-right:8px;"></i>${subject}</h4>
+                    <div class="fc-count">${cards.length} Karte${cards.length !== 1 ? 'n' : ''}</div>
+                    <div class="fc-deck-stats">
+                        <span class="fc-stat-known"><i class="fas fa-check"></i> ${known} gewusst</span>
+                        <span class="fc-stat-unknown"><i class="fas fa-times"></i> ${cards.length - known} offen</span>
+                    </div>
+                    <div class="fc-deck-actions">
+                        <button class="btn-primary btn-small" onclick="App.startLearn('${subject}', false)">
+                            <i class="fas fa-graduation-cap"></i> Lernen
+                        </button>
+                        <button class="btn-small btn-danger" onclick="App.deleteDeck('${subject}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    startLearn(subject, wrongOnly) {
+        let cards = this.flashcards.filter(c => c.subject === subject);
+        if (wrongOnly) cards = cards.filter(c => !c.known);
+        if (cards.length === 0) {
+            this.showNotification('Keine Karten zum Lernen', 'warning');
+            return;
+        }
+
+        // Shuffle
+        this.learnState = {
+            subject,
+            queue: cards.sort(() => Math.random() - 0.5),
+            index: 0,
+            correct: 0,
+            wrong: 0
+        };
+
+        document.getElementById('flashcard-decks').style.display = 'none';
+        document.getElementById('flashcard-learn-mode').style.display = 'block';
+        document.getElementById('fc-done-screen').style.display = 'none';
+        document.getElementById('fc-card-area').style.display = 'block';
+        document.getElementById('fc-answer-btns').style.display = 'none';
+        document.getElementById('fc-learn-title').textContent = subject;
+
+        this.showLearnCard();
+    },
+
+    showLearnCard() {
+        const { queue, index } = this.learnState;
+        const total = queue.length;
+
+        document.getElementById('fc-progress-text').textContent = `${index + 1} / ${total}`;
+        document.getElementById('fc-progress-fill').style.width = `${(index / total) * 100}%`;
+
+        const card = queue[index];
+        document.getElementById('fc-front-text').textContent = card.front;
+        document.getElementById('fc-back-text').textContent = card.back;
+
+        // Reset flip
+        const inner = document.getElementById('fc-card-inner');
+        inner.classList.remove('flipped');
+        document.getElementById('fc-flip-hint').style.display = 'block';
+        document.getElementById('fc-answer-btns').style.display = 'none';
+    },
+
+    flipCard() {
+        const inner = document.getElementById('fc-card-inner');
+        if (inner.classList.contains('flipped')) return;
+        inner.classList.add('flipped');
+        document.getElementById('fc-flip-hint').style.display = 'none';
+        document.getElementById('fc-answer-btns').style.display = 'flex';
+    },
+
+    answerCard(known) {
+        const { queue, index } = this.learnState;
+        const card = queue[index];
+
+        // Update card known state
+        const fc = this.flashcards.find(c => c.id === card.id);
+        if (fc) fc.known = known;
+        this.saveData('flashcards', this.flashcards);
+
+        if (known) this.learnState.correct++;
+        else this.learnState.wrong++;
+
+        const next = index + 1;
+        if (next >= queue.length) {
+            this.showLearnDone();
+        } else {
+            this.learnState.index = next;
+            this.showLearnCard();
+        }
+    },
+
+    showLearnDone() {
+        const { correct, wrong, queue } = this.learnState;
+        const total = queue.length;
+        document.getElementById('fc-progress-fill').style.width = '100%';
+        document.getElementById('fc-progress-text').textContent = `${total} / ${total}`;
+        document.getElementById('fc-card-area').style.display = 'none';
+        document.getElementById('fc-answer-btns').style.display = 'none';
+        document.getElementById('fc-done-screen').style.display = 'block';
+        document.getElementById('fc-done-stats').textContent =
+            `${correct} von ${total} gewusst · ${wrong} Fehler`;
+        document.getElementById('fc-wrong-btn').style.display = wrong > 0 ? 'inline-flex' : 'none';
+    },
+
+    restartLearn() {
+        this.startLearn(this.learnState.subject, false);
+    },
+
+    learnWrongOnly() {
+        this.startLearn(this.learnState.subject, true);
+    },
+
+    exitLearnMode() {
+        this.renderFlashcardDecks();
+    },
+
+    deleteDeck(subject) {
+        if (!confirm(`Alle Karteikarten für "${subject}" löschen?`)) return;
+        this.flashcards = this.flashcards.filter(c => c.subject !== subject);
+        this.saveData('flashcards', this.flashcards);
+        this.renderFlashcardDecks();
+        this.showNotification('Stapel gelöscht', 'success');
     },
 
     // ===== Modal =====
