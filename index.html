@@ -9,6 +9,13 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+            options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 </head>
 <body>
     <div class="app-container">
@@ -50,6 +57,10 @@
                 <li data-section="feedback">
                     <i class="fas fa-comments"></i>
                     <span>Feedback</span>
+                </li>
+                <li data-section="ki-assistent">
+                    <i class="fas fa-robot"></i>
+                    <span>KI-Assistent</span>
                 </li>
             </ul>
         </nav>
@@ -280,23 +291,144 @@
                 </div>
             </section>
 
-            <!-- Feedback -->
+            <!-- KI-Assistent -->
+            <section id="ki-assistent" class="section">
+                <h1><i class="fas fa-robot" style="color:var(--primary-color);margin-right:10px;"></i>KI-Assistent</h1>
+
+                <!-- Tab Navigation -->
+                <div class="ki-tabs">
+                    <button class="ki-tab active" data-tab="chat"><i class="fas fa-comments"></i> Lernassistent</button>
+                    <button class="ki-tab" data-tab="karteikarten-ki"><i class="fas fa-magic"></i> Karteikarten generieren</button>
+                    <button class="ki-tab" data-tab="lernplan"><i class="fas fa-calendar-check"></i> Lernplan & Zusammenfassung</button>
+                    <button class="ki-tab" data-tab="noten-ki"><i class="fas fa-chart-line"></i> Notenanalyse</button>
+                </div>
+
+                <!-- Tab: Chat -->
+                <div class="ki-tab-content active" id="ki-tab-chat">
+                    <div class="ki-chat-container">
+                        <div class="ki-chat-messages" id="ki-chat-messages">
+                            <div class="ki-message ki-message-ai">
+                                <div class="ki-message-avatar"><i class="fas fa-robot"></i></div>
+                                <div class="ki-message-bubble">
+                                    Hallo! Ich bin dein KI-Lernassistent. Ich kann dir bei Hausaufgaben helfen, Themen erklären, Lernstrategien vorschlagen und vieles mehr. Was möchtest du wissen?
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ki-quick-prompts" id="ki-quick-prompts">
+                            <button class="ki-quick-btn" onclick="App.sendQuickPrompt('Erkläre mir das Thema, das ich gerade lerne, einfach und verständlich.')">💡 Thema erklären</button>
+                            <button class="ki-quick-btn" onclick="App.sendQuickPrompt('Gib mir Lerntipps für meine nächste Prüfung.')">📚 Lerntipps</button>
+                            <button class="ki-quick-btn" onclick="App.sendQuickPrompt('Hilf mir mit meiner aktuellen Hausaufgabe.')">✏️ Hausaufgaben-Hilfe</button>
+                            <button class="ki-quick-btn" onclick="App.sendQuickPrompt('Was sind die besten Methoden, um Vokabeln zu lernen?')">🧠 Lernmethoden</button>
+                        </div>
+                        <div class="ki-chat-input-row">
+                            <textarea id="ki-chat-input" placeholder="Schreib eine Frage oder beschreibe dein Problem..." rows="2"></textarea>
+                            <button class="ki-send-btn" id="ki-send-btn" onclick="App.sendChatMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Karteikarten KI -->
+                <div class="ki-tab-content" id="ki-tab-karteikarten-ki">
+                    <div class="ki-card-gen-container">
+                        <div class="ki-card-gen-form">
+                            <h3><i class="fas fa-magic" style="color:var(--primary-color);"></i> Karteikarten automatisch erstellen</h3>
+                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Gib ein Thema oder einen Text ein – die KI erstellt automatisch Karteikarten für dich.</p>
+                            <input type="text" id="ki-fc-subject" placeholder="Fach (z.B. Biologie, Geschichte...)">
+                            <textarea id="ki-fc-topic" placeholder="Thema oder Text zum Erstellen von Karteikarten (z.B. 'Photosynthese' oder ein ganzer Absatz aus deinem Lehrbuch)..." style="min-height:120px;"></textarea>
+                            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+                                <label style="color:var(--text-secondary);font-size:0.9rem;">Anzahl Karten:</label>
+                                <select id="ki-fc-count" style="width:auto;margin:0;">
+                                    <option value="5">5 Karten</option>
+                                    <option value="8" selected>8 Karten</option>
+                                    <option value="12">12 Karten</option>
+                                    <option value="15">15 Karten</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" id="ki-fc-generate-btn" onclick="App.generateFlashcards()">
+                                <i class="fas fa-magic"></i> Karteikarten generieren
+                            </button>
+                        </div>
+                        <div id="ki-fc-result" class="ki-fc-result" style="display:none;">
+                            <div class="ki-fc-result-header">
+                                <h3 id="ki-fc-result-title"></h3>
+                                <button class="btn-primary btn-small" id="ki-fc-save-btn" onclick="App.saveGeneratedFlashcards()">
+                                    <i class="fas fa-save"></i> Alle speichern
+                                </button>
+                            </div>
+                            <div id="ki-fc-preview" class="ki-fc-preview"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Lernplan -->
+                <div class="ki-tab-content" id="ki-tab-lernplan">
+                    <div class="ki-lernplan-container">
+                        <div class="ki-lernplan-form">
+                            <h3><i class="fas fa-calendar-check" style="color:var(--primary-color);"></i> Lernplan & Zusammenfassung erstellen</h3>
+                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Die KI analysiert deine Hausaufgaben und erstellt einen personalisierten Lernplan.</p>
+                            <textarea id="ki-lernplan-topic" placeholder="Optionales zusätzliches Thema oder Prüfungsstoff (z.B. 'Ich habe nächste Woche eine Mathe-Prüfung über Quadratische Gleichungen')..." style="min-height:100px;"></textarea>
+                            <div style="display:flex;gap:12px;margin-bottom:12px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:4px;">Verfügbare Zeit pro Tag</label>
+                                    <select id="ki-lernplan-time" style="margin:0;">
+                                        <option value="30">30 Minuten</option>
+                                        <option value="60" selected>1 Stunde</option>
+                                        <option value="90">1,5 Stunden</option>
+                                        <option value="120">2 Stunden</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:4px;">Planungszeitraum</label>
+                                    <select id="ki-lernplan-days" style="margin:0;">
+                                        <option value="3">3 Tage</option>
+                                        <option value="5" selected>5 Tage</option>
+                                        <option value="7">7 Tage</option>
+                                        <option value="14">2 Wochen</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn-primary" id="ki-lernplan-btn" onclick="App.generateLernplan()">
+                                <i class="fas fa-calendar-check"></i> Lernplan erstellen
+                            </button>
+                        </div>
+                        <div id="ki-lernplan-result" class="ki-result-box" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Tab: Notenanalyse -->
+                <div class="ki-tab-content" id="ki-tab-noten-ki">
+                    <div class="ki-noten-container">
+                        <div class="ki-noten-form">
+                            <h3><i class="fas fa-chart-line" style="color:var(--primary-color);"></i> Notenanalyse & Empfehlungen</h3>
+                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Die KI analysiert deine Noten und gibt dir konkrete Verbesserungsvorschläge.</p>
+                            <button class="btn-primary" id="ki-noten-btn" onclick="App.analyzeGrades()">
+                                <i class="fas fa-chart-line"></i> Meine Noten analysieren
+                            </button>
+                        </div>
+                        <div id="ki-noten-result" class="ki-result-box" style="display:none;"></div>
+                    </div>
+                </div>
+            </section>
+
             <section id="feedback" class="section">
-                <h1>Feedback für Lehrer/-innen</h1>
-                <div class="feedback-container">
-                    <div class="feedback-form">
-                        <h3>Neues Feedback</h3>
-                        <input type="text" id="feedback-teacher" placeholder="Lehrer/in">
-                        <input type="text" id="feedback-subject" placeholder="Fach">
+                <h1>Feedback</h1>
+
+                <!-- User: Send feedback -->
+                <div id="feedback-user-view">
+                    <div class="card feedback-send-card">
+                        <h3><i class="fas fa-paper-plane" style="color:var(--primary-color);margin-right:8px;"></i>Feedback senden</h3>
+                        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:16px;">Dein Feedback hilft dabei, die App zu verbessern. Du kannst es auch anonym senden.</p>
                         <select id="feedback-type">
-                            <option value="positive">Positiv</option>
-                            <option value="constructive">Konstruktiv</option>
-                            <option value="question">Frage</option>
-                            <option value="suggestion">Vorschlag</option>
+                            <option value="bug">🐛 Fehler melden</option>
+                            <option value="suggestion">💡 Verbesserungsvorschlag</option>
+                            <option value="praise">⭐ Lob</option>
+                            <option value="other">💬 Sonstiges</option>
                         </select>
-                        <div class="rating-input">
-                            <span>Bewertung:</span>
-                            <div id="star-rating" class="star-rating">
+                        <div class="rating-input" style="margin:12px 0;">
+                            <span style="font-size:0.88rem;color:var(--text-secondary);">Bewertung (optional):</span>
+                            <div id="star-rating" class="star-rating" style="margin-top:6px;">
                                 <i class="fas fa-star" data-rating="1"></i>
                                 <i class="fas fa-star" data-rating="2"></i>
                                 <i class="fas fa-star" data-rating="3"></i>
@@ -304,14 +436,42 @@
                                 <i class="fas fa-star" data-rating="5"></i>
                             </div>
                         </div>
-                        <textarea id="feedback-message" placeholder="Dein Feedback..."></textarea>
-                        <label class="checkbox-label">
+                        <textarea id="feedback-message" placeholder="Beschreibe dein Feedback..." style="min-height:120px;"></textarea>
+                        <label class="checkbox-label" style="margin:10px 0;">
                             <input type="checkbox" id="feedback-anonymous">
                             Anonym senden
                         </label>
-                        <button id="send-feedback" class="btn-primary">Feedback senden</button>
+                        <button id="send-feedback" class="btn-primary">
+                            <i class="fas fa-paper-plane"></i> Feedback senden
+                        </button>
+                        <div id="feedback-sent-confirm" style="display:none;margin-top:14px;padding:12px 16px;background:rgba(21,128,61,0.08);border-radius:10px;color:var(--primary-color);font-size:0.9rem;">
+                            <i class="fas fa-check-circle"></i> Danke für dein Feedback! Es wurde erfolgreich übermittelt.
+                        </div>
                     </div>
-                    <div id="feedback-list" class="feedback-list"></div>
+                </div>
+
+                <!-- Admin: View all feedback -->
+                <div id="feedback-admin-view" style="display:none;">
+                    <div class="feedback-admin-header">
+                        <div>
+                            <h2 style="margin:0 0 4px;"><i class="fas fa-shield-alt" style="color:var(--primary-color);margin-right:8px;"></i>Admin – Alle Feedbacks</h2>
+                            <p style="color:var(--text-secondary);font-size:0.88rem;margin:0;">Nur du siehst diese Ansicht.</p>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <select id="feedback-admin-filter" onchange="App.renderAdminFeedback()" style="width:auto;margin:0;font-size:0.85rem;">
+                                <option value="all">Alle</option>
+                                <option value="bug">Fehler</option>
+                                <option value="suggestion">Vorschläge</option>
+                                <option value="praise">Lob</option>
+                                <option value="other">Sonstiges</option>
+                            </select>
+                            <button class="btn-small" onclick="App.loadAdminFeedback()" style="white-space:nowrap;">
+                                <i class="fas fa-sync"></i> Aktualisieren
+                            </button>
+                        </div>
+                    </div>
+                    <div id="feedback-admin-stats" class="feedback-admin-stats"></div>
+                    <div id="feedback-admin-list" class="feedback-admin-list"></div>
                 </div>
             </section>
         </main>
@@ -417,6 +577,7 @@
             <button id="close-more-menu"><i class="fas fa-times"></i></button>
         </div>
         <ul>
+            <li data-section="ki-assistent"><i class="fas fa-robot"></i><span>KI-Assistent</span></li>
             <li data-section="karteikarten"><i class="fas fa-layer-group"></i><span>Karteikarten</span></li>
             <li data-section="noten"><i class="fas fa-calculator"></i><span>Notenrechner</span></li>
             <li data-section="vertretungsplan"><i class="fas fa-exchange-alt"></i><span>Vertretungsplan</span></li>

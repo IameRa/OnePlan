@@ -33,9 +33,9 @@ const Auth = {
             .from('profiles')
             .select('*')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        this.currentUser = { ...user, ...profile };
+        this.currentUser = { ...user, ...(profile || {}) };
         this.showApp(this.currentUser);
     },
 
@@ -127,7 +127,7 @@ const Auth = {
             .from('profiles')
             .select('username')
             .eq('username', username)
-            .single();
+            .maybeSingle();
 
         if (existing) {
             this.showAuthError('register-form', 'Benutzername bereits vergeben');
@@ -175,6 +175,9 @@ const Auth = {
 
         App.userId = user.id;
         App.init().then(() => {
+            document.getElementById('loading-screen').style.display = 'none';
+        }).catch((err) => {
+            console.error('App init error:', err);
             document.getElementById('loading-screen').style.display = 'none';
         });
     },
@@ -297,7 +300,7 @@ const App = {
 
     // ===== Data Management =====
     async loadAllData() {
-        const keys = ['events', 'timetable', 'homework', 'grades', 'feedback', 'substitutions'];
+        const keys = ['events', 'timetable', 'homework', 'grades', 'substitutions'];
         const { data, error } = await supabase
             .from('user_data')
             .select('data_key, data_value')
@@ -310,7 +313,7 @@ const App = {
         this.timetable = map['timetable'] || this.getEmptyTimetable();
         this.homework = map['homework'] || [];
         this.grades = map['grades'] || [];
-        this.feedback = map['feedback'] || [];
+        this.feedback = []; // now global via feedback_global table
         this.substitutions = map['substitutions'] || [];
         this.flashcards = map['flashcards'] || [];
     },
@@ -364,7 +367,7 @@ const App = {
             case 'stundenplan': this.renderTimetable(); break;
             case 'hausaufgaben': this.renderHomework(); break;
             case 'noten': this.renderGrades(); break;
-            case 'feedback': this.renderFeedback(); break;
+            case 'feedback': if (this.isAdmin()) this.loadAdminFeedback(); break;
             case 'vertretungsplan': this.renderSubstitutions(); break;
             case 'karteikarten': this.renderFlashcardDecks(); break;
         }
@@ -577,7 +580,7 @@ const App = {
             row.innerHTML = `<td><strong>${periods[p]}</strong></td>`;
             
             for (let d = 0; d < 5; d++) {
-                const cell = this.timetable[p][d];
+                const cell = (this.timetable[p] || [])[d] || { subject: '', teacher: '', room: '' };
                 row.innerHTML += `
                     <td onclick="App.editTimetableCell(${d}, ${p})">
                         <div class="timetable-cell">
@@ -599,7 +602,7 @@ const App = {
         document.getElementById('edit-day').value = day;
         document.getElementById('edit-period').value = period;
         
-        const cell = this.timetable[period][day];
+        const cell = (this.timetable[period] || [])[day] || { subject: '', teacher: '', room: '' };
         document.getElementById('edit-subject').value = cell.subject;
         document.getElementById('edit-teacher').value = cell.teacher;
         document.getElementById('edit-room').value = cell.room;
@@ -924,6 +927,13 @@ const App = {
     },
 
     // ===== Feedback =====
+    // Set your Supabase user ID here to get admin access
+    ADMIN_USER_ID: 'DEINE_USER_ID_HIER',
+
+    isAdmin() {
+        return this.userId === this.ADMIN_USER_ID;
+    },
+
     setupFeedback() {
         // Star rating
         document.querySelectorAll('#star-rating i').forEach(star => {
@@ -935,14 +945,16 @@ const App = {
                 this.highlightStars(parseInt(star.dataset.rating));
             });
         });
-
         document.getElementById('star-rating').addEventListener('mouseleave', () => {
             this.updateStarRating();
         });
-
         document.getElementById('send-feedback').addEventListener('click', () => this.sendFeedback());
 
-        this.renderFeedback();
+        if (this.isAdmin()) {
+            document.getElementById('feedback-user-view').style.display = 'none';
+            document.getElementById('feedback-admin-view').style.display = 'block';
+            this.loadAdminFeedback();
+        }
     },
 
     highlightStars(rating) {
@@ -952,97 +964,130 @@ const App = {
     },
 
     updateStarRating() {
-        this.highlightStars(this.state.selectedRating);
+        this.highlightStars(this.state.selectedRating || 0);
     },
 
-    sendFeedback() {
-        const teacher = document.getElementById('feedback-teacher').value.trim();
-        const subject = document.getElementById('feedback-subject').value.trim();
+    async sendFeedback() {
         const type = document.getElementById('feedback-type').value;
         const message = document.getElementById('feedback-message').value.trim();
         const anonymous = document.getElementById('feedback-anonymous').checked;
 
-        if (!teacher || !message) {
-            this.showNotification('Bitte Lehrer und Nachricht eingeben', 'error');
+        if (!message) {
+            this.showNotification('Bitte eine Nachricht eingeben', 'error');
             return;
         }
 
-        const feedback = {
-            id: Date.now(),
-            teacher,
-            subject,
+        const btn = document.getElementById('send-feedback');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Senden...';
+
+        const profile = Auth.currentUser;
+        const senderName = anonymous ? 'Anonym' : (profile?.name || profile?.username || profile?.email || 'Unbekannt');
+
+        const { error } = await supabase.from('feedback_global').insert({
             type,
-            rating: this.state.selectedRating,
+            rating: this.state.selectedRating || null,
             message,
             anonymous,
-            createdAt: new Date().toISOString()
-        };
+            sender_name: senderName,
+            sender_id: anonymous ? null : this.userId,
+            created_at: new Date().toISOString()
+        });
 
-        this.feedback.push(feedback);
-        this.saveData('feedback', this.feedback);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Feedback senden';
 
-        // Clear form
-        document.getElementById('feedback-teacher').value = '';
-        document.getElementById('feedback-subject').value = '';
+        if (error) {
+            this.showNotification('Fehler beim Senden: ' + error.message, 'error');
+            return;
+        }
+
         document.getElementById('feedback-message').value = '';
         document.getElementById('feedback-anonymous').checked = false;
+        document.getElementById('feedback-type').value = 'suggestion';
         this.state.selectedRating = 0;
         this.updateStarRating();
 
-        this.renderFeedback();
-        this.showNotification('Feedback gesendet', 'success');
+        const confirm = document.getElementById('feedback-sent-confirm');
+        confirm.style.display = 'block';
+        setTimeout(() => confirm.style.display = 'none', 4000);
     },
 
-    renderFeedback() {
-        const container = document.getElementById('feedback-list');
+    async loadAdminFeedback() {
+        const list = document.getElementById('feedback-admin-list');
+        list.innerHTML = '<p style="color:var(--text-secondary);padding:20px 0;">Lade Feedbacks...</p>';
 
-        if (this.feedback.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-comments"></i>
-                    <p>Noch kein Feedback gesendet</p>
-                </div>
-            `;
+        const { data, error } = await supabase
+            .from('feedback_global')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            list.innerHTML = '<p style="color:var(--danger-color);">Fehler: ' + error.message + '</p>';
             return;
         }
 
-        const typeLabels = {
-            positive: 'Positiv',
-            constructive: 'Konstruktiv',
-            question: 'Frage',
-            suggestion: 'Vorschlag'
-        };
-
-        container.innerHTML = this.feedback
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map(fb => `
-                <div class="feedback-item">
-                    <div class="feedback-header">
-                        <div>
-                            <strong>${fb.teacher}</strong>
-                            ${fb.subject ? `<span> · ${fb.subject}</span>` : ''}
-                        </div>
-                        <span class="feedback-type ${fb.type}">${typeLabels[fb.type]}</span>
-                    </div>
-                    ${fb.rating ? `
-                        <div class="star-rating">
-                            ${'★'.repeat(fb.rating)}${'☆'.repeat(5 - fb.rating)}
-                        </div>
-                    ` : ''}
-                    <p>${fb.message}</p>
-                    <small>${this.formatDate(fb.createdAt.split('T')[0])} ${fb.anonymous ? '· Anonym' : ''}</small>
-                    <button class="btn-small btn-danger" style="float: right;" onclick="App.deleteFeedback(${fb.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
+        this._adminFeedbacks = data || [];
+        this.renderAdminFeedback();
     },
 
-    deleteFeedback(id) {
-        this.feedback = this.feedback.filter(f => f.id !== id);
-        this.saveData('feedback', this.feedback);
-        this.renderFeedback();
-        this.showNotification('Feedback gelöscht', 'success');
+    renderAdminFeedback() {
+        const list = document.getElementById('feedback-admin-list');
+        const stats = document.getElementById('feedback-admin-stats');
+        const filter = document.getElementById('feedback-admin-filter')?.value || 'all';
+        const all = this._adminFeedbacks || [];
+
+        // Stats
+        const total = all.length;
+        const avgRating = all.filter(f => f.rating).reduce((s, f) => s + f.rating, 0) / (all.filter(f => f.rating).length || 1);
+        const byType = { bug: 0, suggestion: 0, praise: 0, other: 0 };
+        all.forEach(f => { if (byType[f.type] !== undefined) byType[f.type]++; });
+
+        stats.innerHTML = `
+            <div class="feedback-stat-row">
+                <div class="feedback-stat"><div class="fs-num">${total}</div><div class="fs-label">Gesamt</div></div>
+                <div class="feedback-stat"><div class="fs-num">${avgRating.toFixed(1)} ★</div><div class="fs-label">Ø Bewertung</div></div>
+                <div class="feedback-stat"><div class="fs-num">${byType.bug}</div><div class="fs-label">Fehler</div></div>
+                <div class="feedback-stat"><div class="fs-num">${byType.suggestion}</div><div class="fs-label">Vorschläge</div></div>
+                <div class="feedback-stat"><div class="fs-num">${byType.praise}</div><div class="fs-label">Lob</div></div>
+            </div>`;
+
+        const filtered = filter === 'all' ? all : all.filter(f => f.type === filter);
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-secondary);padding:20px 0;">Keine Feedbacks in dieser Kategorie.</p>';
+            return;
+        }
+
+        const typeLabels = { bug: '🐛 Fehler', suggestion: '💡 Vorschlag', praise: '⭐ Lob', other: '💬 Sonstiges' };
+        const typeColors = { bug: '#ef4444', suggestion: '#3b82f6', praise: '#f59e0b', other: '#8b5cf6' };
+
+        list.innerHTML = filtered.map(fb => `
+            <div class="feedback-admin-item">
+                <div class="feedback-admin-item-header">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span class="fb-type-badge" style="background:${typeColors[fb.type]}20;color:${typeColors[fb.type]};">${typeLabels[fb.type] || fb.type}</span>
+                        <span class="fb-sender"><i class="fas fa-user"></i> ${fb.anonymous ? '<em>Anonym</em>' : (fb.sender_name || 'Unbekannt')}</span>
+                        ${fb.rating ? `<span class="fb-stars">${'★'.repeat(fb.rating)}${'☆'.repeat(5-fb.rating)}</span>` : ''}
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <small style="color:var(--text-secondary);">${new Date(fb.created_at).toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</small>
+                        <button class="btn-small btn-danger" onclick="App.deleteAdminFeedback('${fb.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <p class="fb-message">${fb.message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+            </div>
+        `).join('');
+    },
+
+    async deleteAdminFeedback(id) {
+        if (!confirm('Feedback löschen?')) return;
+        const { error } = await supabase.from('feedback_global').delete().eq('id', id);
+        if (!error) {
+            this._adminFeedbacks = this._adminFeedbacks.filter(f => f.id !== id);
+            this.renderAdminFeedback();
+            this.showNotification('Feedback gelöscht', 'success');
+        }
     },
 
     // ===== Substitution =====
@@ -1113,9 +1158,9 @@ const App = {
         }
 
         container.innerHTML = upcoming.map(sub => `
-            <div class="substitution-item ${sub.replacement.toLowerCase().includes('entfall') ? 'cancelled' : ''}">
+            <div class="substitution-item ${(sub.replacement || '').toLowerCase().includes('entfall') ? 'cancelled' : ''}">
                 <div class="substitution-info">
-                    <h4>${sub.original} → ${sub.replacement || 'Vertretung'}</h4>
+                    <h4>${sub.original || '?'} → ${sub.replacement || 'Vertretung'}</h4>
                     <span>
                         <i class="fas fa-calendar"></i> ${this.formatDate(sub.date)} · ${sub.period}. Stunde
                         ${sub.room ? ` · Raum ${sub.room}` : ''}
@@ -1431,4 +1476,525 @@ const App = {
             setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
+};
+
+// ===== KI-Assistent =====
+
+const KI_SYSTEM_PROMPT = `Du bist mein persönlicher Lernbuddy – kumpelhaft, direkt, ohne Blabla. Sprich mich immer mit "du" an.
+
+Regeln:
+- **Kurz und knackig**: Keine langen Einleitungen, kein Wiederholen der Frage, kein "Natürlich!" oder "Gerne!". Direkt zur Antwort.
+- Wenn ich etwas nicht verstehe, erkläre es einfach – so wie ein Freund, der das Thema drauf hat.
+- Lob mich ruhig mal wenn's passt, aber übertreib's nicht.
+- **Fett** für Schlüsselbegriffe, Aufzählungen nur wenn's wirklich hilft.
+- Mathe mit LaTeX: \(...\) für inline, \[...\] für eigene Zeile.
+- Maximal 3–5 Sätze bei einfachen Fragen. Nur bei komplexen Themen mehr.
+
+Antworte immer auf Deutsch.`;
+
+// Extend App with KI features
+Object.assign(App, {
+
+    // ===== API Key Management (persistent via Supabase) =====
+    _cachedGroqKey: '',
+
+    getApiKey() {
+        return this._cachedGroqKey || '';
+    },
+
+    async loadApiKey() {
+        try {
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'groq_api_key')
+                .maybeSingle();
+            console.log('loadApiKey result:', data, 'error:', error);
+            if (!error && data?.value) this._cachedGroqKey = data.value;
+        } catch (e) { console.log('loadApiKey exception:', e); }
+    },
+
+    async saveApiKey(key) {
+        this._cachedGroqKey = key.trim();
+        const { data, error } = await supabase.from('app_settings').upsert({
+            key: 'groq_api_key',
+            value: key.trim(),
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+        console.log('saveApiKey result:', data, 'error:', error);
+    },
+
+    // Groq API – kostenlos bis 14.400 Anfragen/Tag
+    async kiApiFetch(body) {
+        const key = this.getApiKey();
+        if (!key) {
+            this.showKiKeyBanner();
+            throw new Error('Kein API-Key');
+        }
+
+        // Konvertiere Anthropic-Format → OpenAI-kompatibles Groq-Format
+        const messages = [];
+        if (body.system) messages.push({ role: 'system', content: body.system });
+        messages.push(...(body.messages || []));
+
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + key
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                max_tokens: body.max_tokens || 1000,
+                messages
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            if (response.status === 401) {
+                this.showKiKeyBanner('API-Key ungültig. Bitte prüfe deinen Groq-Key.');
+                throw new Error('Ungültiger API-Key');
+            }
+            throw new Error(err.error?.message || 'API-Fehler');
+        }
+
+        const data = await response.json();
+        // Übersetze Groq-Antwort zurück ins Anthropic-Format
+        const text = data.choices?.[0]?.message?.content || '';
+        return { content: [{ type: 'text', text }] };
+    },
+
+    showKiKeyBanner(errorMsg) {
+        let banner = document.getElementById('ki-key-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'ki-key-banner';
+            banner.className = 'ki-key-banner';
+            banner.innerHTML = `
+                <div class="ki-key-banner-inner">
+                    <div style="font-size:1.6rem;">⚡</div>
+                    <div style="flex:1;">
+                        <strong>Gratis Groq API-Key einrichten</strong>
+                        <p>Groq ist <strong>kostenlos</strong> nutzbar! Erstelle deinen Key in 1 Minute auf 
+                        <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a> 
+                        (kostenloser Account, kein Kreditkarte nötig). Der Key wird nur für diese Sitzung gespeichert.</p>
+                        <div style="background:rgba(21,128,61,0.07);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:0.82rem;color:var(--text-secondary);">
+                            ✅ Kostenlos &nbsp;·&nbsp; ✅ Kein Kreditkarte &nbsp;·&nbsp; ✅ 14.400 Anfragen/Tag &nbsp;·&nbsp; ✅ Sehr schnell
+                        </div>
+                        <div id="ki-key-error" class="ki-key-error" style="display:none;"></div>
+                        <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
+                            <input type="password" id="ki-key-input" placeholder="gsk_..." style="flex:1;margin:0;font-size:0.88rem;padding:9px 12px;">
+                            <button class="btn-primary btn-small" onclick="App.submitApiKey()">
+                                <i class="fas fa-check"></i> Aktivieren
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('ki-key-banner').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:1.1rem;padding:4px;align-self:flex-start;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            const section = document.getElementById('ki-assistent');
+            section.insertBefore(banner, section.querySelector('.ki-tabs'));
+        }
+        banner.style.display = 'block';
+        if (errorMsg) {
+            const errEl = document.getElementById('ki-key-error');
+            if (errEl) { errEl.textContent = errorMsg; errEl.style.display = 'block'; }
+        }
+        const input = document.getElementById('ki-key-input');
+        if (input && this.getApiKey()) input.value = this.getApiKey();
+        setTimeout(() => { if (input) input.focus(); }, 100);
+    },
+
+    async submitApiKey() {
+        const input = document.getElementById('ki-key-input');
+        const key = input?.value.trim();
+        if (!key || !key.startsWith('gsk_')) {
+            const errEl = document.getElementById('ki-key-error');
+            if (errEl) { errEl.textContent = 'Bitte einen gültigen Groq-Key eingeben (beginnt mit gsk_).'; errEl.style.display = 'block'; }
+            return;
+        }
+        await this.saveApiKey(key);
+        document.getElementById('ki-key-banner').style.display = 'none';
+        this.showNotification('Groq-Key gespeichert – KI-Features sind jetzt aktiv! ⚡', 'success');
+    },
+
+    // ===== KI Tab Navigation =====
+    setupKI() {
+        document.querySelectorAll('.ki-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.ki-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.ki-tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const id = 'ki-tab-' + tab.dataset.tab;
+                document.getElementById(id).classList.add('active');
+            });
+        });
+
+        // Enter to send chat
+        const input = document.getElementById('ki-chat-input');
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendChatMessage();
+                }
+            });
+        }
+
+        // Show key banner if no key saved yet when entering KI section
+        document.querySelectorAll('.nav-links li[data-section="ki-assistent"], .mobile-more-menu li[data-section="ki-assistent"]').forEach(el => {
+            el.addEventListener('click', () => {
+                if (!this.getApiKey()) setTimeout(() => this.showKiKeyBanner(), 200);
+            });
+        });
+
+        this.kiChatHistory = [];
+    },
+
+    // ===== Chat =====
+    async sendChatMessage() {
+        const input = document.getElementById('ki-chat-input');
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        input.value = '';
+        this.appendChatMessage(msg, 'user');
+
+        const loadingId = this.appendChatLoading();
+        const btn = document.getElementById('ki-send-btn');
+        btn.disabled = true;
+
+        this.kiChatHistory.push({ role: 'user', content: msg });
+
+        try {
+            const data = await this.kiApiFetch({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1000,
+                system: KI_SYSTEM_PROMPT,
+                messages: this.kiChatHistory
+            });
+
+            const reply = data.content?.map(c => c.text || '').join('') || 'Keine Antwort erhalten.';
+            this.kiChatHistory.push({ role: 'assistant', content: reply });
+            this.removeChatLoading(loadingId);
+            this.appendChatMessage(reply, 'ai');
+
+            const qp = document.getElementById('ki-quick-prompts');
+            if (qp && this.kiChatHistory.length > 2) qp.style.display = 'none';
+        } catch (err) {
+            this.removeChatLoading(loadingId);
+            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
+                this.appendChatMessage('Fehler: ' + err.message, 'ai');
+            }
+        }
+
+        btn.disabled = false;
+    },
+
+    sendQuickPrompt(text) {
+        document.getElementById('ki-chat-input').value = text;
+        this.sendChatMessage();
+    },
+
+    appendChatMessage(text, role) {
+        const container = document.getElementById('ki-chat-messages');
+        const el = document.createElement('div');
+        el.className = `ki-message ki-message-${role}`;
+        const icon = role === 'ai' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+        el.innerHTML = `
+            <div class="ki-message-avatar">${icon}</div>
+            <div class="ki-message-bubble">${role === "user" ? this.escapeHTML(text) : this.renderMarkdown(text)}</div>
+        `;
+        container.appendChild(el);
+        container.scrollTop = container.scrollHeight;
+        // Re-render MathJax for new content
+        if (role === 'ai' && window.MathJax) MathJax.typesetPromise([el]).catch(() => {});
+        return el;
+    },
+
+    appendChatLoading() {
+        const container = document.getElementById('ki-chat-messages');
+        const id = 'ki-loading-' + Date.now();
+        const el = document.createElement('div');
+        el.className = 'ki-message ki-message-ai';
+        el.id = id;
+        el.innerHTML = `
+            <div class="ki-message-avatar"><i class="fas fa-robot"></i></div>
+            <div class="ki-message-bubble ki-loading">
+                <div class="ki-dot"></div><div class="ki-dot"></div><div class="ki-dot"></div>
+            </div>
+        `;
+        container.appendChild(el);
+        container.scrollTop = container.scrollHeight;
+        return id;
+    },
+
+    removeChatLoading(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    },
+
+    escapeHTML(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    renderMarkdown(text) {
+        // 1. Protect LaTeX blocks from escaping
+        const latexBlocks = [];
+        text = text.replace(/\\\[[\s\S]*?\\\]/g, (m) => { latexBlocks.push(m); return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`; });
+        text = text.replace(/\\\([\s\S]*?\\\)/g, (m) => { latexBlocks.push(m); return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`; });
+
+        // 2. Escape HTML
+        text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // 3. Markdown
+        text = text.replace(/^### (.+)$/gm, '<h4 style="margin:12px 0 4px;font-size:0.97rem;">$1</h4>');
+        text = text.replace(/^## (.+)$/gm, '<h3 style="margin:14px 0 6px;">$1</h3>');
+        text = text.replace(/^# (.+)$/gm, '<h3 style="margin:14px 0 6px;">$1</h3>');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        text = text.replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,0.08);padding:1px 5px;border-radius:4px;font-size:0.88em;">$1</code>');
+        // Lists
+        text = text.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+        text = text.replace(/(<li>.*<\/li>(\n|$))+/g, (m) => '<ul style="padding-left:20px;margin:6px 0;">' + m + '</ul>');
+        text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+        // Newlines
+        text = text.replace(/\n\n/g, '</p><p style="margin:8px 0;">');
+        text = text.replace(/\n/g, '<br>');
+        text = '<p style="margin:0;">' + text + '</p>';
+
+        // 4. Restore LaTeX
+        text = text.replace(/%%LATEX_BLOCK_(\d+)%%/g, (_, i) => latexBlocks[i]);
+        text = text.replace(/%%LATEX_INLINE_(\d+)%%/g, (_, i) => latexBlocks[i]);
+
+        return text;
+    },
+
+    // ===== Karteikarten generieren =====
+    async generateFlashcards() {
+        const subject = document.getElementById('ki-fc-subject').value.trim();
+        const topic = document.getElementById('ki-fc-topic').value.trim();
+        const count = document.getElementById('ki-fc-count').value;
+
+        if (!subject || !topic) {
+            this.showNotification('Bitte Fach und Thema eingeben', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('ki-fc-generate-btn');
+        btn.classList.add('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generiere...';
+
+        try {
+            const prompt = `Erstelle genau ${count} Karteikarten für das Fach "${subject}" zum folgenden Thema/Text:
+
+"${topic}"
+
+Antworte NUR mit einem JSON-Array in diesem Format (kein Text davor oder danach, keine Markdown-Backticks):
+[{"front":"Frage hier","back":"Antwort hier"},...]
+
+Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und klar sein.`;
+
+            const data = await this.kiApiFetch({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1000,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            const raw = data.content?.map(c => c.text || '').join('') || '[]';
+            const clean = raw.replace(/```json|```/g, '').trim();
+            const cards = JSON.parse(clean);
+
+            this.kiGeneratedCards = { subject, cards };
+            this.renderGeneratedFlashcards(subject, cards);
+        } catch (err) {
+            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
+                this.showNotification('Fehler: ' + err.message, 'error');
+            }
+        }
+
+        btn.classList.remove('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-magic"></i> Karteikarten generieren';
+    },
+
+    renderGeneratedFlashcards(subject, cards) {
+        const result = document.getElementById('ki-fc-result');
+        const preview = document.getElementById('ki-fc-preview');
+        document.getElementById('ki-fc-result-title').textContent = `${cards.length} Karten für "${subject}" erstellt`;
+
+        preview.innerHTML = cards.map((c) => `
+            <div class="ki-fc-preview-card">
+                <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.escapeHTML(c.front)}</div>
+                <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.escapeHTML(c.back)}</div>
+            </div>
+        `).join('');
+
+        result.style.display = 'block';
+    },
+
+    saveGeneratedFlashcards() {
+        if (!this.kiGeneratedCards) return;
+        const { subject, cards } = this.kiGeneratedCards;
+
+        cards.forEach(c => {
+            this.flashcards.push({
+                id: Date.now() + Math.random(),
+                subject,
+                front: c.front,
+                back: c.back,
+                known: false
+            });
+        });
+
+        this.saveData('flashcards', this.flashcards);
+        this.showNotification(`${cards.length} Karteikarten gespeichert!`, 'success');
+
+        document.getElementById('ki-fc-subject').value = '';
+        document.getElementById('ki-fc-topic').value = '';
+        document.getElementById('ki-fc-result').style.display = 'none';
+        this.kiGeneratedCards = null;
+    },
+
+    // ===== Lernplan generieren =====
+    async generateLernplan() {
+        const extraTopic = document.getElementById('ki-lernplan-topic').value.trim();
+        const timePerDay = document.getElementById('ki-lernplan-time').value;
+        const days = document.getElementById('ki-lernplan-days').value;
+
+        const btn = document.getElementById('ki-lernplan-btn');
+        btn.classList.add('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Erstelle Lernplan...';
+
+        const result = document.getElementById('ki-lernplan-result');
+        result.style.display = 'block';
+        result.textContent = 'KI analysiert deine Hausaufgaben und erstellt den Plan...';
+
+        const today = new Date().toISOString().split('T')[0];
+        const openHW = this.homework
+            .filter(h => !h.done)
+            .slice(0, 10)
+            .map(h => `- ${h.subject}: "${h.task}" (fällig: ${h.due}, Priorität: ${h.priority})`)
+            .join('\n');
+
+        const prompt = `Du bist ein erfahrener Lerncoach. Erstelle einen konkreten Lernplan für die nächsten ${days} Tage.
+
+Offene Hausaufgaben:
+${openHW || '(keine offenen Hausaufgaben)'}
+
+${extraTopic ? `Zusätzlicher Lernstoff / Prüfung:\n${extraTopic}` : ''}
+
+Rahmenbedingungen:
+- Verfügbare Lernzeit: ${timePerDay} Minuten pro Tag
+- Planungszeitraum: ${days} Tage
+- Heutiges Datum: ${today}
+
+Erstelle einen strukturierten Tagesplan mit konkreten Aufgaben, Zeitangaben und Lerntipps. Nutze klare Abschnitte pro Tag. Gib am Ende eine kurze Zusammenfassung und 3 persönliche Lerntipps.`;
+
+        try {
+            const data = await this.kiApiFetch({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1000,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            const text = data.content?.map(c => c.text || '').join('') || 'Keine Antwort.';
+            result.innerHTML = this.formatKIResult(text);
+            if (window.MathJax) MathJax.typesetPromise([result]).catch(() => {});
+        } catch (err) {
+            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
+                result.textContent = 'Fehler: ' + err.message;
+            } else {
+                result.style.display = 'none';
+            }
+        }
+
+        btn.classList.remove('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-calendar-check"></i> Lernplan erstellen';
+    },
+
+    // ===== Notenanalyse =====
+    async analyzeGrades() {
+        if (this.grades.length === 0) {
+            this.showNotification('Noch keine Noten eingetragen', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('ki-noten-btn');
+        btn.classList.add('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analysiere Noten...';
+
+        const result = document.getElementById('ki-noten-result');
+        result.style.display = 'block';
+        result.textContent = 'KI analysiert deine Noten...';
+
+        const subjects = {};
+        this.grades.forEach(g => {
+            if (!subjects[g.subject]) subjects[g.subject] = [];
+            subjects[g.subject].push(g);
+        });
+
+        const gradeSummary = Object.entries(subjects).map(([subj, grades]) => {
+            const avg = grades.reduce((s, g) => s + g.value * g.weight, 0) / grades.reduce((s, g) => s + g.weight, 0);
+            const types = grades.map(g => `${g.system === '1-15' ? g.value + ' Pkt' : 'Note ' + g.value} (${g.type === 'written' ? 'schriftl.' : g.type === 'oral' ? 'mündl.' : 'sonst.'})`).join(', ');
+            return `${subj}: Ø ${avg.toFixed(2)} | Noten: ${types}`;
+        }).join('\n');
+
+        const prompt = `Du bist ein erfahrener Schulberater. Analysiere folgende Noten eines Schülers:
+
+${gradeSummary}
+
+Erstelle eine fundierte Analyse mit:
+1. Stärken (welche Fächer laufen gut und warum)
+2. Verbesserungspotenzial (welche Fächer brauchen mehr Aufmerksamkeit)
+3. Konkrete Handlungsempfehlungen für jedes schwache Fach
+4. Lernstrategien, die speziell für diese Notensituation passen
+5. Motivierender Abschluss
+
+Sei konkret, konstruktiv und ermutigend. Verwende klare Abschnitte.`;
+
+        try {
+            const data = await this.kiApiFetch({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1000,
+                messages: [{ role: 'user', content: prompt }]
+            });
+
+            const text = data.content?.map(c => c.text || '').join('') || 'Keine Antwort.';
+            result.innerHTML = this.formatKIResult(text);
+            if (window.MathJax) MathJax.typesetPromise([result]).catch(() => {});
+        } catch (err) {
+            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
+                result.textContent = 'Fehler: ' + err.message;
+            } else {
+                result.style.display = 'none';
+            }
+        }
+
+        btn.classList.remove('ki-btn-loading');
+        btn.innerHTML = '<i class="fas fa-chart-line"></i> Meine Noten analysieren';
+    },
+
+    formatKIResult(text) {
+        return this.renderMarkdown(text);
+    }
+});
+
+// Patch App.init to also call setupKI and load saved Groq key
+const _origInit = App.init.bind(App);
+App.init = async function() {
+    await _origInit();
+    await this.loadApiKey();
+    this.setupKI();
+};
+
+// Patch navigateTo for KI section
+const _origNav = App.navigateTo.bind(App);
+App.navigateTo = function(section) {
+    _origNav(section);
 };
