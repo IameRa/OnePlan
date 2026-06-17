@@ -331,15 +331,21 @@ const App = {
         const timetable = [];
         for (let i = 0; i < 10; i++) {
             timetable.push([
-                { subject: '', teacher: '', room: '' },
-                { subject: '', teacher: '', room: '' },
-                { subject: '', teacher: '', room: '' },
-                { subject: '', teacher: '', room: '' },
-                { subject: '', teacher: '', room: '' }
+                { subject: '', teacher: '', room: '', color: '' },
+                { subject: '', teacher: '', room: '', color: '' },
+                { subject: '', teacher: '', room: '', color: '' },
+                { subject: '', teacher: '', room: '', color: '' },
+                { subject: '', teacher: '', room: '', color: '' }
             ]);
         }
         return timetable;
     },
+
+    // Feste Vorschlagsfarben für den Fach-Farbwähler
+    subjectColorPresets: [
+        '#15803d', '#2563eb', '#dc2626', '#d97706', '#7c3aed',
+        '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'
+    ],
 
     // ===== Navigation =====
     setupNavigation() {
@@ -564,8 +570,18 @@ const App = {
         }
 
         document.getElementById('save-timetable').addEventListener('click', () => this.saveTimetableEntry());
-        
+
+        // Vorschlagsfarben rendern
+        const presetContainer = document.getElementById('color-presets');
+        presetContainer.innerHTML = this.subjectColorPresets.map(c =>
+            `<button type="button" class="color-preset" style="background:${c}" data-color="${c}" onclick="App.pickPresetColor('${c}')"></button>`
+        ).join('');
+
         this.renderTimetable();
+    },
+
+    pickPresetColor(color) {
+        document.getElementById('edit-color').value = color;
     },
 
     renderTimetable() {
@@ -580,12 +596,14 @@ const App = {
             row.innerHTML = `<td><strong>${periods[p]}</strong></td>`;
             
             for (let d = 0; d < 5; d++) {
-                const cell = (this.timetable[p] || [])[d] || { subject: '', teacher: '', room: '' };
+                const cell = (this.timetable[p] || [])[d] || { subject: '', teacher: '', room: '', color: '' };
+                const color = cell.color || '';
+                const cellStyle = cell.subject && color ? `style="background:${color}22;border-left:4px solid ${color};"` : '';
                 row.innerHTML += `
-                    <td onclick="App.editTimetableCell(${d}, ${p})">
+                    <td onclick="App.editTimetableCell(${d}, ${p})" ${cellStyle}>
                         <div class="timetable-cell">
                             ${cell.subject ? `
-                                <div class="subject">${cell.subject}</div>
+                                <div class="subject" ${color ? `style="color:${color};"` : ''}>${cell.subject}</div>
                                 <div class="teacher">${cell.teacher}</div>
                                 <div class="room">${cell.room}</div>
                             ` : '<span style="color: var(--text-light)">-</span>'}
@@ -602,10 +620,11 @@ const App = {
         document.getElementById('edit-day').value = day;
         document.getElementById('edit-period').value = period;
         
-        const cell = (this.timetable[period] || [])[day] || { subject: '', teacher: '', room: '' };
+        const cell = (this.timetable[period] || [])[day] || { subject: '', teacher: '', room: '', color: '' };
         document.getElementById('edit-subject').value = cell.subject;
         document.getElementById('edit-teacher').value = cell.teacher;
         document.getElementById('edit-room').value = cell.room;
+        document.getElementById('edit-color').value = cell.color || '#15803d';
     },
 
     saveTimetableEntry() {
@@ -615,7 +634,8 @@ const App = {
         this.timetable[period][day] = {
             subject: document.getElementById('edit-subject').value.trim(),
             teacher: document.getElementById('edit-teacher').value.trim(),
-            room: document.getElementById('edit-room').value.trim()
+            room: document.getElementById('edit-room').value.trim(),
+            color: document.getElementById('edit-color').value
         };
 
         this.saveData('timetable', this.timetable);
@@ -625,6 +645,7 @@ const App = {
         document.getElementById('edit-subject').value = '';
         document.getElementById('edit-teacher').value = '';
         document.getElementById('edit-room').value = '';
+        document.getElementById('edit-color').value = '#15803d';
         
         this.showNotification('Stundenplan aktualisiert', 'success');
     },
@@ -1487,7 +1508,7 @@ Regeln:
 - Wenn ich etwas nicht verstehe, erkläre es einfach – so wie ein Freund, der das Thema drauf hat.
 - Lob mich ruhig mal wenn's passt, aber übertreib's nicht.
 - **Fett** für Schlüsselbegriffe, Aufzählungen nur wenn's wirklich hilft.
-- Mathe mit LaTeX: \(...\) für inline, \[...\] für eigene Zeile.
+- Mathe mit LaTeX: \(...\) oder $...$ für inline, \[...\] oder $$...$$ für eigene Zeile.
 - Maximal 3–5 Sätze bei einfachen Fragen. Nur bei komplexen Themen mehr.
 
 Antworte immer auf Deutsch.`;
@@ -1749,6 +1770,10 @@ Object.assign(App, {
         const latexBlocks = [];
         text = text.replace(/\\\[[\s\S]*?\\\]/g, (m) => { latexBlocks.push(m); return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`; });
         text = text.replace(/\\\([\s\S]*?\\\)/g, (m) => { latexBlocks.push(m); return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`; });
+        // Also protect $$...$$ (display) and $...$ (inline), falls die KI Dollar-Syntax statt \( \) verwendet.
+        // Nur als Mathe werten, wenn typische Mathe-Zeichen enthalten sind (verhindert Verwechslung mit Geldbeträgen wie "$5").
+        text = text.replace(/\$\$[\s\S]+?\$\$/g, (m) => { latexBlocks.push(m); return `%%LATEX_BLOCK_${latexBlocks.length - 1}%%`; });
+        text = text.replace(/\$(?!\s)([^\$\n]*?[A-Za-z\\^_{}=][^\$\n]*?)(?<!\s)\$/g, (m) => { latexBlocks.push(m); return `%%LATEX_INLINE_${latexBlocks.length - 1}%%`; });
 
         // 2. Escape HTML
         text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

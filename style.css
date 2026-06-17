@@ -461,6 +461,47 @@ textarea {
     height: fit-content;
 }
 
+.color-picker-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.color-picker-label input[type="color"] {
+    width: 48px;
+    height: 32px;
+    padding: 0;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+}
+
+.color-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 16px;
+}
+
+.color-preset {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+    transition: var(--transition);
+}
+
+.color-preset:hover {
+    transform: scale(1.15);
+    border-color: var(--text-light);
+}
+
 /* ===== Homework ===== */
 .homework-container {
     display: grid;
