@@ -154,7 +154,12 @@
                             <option value="3">Donnerstag</option>
                             <option value="4">Freitag</option>
                         </select>
-                        <select id="edit-period"></select>
+                        <div class="period-range">
+                            <select id="edit-period"></select>
+                            <span class="period-range-arrow"><i class="fas fa-arrow-right"></i></span>
+                            <select id="edit-period-end"></select>
+                        </div>
+                        <p class="field-hint">Start- und Endstunde gleich lassen für eine einzelne Stunde, oder eine spätere Endstunde wählen für eine Doppel-/Mehrfachstunde.</p>
                         <input type="text" id="edit-subject" placeholder="Fach">
                         <input type="text" id="edit-teacher" placeholder="Lehrer/in">
                         <input type="text" id="edit-room" placeholder="Raum">

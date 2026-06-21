@@ -343,8 +343,12 @@ const App = {
 
     // Feste Vorschlagsfarben für den Fach-Farbwähler
     subjectColorPresets: [
-        '#15803d', '#2563eb', '#dc2626', '#d97706', '#7c3aed',
-        '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'
+        '#15803d', '#16a34a', '#65a30d', '#84cc16',
+        '#2563eb', '#0891b2', '#0d9488', '#06b6d4',
+        '#dc2626', '#ea580c', '#d97706', '#f59e0b',
+        '#7c3aed', '#9333ea', '#a21caf', '#c026d3',
+        '#db2777', '#e11d48', '#4f46e5', '#6366f1',
+        '#0369a1', '#1d4ed8', '#525252', '#78716c'
     ],
 
     // ===== Navigation =====
@@ -565,9 +569,19 @@ const App = {
     // ===== Timetable =====
     setupTimetable() {
         const periodSelect = document.getElementById('edit-period');
+        const periodEndSelect = document.getElementById('edit-period-end');
         for (let i = 1; i <= 10; i++) {
             periodSelect.innerHTML += `<option value="${i-1}">${i}. Stunde</option>`;
+            periodEndSelect.innerHTML += `<option value="${i-1}">${i}. Stunde</option>`;
         }
+        periodSelect.addEventListener('change', () => this.syncPeriodEndMin());
+
+        document.getElementById('edit-subject').addEventListener('input', (e) => {
+            const existingColor = this.findExistingColorForSubject(e.target.value);
+            if (existingColor) {
+                document.getElementById('edit-color').value = existingColor;
+            }
+        });
 
         document.getElementById('save-timetable').addEventListener('click', () => this.saveTimetableEntry());
 
@@ -584,6 +598,69 @@ const App = {
         document.getElementById('edit-color').value = color;
     },
 
+    // Sucht die zuerst gefundene Farbe, die im Stundenplan bereits für dieses Fach verwendet wird
+    findExistingColorForSubject(subject) {
+        const key = subject.trim().toLowerCase();
+        if (!key) return null;
+
+        for (const row of this.timetable) {
+            if (!row) continue;
+            for (const cell of row) {
+                if (cell && cell.subject && cell.subject.trim().toLowerCase() === key && cell.color) {
+                    return cell.color;
+                }
+            }
+        }
+        return null;
+    },
+
+    // Färbt alle Stunden mit diesem Fach (egal an welchem Tag/Stunde) in derselben Farbe
+    applyColorToSubject(subject, color) {
+        const key = subject.trim().toLowerCase();
+        if (!key) return;
+
+        this.timetable.forEach(row => {
+            if (!row) return;
+            row.forEach(cell => {
+                if (cell && cell.subject && cell.subject.trim().toLowerCase() === key) {
+                    cell.color = color;
+                }
+            });
+        });
+    },
+
+    syncPeriodEndMin() {
+        const start = parseInt(document.getElementById('edit-period').value);
+        const endSelect = document.getElementById('edit-period-end');
+        if (parseInt(endSelect.value) < start) {
+            endSelect.value = start;
+        }
+    },
+
+    // Prüft, ob zwei Stundenplan-Zellen denselben (nicht-leeren) Inhalt haben
+    timetableCellsMatch(a, b) {
+        if (!a || !b) return false;
+        if (!a.subject || !b.subject) return false;
+        return a.subject === b.subject && a.teacher === b.teacher &&
+               a.room === b.room && (a.color || '') === (b.color || '');
+    },
+
+    // Findet die zusammenhängende Stundenblock-Range (z.B. Doppelstunde), zu der `period` an `day` gehört
+    getTimetableBlockRange(day, period) {
+        const cell = (this.timetable[period] || [])[day];
+        if (!cell || !cell.subject) return { start: period, end: period };
+
+        let start = period;
+        while (start > 0 && this.timetableCellsMatch(cell, (this.timetable[start - 1] || [])[day])) {
+            start--;
+        }
+        let end = period;
+        while (end < 7 && this.timetableCellsMatch(cell, (this.timetable[end + 1] || [])[day])) {
+            end++;
+        }
+        return { start, end };
+    },
+
     renderTimetable() {
         const tbody = document.getElementById('timetable-body');
         tbody.innerHTML = '';
@@ -591,17 +668,41 @@ const App = {
         const periods = ['1. (07:40-08:25)', '2. (08:30-09:15)', '3. (09:30-10:15)', '4. (10:20-11:05)', '5. (11:25-12:10)',
                         '6. (12:15-13:00)', '7. (13:45-14:30)', '8. (14:30-15:15)'];
 
+        // skipRows[d] = wie viele kommende Zeilen für diesen Tag noch übersprungen werden müssen,
+        // weil sie Teil einer Doppelstunden-Zelle (rowspan) weiter oben sind
+        const skipRows = [0, 0, 0, 0, 0];
+
         for (let p = 0; p < 8; p++) {
             const row = document.createElement('tr');
             row.innerHTML = `<td><strong>${periods[p]}</strong></td>`;
-            
+
             for (let d = 0; d < 5; d++) {
+                if (skipRows[d] > 0) {
+                    skipRows[d]--;
+                    continue;
+                }
+
                 const cell = (this.timetable[p] || [])[d] || { subject: '', teacher: '', room: '', color: '' };
                 const color = cell.color || '';
                 const cellStyle = cell.subject && color ? `style="background:${color}22;border-left:4px solid ${color};"` : '';
+
+                // Prüfen, ob diese Stunde der Beginn einer Doppel-/Mehrfachstunde ist
+                let span = 1;
+                if (cell.subject) {
+                    let lookahead = p;
+                    while (lookahead < 7 && this.timetableCellsMatch(cell, (this.timetable[lookahead + 1] || [])[d])) {
+                        lookahead++;
+                        span++;
+                    }
+                }
+                skipRows[d] = span - 1;
+
+                const rowspanAttr = span > 1 ? `rowspan="${span}"` : '';
+                const cellClass = span > 1 ? 'timetable-cell-double' : '';
+
                 row.innerHTML += `
-                    <td onclick="App.editTimetableCell(${d}, ${p})" ${cellStyle}>
-                        <div class="timetable-cell">
+                    <td onclick="App.editTimetableCell(${d}, ${p})" ${rowspanAttr} ${cellStyle}>
+                        <div class="timetable-cell ${cellClass}">
                             ${cell.subject ? `
                                 <div class="subject" ${color ? `style="color:${color};"` : ''}>${cell.subject}</div>
                                 <div class="teacher">${cell.teacher}</div>
@@ -611,16 +712,19 @@ const App = {
                     </td>
                 `;
             }
-            
+
             tbody.appendChild(row);
         }
     },
 
     editTimetableCell(day, period) {
+        const range = this.getTimetableBlockRange(day, period);
+
         document.getElementById('edit-day').value = day;
-        document.getElementById('edit-period').value = period;
-        
-        const cell = (this.timetable[period] || [])[day] || { subject: '', teacher: '', room: '', color: '' };
+        document.getElementById('edit-period').value = range.start;
+        document.getElementById('edit-period-end').value = range.end;
+
+        const cell = (this.timetable[range.start] || [])[day] || { subject: '', teacher: '', room: '', color: '' };
         document.getElementById('edit-subject').value = cell.subject;
         document.getElementById('edit-teacher').value = cell.teacher;
         document.getElementById('edit-room').value = cell.room;
@@ -629,25 +733,42 @@ const App = {
 
     saveTimetableEntry() {
         const day = parseInt(document.getElementById('edit-day').value);
-        const period = parseInt(document.getElementById('edit-period').value);
-        
-        this.timetable[period][day] = {
+        let start = parseInt(document.getElementById('edit-period').value);
+        let end = parseInt(document.getElementById('edit-period-end').value);
+
+        if (end < start) {
+            [start, end] = [end, start];
+        }
+
+        const entry = {
             subject: document.getElementById('edit-subject').value.trim(),
             teacher: document.getElementById('edit-teacher').value.trim(),
             room: document.getElementById('edit-room').value.trim(),
             color: document.getElementById('edit-color').value
         };
 
+        for (let p = start; p <= end; p++) {
+            if (!this.timetable[p]) this.timetable[p] = [];
+            this.timetable[p][day] = { ...entry };
+        }
+
+        // Alle Stunden mit demselben Fach (z.B. an anderen Tagen) bekommen automatisch dieselbe Farbe
+        if (entry.subject) {
+            this.applyColorToSubject(entry.subject, entry.color);
+        }
+
         this.saveData('timetable', this.timetable);
         this.renderTimetable();
-        
+
         // Clear form
         document.getElementById('edit-subject').value = '';
         document.getElementById('edit-teacher').value = '';
         document.getElementById('edit-room').value = '';
         document.getElementById('edit-color').value = '#15803d';
-        
-        this.showNotification('Stundenplan aktualisiert', 'success');
+        document.getElementById('edit-period-end').value = document.getElementById('edit-period').value;
+
+        const message = end > start ? `Doppelstunde (${start + 1}.–${end + 1}. Stunde) aktualisiert` : 'Stundenplan aktualisiert';
+        this.showNotification(message, 'success');
     },
 
     // ===== Homework =====
@@ -1248,8 +1369,14 @@ const App = {
             let totalAvg = 0;
             let count = 0;
             Object.values(subjects).forEach(grades => {
-                const avg = grades.reduce((sum, g) => sum + g.value * g.weight, 0) / 
-                           grades.reduce((sum, g) => sum + g.weight, 0);
+                let weightedSum = 0;
+                let totalWeight = 0;
+                grades.forEach(g => {
+                    const normalized = g.system === '1-15' ? this.pointsToGrade(g.value) : g.value;
+                    weightedSum += normalized * g.weight;
+                    totalWeight += g.weight;
+                });
+                const avg = weightedSum / totalWeight;
                 totalAvg += avg;
                 count++;
             });
@@ -1965,7 +2092,9 @@ Erstelle einen strukturierten Tagesplan mit konkreten Aufgaben, Zeitangaben und 
         });
 
         const gradeSummary = Object.entries(subjects).map(([subj, grades]) => {
-            const avg = grades.reduce((s, g) => s + g.value * g.weight, 0) / grades.reduce((s, g) => s + g.weight, 0);
+            const weightedSum = grades.reduce((s, g) => s + (g.system === '1-15' ? this.pointsToGrade(g.value) : g.value) * g.weight, 0);
+            const totalWeight = grades.reduce((s, g) => s + g.weight, 0);
+            const avg = weightedSum / totalWeight;
             const types = grades.map(g => `${g.system === '1-15' ? g.value + ' Pkt' : 'Note ' + g.value} (${g.type === 'written' ? 'schriftl.' : g.type === 'oral' ? 'mündl.' : 'sonst.'})`).join(', ');
             return `${subj}: Ø ${avg.toFixed(2)} | Noten: ${types}`;
         }).join('\n');
