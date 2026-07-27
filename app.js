@@ -1551,8 +1551,8 @@ Regeln:
 - **Fett** für Schlüsselbegriffe, Aufzählungen nur wenn's wirklich hilft.
 - Mathe mit LaTeX: \(...\) oder $...$ für inline, \[...\] oder $$...$$ für eigene Zeile.
 - Maximal 3–5 Sätze bei einfachen Fragen. Nur bei komplexen Themen mehr.
-
-Antworte immer auf Deutsch.`;
+- Sei wissenschaftlich korrekt.
+Antworte immer auf Deutsch. Außer der Prompt verlangt eine andere Sprache von dir.`;
 }
 
 // Extend App with KI features
