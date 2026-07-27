@@ -1538,10 +1538,14 @@ const App = {
 
 // ===== KI-Assistent =====
 
-const KI_SYSTEM_PROMPT = `Du bist mein persönlicher Lernbuddy – kumpelhaft, direkt, ohne Blabla. Sprich mich immer mit "du" an.
+function getKiSystemPrompt() {
+    const name = Auth.currentUser?.name || Auth.currentUser?.username || '';
+
+    return `Du bist ${name ? name + 's' : 'mein'} persönlicher Lernbuddy – warm, aufmerksam und direkt, ohne Blabla.${name ? ` Mein Name ist ${name}, sprich mich ruhig ab und zu mit meinem Namen an, wenn es natürlich passt.` : ''} Sprich mich immer mit "du" an.
 
 Regeln:
-- **Kurz und knackig**: Keine langen Einleitungen, kein Wiederholen der Frage, kein "Natürlich!" oder "Gerne!". Direkt zur Antwort.
+- **Persönlich statt generisch**: Geh wirklich auf das ein, was ich dir erzähle – meine Fächer, meine Probleme, meine Situation. Wirk wie jemand, der mich kennt, nicht wie eine austauschbare KI, die Standardantworten gibt.
+- **Kurz und knackig, aber nicht kalt**: Keine langen Einleitungen, kein Wiederholen der Frage, kein "Natürlich!" oder "Gerne!". Direkt zur Antwort – aber mit echtem Interesse an mir, nicht nur trockene Fakten.
 - Wenn ich etwas nicht verstehe, erkläre es einfach – so wie ein Freund, der das Thema drauf hat.
 - Lob mich ruhig mal wenn's passt, aber übertreib's nicht.
 - **Fett** für Schlüsselbegriffe, Aufzählungen nur wenn's wirklich hilft.
@@ -1549,6 +1553,7 @@ Regeln:
 - Maximal 3–5 Sätze bei einfachen Fragen. Nur bei komplexen Themen mehr.
 
 Antworte immer auf Deutsch.`;
+}
 
 // Extend App with KI features
 Object.assign(App, {
@@ -1731,7 +1736,7 @@ Object.assign(App, {
             const data = await this.kiApiFetch({
                 model: 'claude-sonnet-4-6',
                 max_tokens: 1000,
-                system: KI_SYSTEM_PROMPT,
+                system: getKiSystemPrompt(),
                 messages: this.kiChatHistory
             });
 
@@ -1921,127 +1926,6 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
         document.getElementById('ki-fc-topic').value = '';
         document.getElementById('ki-fc-result').style.display = 'none';
         this.kiGeneratedCards = null;
-    },
-
-    // ===== Lernplan generieren =====
-    async generateLernplan() {
-        const extraTopic = document.getElementById('ki-lernplan-topic').value.trim();
-        const timePerDay = document.getElementById('ki-lernplan-time').value;
-        const days = document.getElementById('ki-lernplan-days').value;
-
-        const btn = document.getElementById('ki-lernplan-btn');
-        btn.classList.add('ki-btn-loading');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Erstelle Lernplan...';
-
-        const result = document.getElementById('ki-lernplan-result');
-        result.style.display = 'block';
-        result.textContent = 'KI analysiert deine Hausaufgaben und erstellt den Plan...';
-
-        const today = new Date().toISOString().split('T')[0];
-        const openHW = this.homework
-            .filter(h => !h.done)
-            .slice(0, 10)
-            .map(h => `- ${h.subject}: "${h.task}" (fällig: ${h.due}, Priorität: ${h.priority})`)
-            .join('\n');
-
-        const prompt = `Du bist ein erfahrener Lerncoach. Erstelle einen konkreten Lernplan für die nächsten ${days} Tage.
-
-Offene Hausaufgaben:
-${openHW || '(keine offenen Hausaufgaben)'}
-
-${extraTopic ? `Zusätzlicher Lernstoff / Prüfung:\n${extraTopic}` : ''}
-
-Rahmenbedingungen:
-- Verfügbare Lernzeit: ${timePerDay} Minuten pro Tag
-- Planungszeitraum: ${days} Tage
-- Heutiges Datum: ${today}
-
-Erstelle einen strukturierten Tagesplan mit konkreten Aufgaben, Zeitangaben und Lerntipps. Nutze klare Abschnitte pro Tag. Gib am Ende eine kurze Zusammenfassung und 3 persönliche Lerntipps.`;
-
-        try {
-            const data = await this.kiApiFetch({
-                model: 'claude-sonnet-4-6',
-                max_tokens: 1000,
-                messages: [{ role: 'user', content: prompt }]
-            });
-
-            const text = data.content?.map(c => c.text || '').join('') || 'Keine Antwort.';
-            result.innerHTML = this.formatKIResult(text);
-            if (window.MathJax) MathJax.typesetPromise([result]).catch(() => {});
-        } catch (err) {
-            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
-                result.textContent = 'Fehler: ' + err.message;
-            } else {
-                result.style.display = 'none';
-            }
-        }
-
-        btn.classList.remove('ki-btn-loading');
-        btn.innerHTML = '<i class="fas fa-calendar-check"></i> Lernplan erstellen';
-    },
-
-    // ===== Notenanalyse =====
-    async analyzeGrades() {
-        if (this.grades.length === 0) {
-            this.showNotification('Noch keine Noten eingetragen', 'warning');
-            return;
-        }
-
-        const btn = document.getElementById('ki-noten-btn');
-        btn.classList.add('ki-btn-loading');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analysiere Noten...';
-
-        const result = document.getElementById('ki-noten-result');
-        result.style.display = 'block';
-        result.textContent = 'KI analysiert deine Noten...';
-
-        const subjects = {};
-        this.grades.forEach(g => {
-            if (!subjects[g.subject]) subjects[g.subject] = [];
-            subjects[g.subject].push(g);
-        });
-
-        const gradeSummary = Object.entries(subjects).map(([subj, grades]) => {
-            const weightedSum = grades.reduce((s, g) => s + (g.system === '1-15' ? this.pointsToGrade(g.value) : g.value) * g.weight, 0);
-            const totalWeight = grades.reduce((s, g) => s + g.weight, 0);
-            const avg = weightedSum / totalWeight;
-            const types = grades.map(g => `${g.system === '1-15' ? g.value + ' Pkt' : 'Note ' + g.value} (${g.type === 'written' ? 'schriftl.' : g.type === 'oral' ? 'mündl.' : 'sonst.'})`).join(', ');
-            return `${subj}: Ø ${avg.toFixed(2)} | Noten: ${types}`;
-        }).join('\n');
-
-        const prompt = `Du bist ein erfahrener Schulberater. Analysiere folgende Noten eines Schülers:
-
-${gradeSummary}
-
-Erstelle eine fundierte Analyse mit:
-1. Stärken (welche Fächer laufen gut und warum)
-2. Verbesserungspotenzial (welche Fächer brauchen mehr Aufmerksamkeit)
-3. Konkrete Handlungsempfehlungen für jedes schwache Fach
-4. Lernstrategien, die speziell für diese Notensituation passen
-5. Motivierender Abschluss
-
-Sei konkret, konstruktiv und ermutigend. Verwende klare Abschnitte.`;
-
-        try {
-            const data = await this.kiApiFetch({
-                model: 'claude-sonnet-4-6',
-                max_tokens: 1000,
-                messages: [{ role: 'user', content: prompt }]
-            });
-
-            const text = data.content?.map(c => c.text || '').join('') || 'Keine Antwort.';
-            result.innerHTML = this.formatKIResult(text);
-            if (window.MathJax) MathJax.typesetPromise([result]).catch(() => {});
-        } catch (err) {
-            if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
-                result.textContent = 'Fehler: ' + err.message;
-            } else {
-                result.style.display = 'none';
-            }
-        }
-
-        btn.classList.remove('ki-btn-loading');
-        btn.innerHTML = '<i class="fas fa-chart-line"></i> Meine Noten analysieren';
     },
 
     formatKIResult(text) {

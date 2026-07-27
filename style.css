@@ -1856,46 +1856,6 @@ textarea {
     color: var(--text-secondary);
 }
 
-/* Lernplan & Notenanalyse */
-.ki-lernplan-container,
-.ki-noten-container {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    gap: 24px;
-}
-
-.ki-lernplan-form,
-.ki-noten-form {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
-    height: fit-content;
-}
-
-.ki-result-box {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 28px;
-    box-shadow: var(--shadow);
-    font-size: 0.93rem;
-    line-height: 1.75;
-    color: var(--text-primary);
-    white-space: pre-wrap;
-    overflow-y: auto;
-    max-height: 560px;
-}
-
-.ki-result-box h4 {
-    color: var(--primary-color);
-    margin: 16px 0 6px;
-    font-size: 1rem;
-}
-
-.ki-result-box h4:first-child {
-    margin-top: 0;
-}
-
 /* KI Loading spinner in buttons */
 .ki-btn-loading {
     opacity: 0.7;
@@ -1904,9 +1864,7 @@ textarea {
 }
 
 @media (max-width: 1200px) {
-    .ki-card-gen-container,
-    .ki-lernplan-container,
-    .ki-noten-container {
+    .ki-card-gen-container {
         grid-template-columns: 1fr;
     }
 }

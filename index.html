@@ -286,8 +286,6 @@
                 <div class="ki-tabs">
                     <button class="ki-tab active" data-tab="chat"><i class="fas fa-comments"></i> Lernassistent</button>
                     <button class="ki-tab" data-tab="karteikarten-ki"><i class="fas fa-magic"></i> Karteikarten generieren</button>
-                    <button class="ki-tab" data-tab="lernplan"><i class="fas fa-calendar-check"></i> Lernplan & Zusammenfassung</button>
-                    <button class="ki-tab" data-tab="noten-ki"><i class="fas fa-chart-line"></i> Notenanalyse</button>
                 </div>
 
                 <!-- Tab: Chat -->
@@ -349,54 +347,6 @@
                     </div>
                 </div>
 
-                <!-- Tab: Lernplan -->
-                <div class="ki-tab-content" id="ki-tab-lernplan">
-                    <div class="ki-lernplan-container">
-                        <div class="ki-lernplan-form">
-                            <h3><i class="fas fa-calendar-check" style="color:var(--primary-color);"></i> Lernplan & Zusammenfassung erstellen</h3>
-                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Die KI analysiert deine Hausaufgaben und erstellt einen personalisierten Lernplan.</p>
-                            <textarea id="ki-lernplan-topic" placeholder="Optionales zusätzliches Thema oder Prüfungsstoff (z.B. 'Ich habe nächste Woche eine Mathe-Prüfung über Quadratische Gleichungen')..." style="min-height:100px;"></textarea>
-                            <div style="display:flex;gap:12px;margin-bottom:12px;">
-                                <div style="flex:1;">
-                                    <label style="font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:4px;">Verfügbare Zeit pro Tag</label>
-                                    <select id="ki-lernplan-time" style="margin:0;">
-                                        <option value="30">30 Minuten</option>
-                                        <option value="60" selected>1 Stunde</option>
-                                        <option value="90">1,5 Stunden</option>
-                                        <option value="120">2 Stunden</option>
-                                    </select>
-                                </div>
-                                <div style="flex:1;">
-                                    <label style="font-size:0.85rem;color:var(--text-secondary);display:block;margin-bottom:4px;">Planungszeitraum</label>
-                                    <select id="ki-lernplan-days" style="margin:0;">
-                                        <option value="3">3 Tage</option>
-                                        <option value="5" selected>5 Tage</option>
-                                        <option value="7">7 Tage</option>
-                                        <option value="14">2 Wochen</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button class="btn-primary" id="ki-lernplan-btn" onclick="App.generateLernplan()">
-                                <i class="fas fa-calendar-check"></i> Lernplan erstellen
-                            </button>
-                        </div>
-                        <div id="ki-lernplan-result" class="ki-result-box" style="display:none;"></div>
-                    </div>
-                </div>
-
-                <!-- Tab: Notenanalyse -->
-                <div class="ki-tab-content" id="ki-tab-noten-ki">
-                    <div class="ki-noten-container">
-                        <div class="ki-noten-form">
-                            <h3><i class="fas fa-chart-line" style="color:var(--primary-color);"></i> Notenanalyse & Empfehlungen</h3>
-                            <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Die KI analysiert deine Noten und gibt dir konkrete Verbesserungsvorschläge.</p>
-                            <button class="btn-primary" id="ki-noten-btn" onclick="App.analyzeGrades()">
-                                <i class="fas fa-chart-line"></i> Meine Noten analysieren
-                            </button>
-                        </div>
-                        <div id="ki-noten-result" class="ki-result-box" style="display:none;"></div>
-                    </div>
-                </div>
             </section>
 
             <section id="feedback" class="section">
