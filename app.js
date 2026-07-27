@@ -9,23 +9,29 @@ const Auth = {
 
     async init() {
         this.setupListeners();
+        this._sessionHandled = false;
 
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            await this.loadProfile(session.user);
-        } else {
-            document.getElementById('auth-overlay').classList.add('active');
-        }
-
-        // Listen for auth changes (e.g. token refresh)
+        // Listen for auth changes. This also fires immediately with the
+        // current session state when subscribed, so it covers the initial
+        // page load too — no separate getSession()+loadProfile call needed.
         supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                await this.loadProfile(session.user);
-            } else if (event === 'SIGNED_OUT') {
+            if (event === 'SIGNED_OUT') {
+                this._sessionHandled = false;
                 this.showAuthScreen();
+                return;
+            }
+            if (session && !this._sessionHandled) {
+                this._sessionHandled = true;
+                await this.loadProfile(session.user);
             }
         });
+
+        // If there's no session at all, show the login screen right away
+        // (the listener above only fires for actual sessions).
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            document.getElementById('auth-overlay').classList.add('active');
+        }
     },
 
     async loadProfile(user) {
