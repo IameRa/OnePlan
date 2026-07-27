@@ -1070,7 +1070,7 @@ const App = {
 
     // ===== Feedback =====
     // Set your Supabase user ID here to get admin access
-    ADMIN_USER_ID: 'DEINE_USER_ID_HIER',
+    ADMIN_USER_ID: '2294dbf3-e62a-4eaf-b419-0b03cb30635f',
 
     isAdmin() {
         return this.userId === this.ADMIN_USER_ID;
