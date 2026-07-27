@@ -1515,12 +1515,20 @@ const App = {
         document.getElementById('fc-progress-fill').style.width = `${(index / total) * 100}%`;
 
         const card = queue[index];
+
+        // Reset flip WITHOUT animating: temporarily disable the transition,
+        // remove 'flipped', force a reflow, then only fill in the new
+        // text and re-enable the transition. This prevents the next
+        // card's answer from briefly flashing during the un-flip animation.
+        const inner = document.getElementById('fc-card-inner');
+        inner.style.transition = 'none';
+        inner.classList.remove('flipped');
+        void inner.offsetHeight; // force reflow so the removal takes effect instantly
+
         document.getElementById('fc-front-text').textContent = card.front;
         document.getElementById('fc-back-text').textContent = card.back;
 
-        // Reset flip
-        const inner = document.getElementById('fc-card-inner');
-        inner.classList.remove('flipped');
+        inner.style.transition = '';
         document.getElementById('fc-flip-hint').style.display = 'block';
         document.getElementById('fc-answer-btns').style.display = 'none';
     },
