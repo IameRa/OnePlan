@@ -295,7 +295,6 @@ const App = {
         this.setupHomework();
         this.setupGrades();
         this.setupFeedback();
-        this.setupSubstitution();
         this.setupFlashcards();
         this.setupModal();
         this.updateDashboard();
@@ -306,7 +305,7 @@ const App = {
 
     // ===== Data Management =====
     async loadAllData() {
-        const keys = ['events', 'timetable', 'homework', 'grades', 'substitutions'];
+        const keys = ['events', 'timetable', 'homework', 'grades'];
         const { data, error } = await supabase
             .from('user_data')
             .select('data_key, data_value')
@@ -320,7 +319,6 @@ const App = {
         this.homework = map['homework'] || [];
         this.grades = map['grades'] || [];
         this.feedback = []; // now global via feedback_global table
-        this.substitutions = map['substitutions'] || [];
         this.flashcards = map['flashcards'] || [];
     },
 
@@ -384,7 +382,6 @@ const App = {
             case 'hausaufgaben': this.renderHomework(); break;
             case 'noten': this.renderGrades(); break;
             case 'feedback': if (this.isAdmin()) this.loadAdminFeedback(); break;
-            case 'vertretungsplan': this.renderSubstitutions(); break;
             case 'karteikarten': this.renderFlashcardDecks(); break;
         }
     },
@@ -1238,97 +1235,6 @@ const App = {
         }
     },
 
-    // ===== Substitution =====
-    setupSubstitution() {
-        const periodSelect = document.getElementById('sub-period');
-        for (let i = 1; i <= 10; i++) {
-            periodSelect.innerHTML += `<option value="${i}">${i}. Stunde</option>`;
-        }
-
-        document.getElementById('add-substitution').addEventListener('click', () => this.addSubstitution());
-        
-        this.renderSubstitutions();
-    },
-
-    addSubstitution() {
-        const date = document.getElementById('sub-date').value;
-        const period = document.getElementById('sub-period').value;
-        const original = document.getElementById('sub-original').value.trim();
-        const replacement = document.getElementById('sub-replacement').value.trim();
-        const room = document.getElementById('sub-room').value.trim();
-        const note = document.getElementById('sub-note').value.trim();
-
-        if (!date || !original) {
-            this.showNotification('Bitte Datum und Fach eingeben', 'error');
-            return;
-        }
-
-        const substitution = {
-            id: Date.now(),
-            date,
-            period,
-            original,
-            replacement,
-            room,
-            note
-        };
-
-        this.substitutions.push(substitution);
-        this.saveData('substitutions', this.substitutions);
-
-        // Clear form
-        document.getElementById('sub-date').value = '';
-        document.getElementById('sub-original').value = '';
-        document.getElementById('sub-replacement').value = '';
-        document.getElementById('sub-room').value = '';
-        document.getElementById('sub-note').value = '';
-
-        this.renderSubstitutions();
-        this.showNotification('Vertretung hinzugefügt', 'success');
-    },
-
-    renderSubstitutions() {
-        const container = document.getElementById('substitution-list');
-        const today = new Date().toISOString().split('T')[0];
-        
-        const upcoming = this.substitutions
-            .filter(s => s.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (upcoming.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-exchange-alt"></i>
-                    <p>Keine Vertretungen eingetragen</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = upcoming.map(sub => `
-            <div class="substitution-item ${(sub.replacement || '').toLowerCase().includes('entfall') ? 'cancelled' : ''}">
-                <div class="substitution-info">
-                    <h4>${sub.original || '?'} → ${sub.replacement || 'Vertretung'}</h4>
-                    <span>
-                        <i class="fas fa-calendar"></i> ${this.formatDate(sub.date)} · ${sub.period}. Stunde
-                        ${sub.room ? ` · Raum ${sub.room}` : ''}
-                    </span>
-                    ${sub.note ? `<p><i class="fas fa-info-circle"></i> ${sub.note}</p>` : ''}
-                </div>
-                <button class="btn-small btn-danger" onclick="App.deleteSubstitution(${sub.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `).join('');
-    },
-
-    deleteSubstitution(id) {
-        this.substitutions = this.substitutions.filter(s => s.id !== id);
-        this.saveData('substitutions', this.substitutions);
-        this.renderSubstitutions();
-        this.showNotification('Vertretung gelöscht', 'success');
-    },
-
     // ===== Dashboard =====
     updateDashboard() {
         const today = new Date().toISOString().split('T')[0];
@@ -1401,16 +1307,6 @@ const App = {
                 '<p style="color: var(--text-secondary);">Noch keine Noten</p>';
         }
 
-        // Today's substitutions
-        const todaySubs = this.substitutions.filter(s => s.date === today);
-        document.getElementById('today-substitutions').innerHTML = todaySubs.length
-            ? todaySubs.map(s => `
-                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    <strong>${s.original}</strong> → ${s.replacement || 'Vertretung'}<br>
-                    <small>${s.period}. Stunde${s.room ? ' · Raum ' + s.room : ''}</small>
-                </div>
-            `).join('')
-            : '<p style="color: var(--text-secondary);">Keine Vertretungen heute</p>';
     },
 
     // ===== Flashcards =====

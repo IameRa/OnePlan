@@ -41,10 +41,6 @@
                     <i class="fas fa-clock"></i>
                     <span>Stundenplan</span>
                 </li>
-                <li data-section="vertretungsplan">
-                    <i class="fas fa-exchange-alt"></i>
-                    <span>Vertretungsplan</span>
-                </li>
                 <li data-section="hausaufgaben">
                     <i class="fas fa-book"></i>
                     <span>Hausaufgaben</span>
@@ -85,10 +81,6 @@
                     <div class="dashboard-card">
                         <h3><i class="fas fa-chart-line"></i> Notendurchschnitt</h3>
                         <div id="grade-overview"></div>
-                    </div>
-                    <div class="dashboard-card">
-                        <h3><i class="fas fa-info-circle"></i> Vertretungen heute</h3>
-                        <div id="today-substitutions"></div>
                     </div>
                 </div>
             </section>
@@ -170,24 +162,6 @@
                         <div id="color-presets" class="color-presets"></div>
                         <button id="save-timetable" class="btn-primary">Speichern</button>
                     </div>
-                </div>
-            </section>
-
-            <!-- Vertretungsplan -->
-            <section id="vertretungsplan" class="section">
-                <h1>Vertretungsplan</h1>
-                <div class="substitution-container">
-                    <div class="substitution-form">
-                        <h3>Neue Vertretung</h3>
-                        <input type="date" id="sub-date">
-                        <select id="sub-period"></select>
-                        <input type="text" id="sub-original" placeholder="Ursprüngliches Fach">
-                        <input type="text" id="sub-replacement" placeholder="Vertretung / Entfall">
-                        <input type="text" id="sub-room" placeholder="Raum">
-                        <textarea id="sub-note" placeholder="Bemerkung"></textarea>
-                        <button id="add-substitution" class="btn-primary">Hinzufügen</button>
-                    </div>
-                    <div id="substitution-list" class="substitution-list"></div>
                 </div>
             </section>
 
@@ -593,7 +567,6 @@
             <li data-section="ki-assistent"><i class="fas fa-robot"></i><span>KI-Assistent</span></li>
             <li data-section="karteikarten"><i class="fas fa-layer-group"></i><span>Karteikarten</span></li>
             <li data-section="noten"><i class="fas fa-calculator"></i><span>Notenrechner</span></li>
-            <li data-section="vertretungsplan"><i class="fas fa-exchange-alt"></i><span>Vertretungsplan</span></li>
             <li data-section="feedback"><i class="fas fa-comments"></i><span>Feedback</span></li>
         </ul>
     </div>

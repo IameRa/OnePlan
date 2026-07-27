@@ -782,42 +782,6 @@ textarea {
 .feedback-type.question { background: rgba(14, 165, 233, 0.1); color: var(--secondary-color); }
 .feedback-type.suggestion { background: rgba(79, 70, 229, 0.1); color: var(--primary-color); }
 
-/* ===== Substitution ===== */
-.substitution-container {
-    display: grid;
-    grid-template-columns: 350px 1fr;
-    gap: 24px;
-}
-
-.substitution-form {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
-    height: fit-content;
-}
-
-.substitution-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.substitution-item {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-left: 4px solid var(--warning-color);
-}
-
-.substitution-item.cancelled {
-    border-left-color: var(--danger-color);
-}
-
 /* ===== Notifications ===== */
 #notification-container {
     position: fixed;
@@ -906,8 +870,7 @@ textarea {
     .calendar-container,
     .homework-container,
     .grades-container,
-    .feedback-container,
-    .substitution-container {
+    .feedback-container {
         grid-template-columns: 1fr;
     }
     
@@ -948,8 +911,7 @@ textarea {
     .calendar-container,
     .homework-container,
     .grades-container,
-    .feedback-container,
-    .substitution-container {
+    .feedback-container {
         grid-template-columns: 1fr;
     }
 
