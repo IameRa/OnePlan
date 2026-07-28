@@ -318,6 +318,7 @@ const App = {
         this.setupGrades();
         this.setupFeedback();
         this.setupFlashcards();
+        this.setupPomodoro();
         this.setupModal();
         this.updateDashboard();
         this.checkReminders();
@@ -1968,3 +1969,227 @@ const _origNav = App.navigateTo.bind(App);
 App.navigateTo = function(section) {
     _origNav(section);
 };
+
+// ===== Pomodoro Timer =====
+Object.assign(App, {
+
+    pomodoroState: {
+        timer: null,
+        remaining: 25 * 60,
+        mode: 'work', // 'work' | 'short' | 'long'
+        round: 0,
+        running: false
+    },
+
+    setupPomodoro() {
+        document.getElementById('pomodoro-start-btn').addEventListener('click', () => this.togglePomodoro());
+        document.getElementById('pomodoro-reset-btn').addEventListener('click', () => this.resetPomodoro());
+        document.getElementById('pomodoro-skip-btn').addEventListener('click', () => this.skipPomodoroPhase());
+
+        ['pomodoro-work-min', 'pomodoro-short-min', 'pomodoro-long-min', 'pomodoro-rounds'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                this.savePomodoroSettings();
+                if (!this.pomodoroState.running) this.resetPomodoro();
+            });
+        });
+
+        const savedSubject = localStorage.getItem('oneplan-pomodoro-subject');
+        if (savedSubject) document.getElementById('pomodoro-subject').value = savedSubject;
+        document.getElementById('pomodoro-subject').addEventListener('input', (e) => {
+            localStorage.setItem('oneplan-pomodoro-subject', e.target.value);
+        });
+
+        this.loadPomodoroSettings();
+        this.updatePomodoroTodayCount();
+        this.renderPomodoroTime();
+        this.renderPomodoroMode();
+        this.renderPomodoroDots();
+    },
+
+    getPomodoroDurations() {
+        return {
+            work: (parseInt(document.getElementById('pomodoro-work-min').value) || 25) * 60,
+            short: (parseInt(document.getElementById('pomodoro-short-min').value) || 5) * 60,
+            long: (parseInt(document.getElementById('pomodoro-long-min').value) || 15) * 60,
+            rounds: parseInt(document.getElementById('pomodoro-rounds').value) || 4
+        };
+    },
+
+    savePomodoroSettings() {
+        const d = this.getPomodoroDurations();
+        localStorage.setItem('oneplan-pomodoro-settings', JSON.stringify(d));
+    },
+
+    loadPomodoroSettings() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('oneplan-pomodoro-settings'));
+            if (saved) {
+                document.getElementById('pomodoro-work-min').value = saved.work / 60;
+                document.getElementById('pomodoro-short-min').value = saved.short / 60;
+                document.getElementById('pomodoro-long-min').value = saved.long / 60;
+                document.getElementById('pomodoro-rounds').value = saved.rounds;
+            }
+        } catch (e) { /* ignore */ }
+        if (!this.pomodoroState.running) {
+            this.pomodoroState.remaining = this.getPomodoroDurations().work;
+        }
+    },
+
+    togglePomodoro() {
+        if (this.pomodoroState.running) {
+            this.pausePomodoro();
+        } else {
+            this.startPomodoro();
+        }
+    },
+
+    startPomodoro() {
+        if (this.pomodoroState.timer) return;
+        if (Notification && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+        this.pomodoroState.running = true;
+        document.getElementById('pomodoro-start-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+        this.pomodoroState.timer = setInterval(() => this.tickPomodoro(), 1000);
+    },
+
+    pausePomodoro() {
+        clearInterval(this.pomodoroState.timer);
+        this.pomodoroState.timer = null;
+        this.pomodoroState.running = false;
+        document.getElementById('pomodoro-start-btn').innerHTML = '<i class="fas fa-play"></i> Start';
+        document.title = 'OnePlan';
+    },
+
+    resetPomodoro() {
+        this.pausePomodoro();
+        this.pomodoroState.mode = 'work';
+        this.pomodoroState.round = 0;
+        this.pomodoroState.remaining = this.getPomodoroDurations().work;
+        this.renderPomodoroTime();
+        this.renderPomodoroMode();
+        this.renderPomodoroDots();
+    },
+
+    skipPomodoroPhase() {
+        this.pausePomodoro();
+        this.advancePomodoroPhase();
+    },
+
+    tickPomodoro() {
+        this.pomodoroState.remaining--;
+        if (this.pomodoroState.remaining <= 0) {
+            this.completePomodoroPhase();
+        } else {
+            this.renderPomodoroTime();
+        }
+    },
+
+    completePomodoroPhase() {
+        const wasWork = this.pomodoroState.mode === 'work';
+        if (wasWork) this.incrementPomodoroTodayCount();
+
+        this.playPomodoroSound();
+        this.notifyPomodoro(wasWork);
+        this.pausePomodoro();
+        this.advancePomodoroPhase();
+        this.startPomodoro(); // auto-continue into the next phase
+    },
+
+    advancePomodoroPhase() {
+        const d = this.getPomodoroDurations();
+        if (this.pomodoroState.mode === 'work') {
+            this.pomodoroState.round++;
+            if (this.pomodoroState.round % d.rounds === 0) {
+                this.pomodoroState.mode = 'long';
+                this.pomodoroState.remaining = d.long;
+            } else {
+                this.pomodoroState.mode = 'short';
+                this.pomodoroState.remaining = d.short;
+            }
+        } else {
+            this.pomodoroState.mode = 'work';
+            this.pomodoroState.remaining = d.work;
+        }
+        this.renderPomodoroTime();
+        this.renderPomodoroMode();
+        this.renderPomodoroDots();
+    },
+
+    renderPomodoroTime() {
+        const m = Math.floor(this.pomodoroState.remaining / 60).toString().padStart(2, '0');
+        const s = (this.pomodoroState.remaining % 60).toString().padStart(2, '0');
+        const el = document.getElementById('pomodoro-time');
+        if (el) el.textContent = `${m}:${s}`;
+        if (this.pomodoroState.running) document.title = `${m}:${s} · OnePlan`;
+    },
+
+    renderPomodoroMode() {
+        const labels = { work: 'Fokus', short: 'Kurze Pause', long: 'Lange Pause' };
+        const el = document.getElementById('pomodoro-mode');
+        if (!el) return;
+        el.textContent = labels[this.pomodoroState.mode];
+        el.className = 'pomodoro-mode mode-' + this.pomodoroState.mode;
+    },
+
+    renderPomodoroDots() {
+        const d = this.getPomodoroDurations();
+        const container = document.getElementById('pomodoro-dots');
+        if (!container) return;
+        const current = this.pomodoroState.round % d.rounds;
+        let html = '';
+        for (let i = 0; i < d.rounds; i++) {
+            html += `<span class="pomodoro-dot ${i < current ? 'filled' : ''}"></span>`;
+        }
+        container.innerHTML = html;
+    },
+
+    playPomodoroSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.frequency.value = 880;
+            g.gain.setValueAtTime(0.15, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+            o.start();
+            o.stop(ctx.currentTime + 0.6);
+        } catch (e) { /* ignore */ }
+    },
+
+    notifyPomodoro(wasWork) {
+        const subject = document.getElementById('pomodoro-subject')?.value.trim();
+        const body = wasWork
+            ? `Fokuszeit vorbei${subject ? ' (' + subject + ')' : ''} – Zeit für eine Pause!`
+            : 'Pause vorbei – weiter geht\'s!';
+
+        if (!('Notification' in window)) {
+            this.showNotification(body, 'success');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            new Notification('OnePlan Pomodoro', { body });
+        } else {
+            this.showNotification(body, 'success');
+        }
+    },
+
+    getPomodoroTodayKey() {
+        return 'oneplan-pomodoro-count-' + new Date().toISOString().split('T')[0];
+    },
+
+    incrementPomodoroTodayCount() {
+        const key = this.getPomodoroTodayKey();
+        const count = parseInt(localStorage.getItem(key) || '0') + 1;
+        localStorage.setItem(key, count);
+        this.updatePomodoroTodayCount();
+    },
+
+    updatePomodoroTodayCount() {
+        const count = localStorage.getItem(this.getPomodoroTodayKey()) || '0';
+        const el = document.getElementById('pomodoro-today-count');
+        if (el) el.textContent = count;
+    }
+});
