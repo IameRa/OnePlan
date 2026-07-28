@@ -62,6 +62,8 @@ const Auth = {
 
         document.getElementById('btn-logout').addEventListener('click', () => this.logout());
         document.getElementById('btn-delete-account').addEventListener('click', () => this.deleteAccount());
+        document.getElementById('btn-theme-toggle').addEventListener('click', () => this.toggleTheme());
+        this.syncThemeUI();
 
         document.getElementById('user-avatar-btn').addEventListener('click', () => {
             document.getElementById('user-dropdown').classList.toggle('hidden');
@@ -202,6 +204,26 @@ const Auth = {
 
     async logout() {
         await supabase.auth.signOut();
+    },
+
+    toggleTheme() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('oneplan-theme', 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('oneplan-theme', 'dark');
+        }
+        this.syncThemeUI();
+    },
+
+    syncThemeUI() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const icon = document.getElementById('theme-toggle-icon');
+        const label = document.getElementById('theme-toggle-label');
+        if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+        if (label) label.textContent = isDark ? 'Hellmodus' : 'Dunkelmodus';
     },
 
     async deleteAccount() {
@@ -1551,8 +1573,8 @@ Regeln:
 - **Fett** für Schlüsselbegriffe, Aufzählungen nur wenn's wirklich hilft.
 - Mathe mit LaTeX: \(...\) oder $...$ für inline, \[...\] oder $$...$$ für eigene Zeile.
 - Maximal 3–5 Sätze bei einfachen Fragen. Nur bei komplexen Themen mehr.
-- Sei wissenschaftlich korrekt.
-Antworte immer auf Deutsch. Außer der Prompt verlangt eine andere Sprache von dir.`;
+
+Antworte immer auf Deutsch.`;
 }
 
 // Extend App with KI features

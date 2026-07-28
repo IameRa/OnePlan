@@ -7,6 +7,15 @@
     <link rel="icon" type="image/x-icon" href="Logo_Oneplan.png">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="stylesheet" href="style.css">
+    <script>
+        // Apply saved theme immediately, before the page paints
+        (function() {
+            const saved = localStorage.getItem('oneplan-theme');
+            if (saved === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -486,6 +495,10 @@
                 <strong id="dropdown-name"></strong>
                 <small id="dropdown-username"></small>
             </div>
+            <hr>
+            <button id="btn-theme-toggle">
+                <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-label">Dunkelmodus</span>
+            </button>
             <hr>
             <button id="btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Abmelden
