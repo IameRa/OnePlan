@@ -297,13 +297,21 @@
 
                 <div class="pomodoro-container">
                     <div class="pomodoro-card">
-                        <div class="pomodoro-mode mode-work" id="pomodoro-mode">Fokus</div>
-                        <div class="pomodoro-time" id="pomodoro-time">25:00</div>
+                        <div class="pomodoro-ring-wrap">
+                            <svg class="pomodoro-ring" viewBox="0 0 220 220">
+                                <circle class="pomodoro-ring-bg" cx="110" cy="110" r="100"></circle>
+                                <circle class="pomodoro-ring-progress" id="pomodoro-ring-progress" cx="110" cy="110" r="100"></circle>
+                            </svg>
+                            <div class="pomodoro-ring-content">
+                                <div class="pomodoro-mode mode-work" id="pomodoro-mode">Fokus</div>
+                                <div class="pomodoro-time" id="pomodoro-time">25:00</div>
+                            </div>
+                        </div>
                         <input type="text" id="pomodoro-subject" class="pomodoro-subject-input" placeholder="Woran arbeitest du gerade? (optional)">
                         <div class="pomodoro-controls">
-                            <button class="btn-primary" id="pomodoro-start-btn"><i class="fas fa-play"></i> Start</button>
-                            <button class="btn-secondary" id="pomodoro-skip-btn"><i class="fas fa-forward"></i> Überspringen</button>
-                            <button class="btn-secondary" id="pomodoro-reset-btn"><i class="fas fa-rotate-left"></i> Zurücksetzen</button>
+                            <button class="pomodoro-btn pomodoro-btn-primary" id="pomodoro-start-btn"><i class="fas fa-play"></i> Start</button>
+                            <button class="pomodoro-btn pomodoro-btn-ghost" id="pomodoro-skip-btn"><i class="fas fa-forward"></i> Überspringen</button>
+                            <button class="pomodoro-btn pomodoro-btn-ghost" id="pomodoro-reset-btn"><i class="fas fa-rotate-left"></i> Zurücksetzen</button>
                         </div>
                         <div class="pomodoro-dots" id="pomodoro-dots"></div>
                     </div>

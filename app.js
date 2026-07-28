@@ -2045,7 +2045,7 @@ Object.assign(App, {
 
     startPomodoro() {
         if (this.pomodoroState.timer) return;
-        if (Notification && Notification.permission === 'default') {
+        if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
         this.pomodoroState.running = true;
@@ -2122,6 +2122,18 @@ Object.assign(App, {
         const el = document.getElementById('pomodoro-time');
         if (el) el.textContent = `${m}:${s}`;
         if (this.pomodoroState.running) document.title = `${m}:${s} · OnePlan`;
+        this.renderPomodoroRing();
+    },
+
+    renderPomodoroRing() {
+        const ring = document.getElementById('pomodoro-ring-progress');
+        if (!ring) return;
+        const d = this.getPomodoroDurations();
+        const total = d[this.pomodoroState.mode] || d.work;
+        const fraction = total > 0 ? this.pomodoroState.remaining / total : 0;
+        const circumference = 2 * Math.PI * 100; // r=100
+        ring.style.strokeDasharray = `${circumference}`;
+        ring.style.strokeDashoffset = `${circumference * (1 - fraction)}`;
     },
 
     renderPomodoroMode() {
@@ -2130,6 +2142,7 @@ Object.assign(App, {
         if (!el) return;
         el.textContent = labels[this.pomodoroState.mode];
         el.className = 'pomodoro-mode mode-' + this.pomodoroState.mode;
+        this.renderPomodoroRing();
     },
 
     renderPomodoroDots() {
