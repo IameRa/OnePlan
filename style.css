@@ -47,6 +47,33 @@
     --transition: all 0.3s ease;
 }
 
+/* ===== Dark Mode ===== */
+[data-theme="dark"] {
+    --primary-color: #22c55e;
+    --primary-dark: #15803d;
+    --primary-light: #4ade80;
+    --secondary-color: #10b981;
+
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+    --danger-color: #f87171;
+
+    --bg-color: #0f172a;
+    --sidebar-bg: #0b1220;
+
+    --card-bg: #1e293b;
+
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-light: #64748b;
+
+    --border-color: #334155;
+    --border-hover: #475569;
+
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
 /* ===== Reset & Base ===== */
 * {
     margin: 0;
@@ -944,7 +971,7 @@ textarea {
 }
 
 .auth-card {
-    background: white;
+    background: var(--card-bg);
     border-radius: 20px;
     padding: 40px 36px;
     width: 100%;
@@ -1054,7 +1081,7 @@ textarea {
     position: absolute;
     top: 52px;
     right: 0;
-    background: white;
+    background: var(--card-bg);
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
     min-width: 200px;
@@ -1121,7 +1148,7 @@ textarea {
     bottom: 0;
     left: 0;
     right: 0;
-    background: white;
+    background: var(--card-bg);
     border-top: 1px solid var(--border-color);
     z-index: 1000;
     padding: 0;
@@ -1175,7 +1202,7 @@ textarea {
     bottom: 70px;
     left: 12px;
     right: 12px;
-    background: white;
+    background: var(--card-bg);
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
     z-index: 1050;
