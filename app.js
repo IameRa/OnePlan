@@ -344,7 +344,8 @@ const App = {
         this.grades = map['grades'] || [];
         this.feedback = []; // now global via feedback_global table
         this.flashcards = map['flashcards'] || [];
-        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [] };
+        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
+        if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
     },
 
     async saveData(key, data) {
@@ -899,7 +900,7 @@ const App = {
             hw.done = !hw.done;
             this.saveData('homework', this.homework);
             this.renderHomework();
-            if (hw.done) this.awardXP(10, 'Hausaufgabe erledigt');
+            if (hw.done) this.awardXP(10, 'Hausaufgabe erledigt', 'homework');
         }
     },
 
@@ -970,7 +971,7 @@ const App = {
 
         this.renderGrades();
         this.showNotification('Note hinzugefügt', 'success');
-        this.awardXP(5, 'Note eingetragen');
+        this.awardXP(5, 'Note eingetragen', 'grades');
     },
 
     // Converts a 1-15 point to 1-6 grade for unified averaging
@@ -1335,6 +1336,17 @@ const App = {
                 '<p style="color: var(--text-secondary);">Noch keine Noten</p>';
         }
 
+        // Streak
+        const streak = this.progress?.streak || 0;
+        document.getElementById('dashboard-streak').innerHTML = `
+            <div style="text-align: center;">
+                <div class="${streak > 0 ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streak > 0 ? '#f97316' : 'var(--text-light)'};">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
+                <p>${streak === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv'}</p>
+            </div>
+        `;
     },
 
     // ===== Flashcards =====
@@ -1483,7 +1495,7 @@ const App = {
         if (known) this.learnState.correct++;
         else this.learnState.wrong++;
 
-        this.awardXP(known ? 3 : 1, 'Karteikarte gelernt');
+        this.awardXP(known ? 3 : 1, 'Karteikarte gelernt', 'cards');
 
         const next = index + 1;
         if (next >= queue.length) {
@@ -2096,7 +2108,7 @@ Object.assign(App, {
         const wasWork = this.pomodoroState.mode === 'work';
         if (wasWork) {
             this.incrementPomodoroTodayCount();
-            this.awardXP(15, 'Pomodoro-Fokusphase abgeschlossen');
+            this.awardXP(15, 'Pomodoro-Fokusphase abgeschlossen', 'pomodoro');
         }
 
         this.playPomodoroSound();
@@ -2220,13 +2232,32 @@ Object.assign(App, {
 // ===== Gamification / Fortschritt =====
 const PROGRESS_BADGES = [
     { id: 'first_step', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', check: p => p.totalActions >= 1 },
+
     { id: 'streak_3', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', check: p => p.streak >= 3 },
     { id: 'streak_7', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', check: p => p.streak >= 7 },
+    { id: 'streak_14', icon: 'fa-fire', name: '14-Tage-Streak', desc: '14 Tage in Folge aktiv', check: p => p.streak >= 14 },
     { id: 'streak_30', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', check: p => p.streak >= 30 },
+    { id: 'streak_50', icon: 'fa-fire', name: '50-Tage-Streak', desc: '50 Tage in Folge aktiv', check: p => p.streak >= 50 },
+    { id: 'streak_100', icon: 'fa-fire', name: '100-Tage-Streak', desc: '100 Tage in Folge aktiv', check: p => p.streak >= 100 },
+
     { id: 'level_5', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', check: p => App.getLevelInfo(p.xp).level >= 5 },
     { id: 'level_10', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', check: p => App.getLevelInfo(p.xp).level >= 10 },
+    { id: 'level_20', icon: 'fa-star', name: 'Level 20', desc: 'Level 20 erreicht', check: p => App.getLevelInfo(p.xp).level >= 20 },
+
     { id: 'actions_50', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', check: p => p.totalActions >= 50 },
-    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', check: p => p.totalActions >= 200 }
+    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', check: p => p.totalActions >= 200 },
+    { id: 'actions_500', icon: 'fa-crown', name: 'Legende', desc: '500 Aktionen gesammelt', check: p => p.totalActions >= 500 },
+
+    { id: 'homework_10', icon: 'fa-list-check', name: 'Fleißig', desc: '10 Hausaufgaben erledigt', check: p => (p.stats?.homework || 0) >= 10 },
+    { id: 'homework_50', icon: 'fa-list-check', name: 'Hausaufgaben-Held', desc: '50 Hausaufgaben erledigt', check: p => (p.stats?.homework || 0) >= 50 },
+
+    { id: 'cards_50', icon: 'fa-layer-group', name: 'Karteikarten-Fan', desc: '50 Karteikarten gelernt', check: p => (p.stats?.cards || 0) >= 50 },
+    { id: 'cards_200', icon: 'fa-layer-group', name: 'Karteikarten-Meister', desc: '200 Karteikarten gelernt', check: p => (p.stats?.cards || 0) >= 200 },
+
+    { id: 'pomodoro_10', icon: 'fa-stopwatch', name: 'Fokussiert', desc: '10 Pomodoro-Fokusphasen', check: p => (p.stats?.pomodoro || 0) >= 10 },
+    { id: 'pomodoro_50', icon: 'fa-stopwatch', name: 'Pomodoro-Profi', desc: '50 Pomodoro-Fokusphasen', check: p => (p.stats?.pomodoro || 0) >= 50 },
+
+    { id: 'grades_10', icon: 'fa-calculator', name: 'Überblick', desc: '10 Noten eingetragen', check: p => (p.stats?.grades || 0) >= 10 }
 ];
 
 Object.assign(App, {
@@ -2261,7 +2292,7 @@ Object.assign(App, {
         return d.toISOString().split('T')[0];
     },
 
-    awardXP(amount, reason) {
+    awardXP(amount, reason, statKey) {
         const p = this.progress;
         const today = this.todayStr();
 
@@ -2276,12 +2307,17 @@ Object.assign(App, {
 
         p.xp += amount;
         p.totalActions = (p.totalActions || 0) + 1;
+        if (statKey) {
+            if (!p.stats) p.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
+            p.stats[statKey] = (p.stats[statKey] || 0) + 1;
+        }
 
         const newlyEarned = this.checkNewBadges();
 
         this.saveData('progress', p);
         this.renderStreakBadge();
         if (this.state.currentSection === 'fortschritt') this.renderProgress();
+        if (this.state.currentSection === 'dashboard') this.updateDashboard();
 
         newlyEarned.forEach(b => {
             this.showNotification(`Abzeichen freigeschaltet: ${b.name} 🎉`, 'success');

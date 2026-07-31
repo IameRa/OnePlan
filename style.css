@@ -2567,3 +2567,9 @@ textarea {
     font-size: 0.95rem;
     white-space: nowrap;
 }
+
+/* Dashboard streak card flame animation */
+.dashboard-streak-card .streak-active {
+    animation: flame-flicker 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.5));
+}
