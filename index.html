@@ -74,6 +74,10 @@
                     <i class="fas fa-layer-group"></i>
                     <span>Karteikarten</span>
                 </li>
+                <li data-section="fortschritt">
+                    <i class="fas fa-fire"></i>
+                    <span>Fortschritt</span>
+                </li>
                 <li data-section="pomodoro">
                     <i class="fas fa-stopwatch"></i>
                     <span>Pomodoro</span>
@@ -301,6 +305,33 @@
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <!-- Fortschritt / Gamification -->
+            <section id="fortschritt" class="section">
+                <h1><i class="fas fa-fire" style="color:#f97316;margin-right:10px;"></i>Fortschritt</h1>
+
+                <div class="progress-top-row">
+                    <div class="streak-hero">
+                        <div class="streak-hero-flame" id="streak-hero-flame"><i class="fas fa-fire"></i></div>
+                        <div class="streak-hero-count" id="streak-hero-count">0</div>
+                        <div class="streak-hero-label" id="streak-hero-label">Tage in Folge aktiv</div>
+                    </div>
+
+                    <div class="level-card">
+                        <div class="level-card-top">
+                            <div class="level-badge" id="level-badge">Lvl 1</div>
+                            <div class="level-xp-text"><span id="level-xp-current">0</span> / <span id="level-xp-next">100</span> XP</div>
+                        </div>
+                        <div class="level-progress-bar">
+                            <div class="level-progress-fill" id="level-progress-fill" style="width:0%;"></div>
+                        </div>
+                        <p class="level-hint">Verdiene XP durch Hausaufgaben, Karteikarten, Pomodoro-Sessions und Noten.</p>
+                    </div>
+                </div>
+
+                <h3 class="badges-heading"><i class="fas fa-trophy" style="color:var(--primary-color);"></i> Abzeichen</h3>
+                <div class="badges-grid" id="badges-grid"></div>
             </section>
 
             <!-- Pomodoro -->
@@ -553,6 +584,10 @@
 
     <!-- User Menu (top right when logged in) -->
     <div id="user-menu-btn" class="user-menu-btn" style="display:none;">
+        <div id="streak-flame-badge" class="streak-flame-badge" title="Zum Fortschritt">
+            <i class="fas fa-fire"></i>
+            <span id="streak-flame-count">0</span>
+        </div>
         <div class="user-avatar" id="user-avatar-btn">
             <span id="user-initials"></span>
         </div>
@@ -598,6 +633,7 @@
         <ul>
             <li data-section="ki-assistent"><i class="fas fa-robot"></i><span>KI-Assistent</span></li>
             <li data-section="pomodoro"><i class="fas fa-stopwatch"></i><span>Pomodoro</span></li>
+            <li data-section="fortschritt"><i class="fas fa-fire"></i><span>Fortschritt</span></li>
             <li data-section="karteikarten"><i class="fas fa-layer-group"></i><span>Karteikarten</span></li>
             <li data-section="noten"><i class="fas fa-calculator"></i><span>Notenrechner</span></li>
             <li data-section="feedback"><i class="fas fa-comments"></i><span>Feedback</span></li>

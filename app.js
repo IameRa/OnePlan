@@ -319,6 +319,7 @@ const App = {
         this.setupFeedback();
         this.setupFlashcards();
         this.setupPomodoro();
+        this.setupProgress();
         this.setupModal();
         this.updateDashboard();
         this.checkReminders();
@@ -328,7 +329,7 @@ const App = {
 
     // ===== Data Management =====
     async loadAllData() {
-        const keys = ['events', 'timetable', 'homework', 'grades'];
+        const keys = ['events', 'timetable', 'homework', 'grades', 'progress'];
         const { data, error } = await supabase
             .from('user_data')
             .select('data_key, data_value')
@@ -343,6 +344,7 @@ const App = {
         this.grades = map['grades'] || [];
         this.feedback = []; // now global via feedback_global table
         this.flashcards = map['flashcards'] || [];
+        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [] };
     },
 
     async saveData(key, data) {
@@ -406,6 +408,7 @@ const App = {
             case 'noten': this.renderGrades(); break;
             case 'feedback': if (this.isAdmin()) this.loadAdminFeedback(); break;
             case 'karteikarten': this.renderFlashcardDecks(); break;
+            case 'fortschritt': this.renderProgress(); break;
         }
     },
 
@@ -896,6 +899,7 @@ const App = {
             hw.done = !hw.done;
             this.saveData('homework', this.homework);
             this.renderHomework();
+            if (hw.done) this.awardXP(10, 'Hausaufgabe erledigt');
         }
     },
 
@@ -966,6 +970,7 @@ const App = {
 
         this.renderGrades();
         this.showNotification('Note hinzugefügt', 'success');
+        this.awardXP(5, 'Note eingetragen');
     },
 
     // Converts a 1-15 point to 1-6 grade for unified averaging
@@ -1477,6 +1482,8 @@ const App = {
 
         if (known) this.learnState.correct++;
         else this.learnState.wrong++;
+
+        this.awardXP(known ? 3 : 1, 'Karteikarte gelernt');
 
         const next = index + 1;
         if (next >= queue.length) {
@@ -2087,7 +2094,10 @@ Object.assign(App, {
 
     completePomodoroPhase() {
         const wasWork = this.pomodoroState.mode === 'work';
-        if (wasWork) this.incrementPomodoroTodayCount();
+        if (wasWork) {
+            this.incrementPomodoroTodayCount();
+            this.awardXP(15, 'Pomodoro-Fokusphase abgeschlossen');
+        }
 
         this.playPomodoroSound();
         this.notifyPomodoro(wasWork);
@@ -2204,5 +2214,126 @@ Object.assign(App, {
         const count = localStorage.getItem(this.getPomodoroTodayKey()) || '0';
         const el = document.getElementById('pomodoro-today-count');
         if (el) el.textContent = count;
+    }
+});
+
+// ===== Gamification / Fortschritt =====
+const PROGRESS_BADGES = [
+    { id: 'first_step', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', check: p => p.totalActions >= 1 },
+    { id: 'streak_3', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', check: p => p.streak >= 3 },
+    { id: 'streak_7', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', check: p => p.streak >= 7 },
+    { id: 'streak_30', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', check: p => p.streak >= 30 },
+    { id: 'level_5', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', check: p => App.getLevelInfo(p.xp).level >= 5 },
+    { id: 'level_10', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', check: p => App.getLevelInfo(p.xp).level >= 10 },
+    { id: 'actions_50', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', check: p => p.totalActions >= 50 },
+    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', check: p => p.totalActions >= 200 }
+];
+
+Object.assign(App, {
+
+    setupProgress() {
+        document.getElementById('streak-flame-badge').addEventListener('click', () => {
+            document.querySelector('.nav-links li[data-section="fortschritt"]')?.click();
+        });
+        this.renderStreakBadge();
+    },
+
+    getLevelInfo(xp) {
+        // Level threshold grows: 100, 200, 300 ... XP needed per level
+        let level = 1;
+        let remaining = xp;
+        let needed = 100;
+        while (remaining >= needed) {
+            remaining -= needed;
+            level++;
+            needed = level * 100;
+        }
+        return { level, xpIntoLevel: remaining, xpForNextLevel: needed };
+    },
+
+    todayStr() {
+        return new Date().toISOString().split('T')[0];
+    },
+
+    yesterdayStr() {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    },
+
+    awardXP(amount, reason) {
+        const p = this.progress;
+        const today = this.todayStr();
+
+        if (p.lastActiveDate !== today) {
+            if (p.lastActiveDate === this.yesterdayStr()) {
+                p.streak += 1;
+            } else {
+                p.streak = 1;
+            }
+            p.lastActiveDate = today;
+        }
+
+        p.xp += amount;
+        p.totalActions = (p.totalActions || 0) + 1;
+
+        const newlyEarned = this.checkNewBadges();
+
+        this.saveData('progress', p);
+        this.renderStreakBadge();
+        if (this.state.currentSection === 'fortschritt') this.renderProgress();
+
+        newlyEarned.forEach(b => {
+            this.showNotification(`Abzeichen freigeschaltet: ${b.name} 🎉`, 'success');
+        });
+    },
+
+    checkNewBadges() {
+        const p = this.progress;
+        if (!p.badges) p.badges = [];
+        const newly = [];
+        PROGRESS_BADGES.forEach(b => {
+            if (!p.badges.includes(b.id) && b.check(p)) {
+                p.badges.push(b.id);
+                newly.push(b);
+            }
+        });
+        return newly;
+    },
+
+    renderStreakBadge() {
+        const el = document.getElementById('streak-flame-count');
+        const badge = document.getElementById('streak-flame-badge');
+        if (!el || !badge) return;
+        const streak = this.progress?.streak || 0;
+        el.textContent = streak;
+        badge.classList.toggle('streak-active', streak > 0);
+    },
+
+    renderProgress() {
+        const p = this.progress;
+        const { level, xpIntoLevel, xpForNextLevel } = this.getLevelInfo(p.xp);
+
+        document.getElementById('streak-hero-count').textContent = p.streak || 0;
+        document.getElementById('streak-hero-label').textContent =
+            (p.streak || 0) === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv';
+        document.getElementById('streak-hero-flame').classList.toggle('streak-active', (p.streak || 0) > 0);
+
+        document.getElementById('level-badge').textContent = `Lvl ${level}`;
+        document.getElementById('level-xp-current').textContent = xpIntoLevel;
+        document.getElementById('level-xp-next').textContent = xpForNextLevel;
+        document.getElementById('level-progress-fill').style.width = `${(xpIntoLevel / xpForNextLevel) * 100}%`;
+
+        const grid = document.getElementById('badges-grid');
+        grid.innerHTML = PROGRESS_BADGES.map(b => {
+            const earned = (p.badges || []).includes(b.id);
+            return `
+                <div class="badge-tile ${earned ? 'earned' : 'locked'}">
+                    <div class="badge-icon"><i class="fas ${b.icon}"></i></div>
+                    <div class="badge-name">${b.name}</div>
+                    <div class="badge-desc">${b.desc}</div>
+                </div>
+            `;
+        }).join('');
     }
 });
