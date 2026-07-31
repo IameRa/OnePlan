@@ -2,10 +2,22 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>OnePlan - Deine Planungsapp</title>
-    <link rel="icon" type="image/x-icon" href="Logo_Oneplan.png">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#15803d">
+    <meta name="description" content="Kalender, Stundenplan, Hausaufgaben, Notenrechner, Karteikarten, Pomodoro und KI-Assistent in einer App.">
+
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OnePlan">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="Logo_Oneplan.png">
     <link rel="stylesheet" href="style.css">
     <script>
         // Apply saved theme immediately, before the page paints
@@ -553,6 +565,9 @@
             <button id="btn-theme-toggle">
                 <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-label">Dunkelmodus</span>
             </button>
+            <button id="btn-install-app" style="display:none;">
+                <i class="fas fa-download"></i> App installieren
+            </button>
             <hr>
             <button id="btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Abmelden
@@ -590,5 +605,43 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // Service Worker registrieren (PWA: Offline-Fähigkeit & Installierbarkeit)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((reg) => console.log('OnePlan Service Worker registriert:', reg.scope))
+                    .catch((err) => console.warn('Service Worker Registrierung fehlgeschlagen:', err));
+            });
+        }
+
+        // "Zum Startbildschirm hinzufügen" / Installations-Prompt
+        let deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            const btn = document.getElementById('btn-install-app');
+            if (btn) btn.style.display = 'flex';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const installBtn = document.getElementById('btn-install-app');
+            if (installBtn) {
+                installBtn.addEventListener('click', async () => {
+                    if (!deferredInstallPrompt) return;
+                    deferredInstallPrompt.prompt();
+                    await deferredInstallPrompt.userChoice;
+                    deferredInstallPrompt = null;
+                    installBtn.style.display = 'none';
+                });
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            const btn = document.getElementById('btn-install-app');
+            if (btn) btn.style.display = 'none';
+            deferredInstallPrompt = null;
+        });
+    </script>
 </body>
 </html>
