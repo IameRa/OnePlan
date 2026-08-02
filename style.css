@@ -734,23 +734,226 @@ textarea {
 /* ===== Grades ===== */
 .grades-container {
     display: grid;
-    grid-template-columns: 350px 1fr;
+    grid-template-columns: repeat(2, minmax(320px, 1fr));
     gap: 24px;
+    align-items: start;
+}
+
+.grades-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
 }
 
 .grade-form {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
     height: fit-content;
 }
 
-.grades-overview {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
+.grade-form input,
+.grade-form select,
+.grade-goal-card input,
+.grade-goal-card select {
+    margin-bottom: 14px;
+}
+
+.grade-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.grade-form-row input {
+    width: 100%;
+}
+
+.grades-box-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.grades-box-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+    background: rgba(21, 128, 61, 0.12);
+    color: var(--primary-color);
+}
+
+.grades-box-icon-accent {
+    background: rgba(14, 165, 233, 0.12);
+    color: var(--secondary-color);
+}
+
+.grades-box-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.grades-box-header p {
+    margin: 2px 0 0;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.grades-overview h3,
+.grades-list h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 20px;
+    font-size: 1.05rem;
+}
+
+.grades-overview h3::before {
+    content: '\f200';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+    background: rgba(21, 128, 61, 0.12);
+    color: var(--primary-color);
+}
+
+.grades-list h3::before {
+    content: '\f03a';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+    background: rgba(14, 165, 233, 0.12);
+    color: var(--secondary-color);
+}
+
+/* ----- Notenziel-Rechner ----- */
+.goal-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+
+.goal-calc-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.goal-result-row {
+    background: var(--bg-color);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.goal-result-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.goal-result-block-target {
+    align-items: flex-end;
+}
+
+.goal-result-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-light);
+}
+
+.goal-result-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.goal-result-value-target {
+    color: var(--primary-color);
+}
+
+.goal-result-arrow {
+    color: var(--text-light);
+}
+
+.goal-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: rgba(21, 128, 61, 0.1);
+    transition: var(--transition);
+}
+
+.goal-badge i {
+    font-size: 1.1rem;
+    color: var(--success-color);
+    flex-shrink: 0;
+}
+
+.goal-badge-main {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--success-color);
+}
+
+.goal-badge-sub {
+    margin: 2px 0 0;
+    font-size: 0.8rem;
+    color: var(--success-color);
+    opacity: 0.85;
+}
+
+.goal-badge.warning {
+    background: rgba(245, 158, 11, 0.12);
+}
+.goal-badge.warning i,
+.goal-badge.warning .goal-badge-main,
+.goal-badge.warning .goal-badge-sub {
+    color: var(--warning-color);
+}
+
+.goal-badge.danger {
+    background: rgba(239, 68, 68, 0.12);
+}
+.goal-badge.danger i,
+.goal-badge.danger .goal-badge-main,
+.goal-badge.danger .goal-badge-sub {
+    color: var(--danger-color);
 }
 
 .grade-subject-card {
@@ -787,10 +990,10 @@ textarea {
 
 .grades-list {
     grid-column: 1 / -1;
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
+}
+
+.grades-overview {
+    grid-column: 1 / -1;
 }
 
 .grade-item {
@@ -1774,32 +1977,36 @@ textarea {
 
 .grade-system-toggle {
     display: flex;
-    gap: 8px;
+    gap: 4px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 4px;
     margin-bottom: 16px;
 }
 
 .grade-system-btn {
     flex: 1;
-    padding: 10px;
-    border: 2px solid var(--border-color);
-    background: var(--bg-color);
-    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    font-weight: 600;
     transition: var(--transition);
     color: var(--text-secondary);
 }
 
 .grade-system-btn.active {
     background: var(--primary-color);
-    border-color: var(--primary-color);
     color: white;
+    box-shadow: 0 2px 6px rgba(21, 128, 61, 0.35);
 }
 
 .grade-system-btn:hover:not(.active) {
-    border-color: var(--primary-color);
     color: var(--primary-color);
+    background: rgba(21, 128, 61, 0.08);
 }
 
 .grade-system-badge {

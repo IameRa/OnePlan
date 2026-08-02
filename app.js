@@ -1097,9 +1097,9 @@ const App = {
     setupGrades() {
         this.state.gradeSystem = '1-6'; // default
 
-        document.querySelectorAll('.grade-system-btn').forEach(btn => {
+        document.querySelectorAll('#grade-system-toggle .grade-system-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.grade-system-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('#grade-system-toggle .grade-system-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.state.gradeSystem = btn.dataset.system;
                 const input = document.getElementById('grade-value');
@@ -1115,7 +1115,115 @@ const App = {
         });
 
         document.getElementById('add-grade').addEventListener('click', () => this.addGrade());
+        this.setupGradeGoal();
         this.renderGrades();
+    },
+
+    // ===== Notenziel-Rechner =====
+    setupGradeGoal() {
+        this.state.goalSystem = '1-6'; // default
+
+        document.querySelectorAll('#goal-system-toggle .grade-system-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#goal-system-toggle .grade-system-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.state.goalSystem = btn.dataset.system;
+                const input = document.getElementById('goal-target');
+                if (this.state.goalSystem === '1-6') {
+                    input.step = 0.1;
+                    if (parseFloat(input.value) > 6 || isNaN(parseFloat(input.value))) input.value = '2.0';
+                } else {
+                    input.step = 1;
+                    if (parseFloat(input.value) <= 6 || isNaN(parseFloat(input.value))) input.value = '13';
+                }
+                this.calculateGradeGoal();
+            });
+        });
+
+        document.getElementById('goal-subject').addEventListener('change', () => this.calculateGradeGoal());
+        document.getElementById('goal-target').addEventListener('input', () => this.calculateGradeGoal());
+        document.getElementById('goal-weight').addEventListener('input', () => this.calculateGradeGoal());
+        document.getElementById('goal-calc-btn').addEventListener('click', () => this.calculateGradeGoal());
+
+        this.populateGoalSubjects();
+    },
+
+    // Continuous grade<->points conversion, shared with the overview cards
+    gradeToPointsDecimal(g) {
+        return Math.max(1, Math.min(15, 15 - ((g - 1) / 5) * 14));
+    },
+
+    populateGoalSubjects() {
+        const select = document.getElementById('goal-subject');
+        if (!select) return;
+        const previous = select.value;
+        const subjects = [...new Set(this.grades.map(g => g.subject))].sort((a, b) => a.localeCompare(b, 'de'));
+
+        if (subjects.length === 0) {
+            select.innerHTML = '<option value="">Erst Noten eintragen</option>';
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+            select.innerHTML = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (subjects.includes(previous)) select.value = previous;
+        }
+
+        this.calculateGradeGoal();
+    },
+
+    // Weighted average (1-6 scale) of all grades for one subject
+    subjectAverage(subject) {
+        const subjectGrades = this.grades.filter(g => g.subject === subject);
+        if (subjectGrades.length === 0) return null;
+
+        let weightedSum = 0;
+        let totalWeight = 0;
+        subjectGrades.forEach(g => {
+            const normalized = g.system === '1-15' ? this.pointsToGrade(g.value) : g.value;
+            weightedSum += normalized * g.weight;
+            totalWeight += g.weight;
+        });
+        return weightedSum / totalWeight;
+    },
+
+    calculateGradeGoal() {
+        const subject = document.getElementById('goal-subject').value;
+        const system = this.state.goalSystem || '1-6';
+        const targetRaw = parseFloat(document.getElementById('goal-target').value);
+        const weight = Math.min(100, Math.max(1, parseFloat(document.getElementById('goal-weight').value) || 40));
+
+        const currentOut = document.getElementById('goal-current-out');
+        const targetOut = document.getElementById('goal-target-out');
+        const badge = document.getElementById('goal-badge');
+        const badgeMain = document.getElementById('goal-badge-main');
+        const badgeSub = document.getElementById('goal-badge-sub');
+
+        const currentAvg = subject ? this.subjectAverage(subject) : null;
+
+        if (!subject || currentAvg === null || isNaN(targetRaw)) {
+            currentOut.textContent = '–';
+            targetOut.textContent = '–';
+            badge.classList.remove('warning', 'danger');
+            badgeMain.textContent = 'Note –';
+            badgeSub.textContent = subject ? `Noch keine Noten für ${subject}` : 'Fach wählen und berechnen';
+            return;
+        }
+
+        currentOut.textContent = currentAvg.toFixed(2);
+
+        const targetGrade = system === '1-6' ? targetRaw : this.pointsToGrade(targetRaw);
+        targetOut.textContent = system === '1-6' ? targetGrade.toFixed(2) : `${targetRaw.toFixed(1)} Pkt.`;
+
+        let neededGrade = (targetGrade * 100 - currentAvg * (100 - weight)) / weight;
+        neededGrade = Math.max(1, Math.min(6, neededGrade));
+        const neededPoints = this.gradeToPointsDecimal(neededGrade);
+
+        badge.classList.remove('warning', 'danger');
+        if (neededGrade > 3.5) badge.classList.add('danger');
+        else if (neededGrade > 2) badge.classList.add('warning');
+
+        badgeMain.textContent = `Note ${neededGrade.toFixed(1)}`;
+        badgeSub.textContent = `≈ ${neededPoints.toFixed(1)} Punkte – nächste Arbeit`;
     },
 
     addGrade() {
@@ -1152,6 +1260,7 @@ const App = {
         document.getElementById('grade-description').value = '';
 
         this.renderGrades();
+        this.populateGoalSubjects();
         this.showNotification('Note hinzugefügt', 'success');
         this.awardXP(5, 'Note eingetragen', 'grades');
     },
@@ -1279,6 +1388,7 @@ const App = {
         this.grades = this.grades.filter(g => g.id !== id);
         this.saveData('grades', this.grades);
         this.renderGrades();
+        this.populateGoalSubjects();
         this.showNotification('Note gelöscht', 'success');
     },
 

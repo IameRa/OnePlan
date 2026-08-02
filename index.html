@@ -282,9 +282,15 @@
             <section id="noten" class="section">
                 <h1>Notendurchschnittsrechner</h1>
                 <div class="grades-container">
-                    <div class="grade-form">
-                        <h3>Neue Note</h3>
-                        <div class="grade-system-toggle">
+                    <div class="grade-form grades-box">
+                        <div class="grades-box-header">
+                            <div class="grades-box-icon"><i class="fas fa-pen"></i></div>
+                            <div>
+                                <h3>Neue Note</h3>
+                                <p>Trag eine neue Note oder Punktzahl ein</p>
+                            </div>
+                        </div>
+                        <div class="grade-system-toggle" id="grade-system-toggle">
                             <button class="grade-system-btn active" data-system="1-6">Noten 1–6</button>
                             <button class="grade-system-btn" data-system="1-15">Punkte 1–15</button>
                         </div>
@@ -294,13 +300,68 @@
                             <option value="oral">Mündlich</option>
                             <option value="other">Sonstige</option>
                         </select>
-                        <input type="number" id="grade-value" placeholder="Note (1–6)" min="1" max="6" step="0.5">
-                        <input type="number" id="grade-weight" placeholder="Gewichtung (%)" min="1" max="100" value="100">
+                        <div class="grade-form-row">
+                            <input type="number" id="grade-value" placeholder="Note (1–6)" min="1" max="6" step="0.5">
+                            <input type="number" id="grade-weight" placeholder="Gewichtung (%)" min="1" max="100" value="100">
+                        </div>
                         <input type="text" id="grade-description" placeholder="Beschreibung (z.B. Klassenarbeit 1)">
-                        <button id="add-grade" class="btn-primary">Hinzufügen</button>
+                        <button id="add-grade" class="btn-primary"><i class="fas fa-plus"></i> Hinzufügen</button>
                     </div>
-                    <div id="grades-overview" class="grades-overview"></div>
-                    <div id="grades-list" class="grades-list"></div>
+
+                    <div class="grade-goal-card grades-box">
+                        <div class="grades-box-header">
+                            <div class="grades-box-icon grades-box-icon-accent"><i class="fas fa-bullseye"></i></div>
+                            <div>
+                                <h3>Notenziel-Rechner</h3>
+                                <p>Welche Note brauchst du noch, um dein Ziel zu erreichen?</p>
+                            </div>
+                        </div>
+
+                        <label class="goal-label">Fach</label>
+                        <select id="goal-subject"></select>
+
+                        <label class="goal-label">Bewertungssystem</label>
+                        <div class="grade-system-toggle" id="goal-system-toggle">
+                            <button class="grade-system-btn active" data-system="1-6">Noten 1–6</button>
+                            <button class="grade-system-btn" data-system="1-15">Punkte 1–15</button>
+                        </div>
+
+                        <div class="grade-form-row">
+                            <div>
+                                <label class="goal-label">Zielschnitt</label>
+                                <input type="number" id="goal-target" value="2.0" step="0.1">
+                            </div>
+                            <div>
+                                <label class="goal-label">Gewichtung nächste Arbeit (%)</label>
+                                <input type="number" id="goal-weight" value="40" min="1" max="100">
+                            </div>
+                        </div>
+
+                        <button id="goal-calc-btn" class="btn-primary goal-calc-btn"><i class="fas fa-calculator"></i> Berechnen</button>
+
+                        <div class="goal-result-row">
+                            <div class="goal-result-block">
+                                <span class="goal-result-label">Aktuell</span>
+                                <span class="goal-result-value" id="goal-current-out">–</span>
+                            </div>
+                            <i class="fas fa-arrow-right goal-result-arrow"></i>
+                            <div class="goal-result-block goal-result-block-target">
+                                <span class="goal-result-label">Ziel</span>
+                                <span class="goal-result-value goal-result-value-target" id="goal-target-out">–</span>
+                            </div>
+                        </div>
+
+                        <div class="goal-badge" id="goal-badge">
+                            <i class="fas fa-bullseye"></i>
+                            <div>
+                                <p class="goal-badge-main" id="goal-badge-main">Note –</p>
+                                <p class="goal-badge-sub" id="goal-badge-sub">Fach wählen und berechnen</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="grades-overview" class="grades-overview grades-box"></div>
+                    <div id="grades-list" class="grades-list grades-box"></div>
                 </div>
             </section>
 
