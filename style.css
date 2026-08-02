@@ -1045,11 +1045,6 @@ textarea {
         flex-direction: column;
         gap: 16px;
     }
-
-    .user-menu-btn {
-        top: 12px;
-        right: 12px;
-    }
 }
 
 /* ===== Auth Overlay ===== */
@@ -1146,12 +1141,11 @@ textarea {
 
 /* ===== User Menu ===== */
 .user-menu-btn {
-    position: fixed;
-    top: 16px;
-    right: 20px;
-    z-index: 1100;
+    position: relative;
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 16px;
 }
 
 .user-avatar {

@@ -95,6 +95,37 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- User Menu (scrollt mit, kein fixiertes Overlay mehr) -->
+            <div id="user-menu-btn" class="user-menu-btn" style="display:none;">
+                <div id="streak-flame-badge" class="streak-flame-badge" title="Zum Fortschritt">
+                    <i class="fas fa-fire"></i>
+                    <span id="streak-flame-count">0</span>
+                </div>
+                <div class="user-avatar" id="user-avatar-btn">
+                    <span id="user-initials"></span>
+                </div>
+                <div id="user-dropdown" class="user-dropdown hidden">
+                    <div class="user-dropdown-info">
+                        <strong id="dropdown-name"></strong>
+                        <small id="dropdown-username"></small>
+                    </div>
+                    <hr>
+                    <button id="btn-theme-toggle">
+                        <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-label">Dunkelmodus</span>
+                    </button>
+                    <button id="btn-install-app" style="display:none;">
+                        <i class="fas fa-download"></i> App installieren
+                    </button>
+                    <hr>
+                    <button id="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Abmelden
+                    </button>
+                    <button id="btn-delete-account">
+                        <i class="fas fa-trash"></i> Konto löschen
+                    </button>
+                </div>
+            </div>
+
             <!-- Dashboard -->
             <section id="dashboard" class="section active">
                 <h1>OnePlan - Dashboard</h1>
@@ -645,37 +676,6 @@
                     <a href="#" id="show-login">Anmelden</a>
                 </p>
             </div>
-        </div>
-    </div>
-
-    <!-- User Menu (top right when logged in) -->
-    <div id="user-menu-btn" class="user-menu-btn" style="display:none;">
-        <div id="streak-flame-badge" class="streak-flame-badge" title="Zum Fortschritt">
-            <i class="fas fa-fire"></i>
-            <span id="streak-flame-count">0</span>
-        </div>
-        <div class="user-avatar" id="user-avatar-btn">
-            <span id="user-initials"></span>
-        </div>
-        <div id="user-dropdown" class="user-dropdown hidden">
-            <div class="user-dropdown-info">
-                <strong id="dropdown-name"></strong>
-                <small id="dropdown-username"></small>
-            </div>
-            <hr>
-            <button id="btn-theme-toggle">
-                <i class="fas fa-moon" id="theme-toggle-icon"></i> <span id="theme-toggle-label">Dunkelmodus</span>
-            </button>
-            <button id="btn-install-app" style="display:none;">
-                <i class="fas fa-download"></i> App installieren
-            </button>
-            <hr>
-            <button id="btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Abmelden
-            </button>
-            <button id="btn-delete-account">
-                <i class="fas fa-trash"></i> Konto löschen
-            </button>
         </div>
     </div>
 
