@@ -497,8 +497,9 @@ const App = {
             box: c.box || 1,
             due: c.due || this.todayStr()
         }));
-        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
+        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], streakFreezes: 0, stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
+        if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         this.checkStreakExpiry();
         this.settings = map['settings'] || { hideGradeAverage: false };
     },
@@ -704,6 +705,7 @@ const App = {
 
         this.renderCalendar();
         this.renderEventList();
+        this.awardXP(5, 'Termin hinzugefügt', 'events');
         this.showNotification('Termin hinzugefügt', 'success');
     },
 
@@ -977,6 +979,7 @@ const App = {
         document.getElementById('edit-period-end').value = document.getElementById('edit-period').value;
 
         const message = end > start ? `Doppelstunde (${start + 1}.–${end + 1}. Stunde) aktualisiert` : 'Stundenplan aktualisiert';
+        this.awardXP(3, 'Stundenplan aktualisiert', 'timetable');
         this.showNotification(message, 'success');
     },
 
@@ -2268,6 +2271,7 @@ Object.assign(App, {
             this.kiChatHistory.push({ role: 'assistant', content: reply });
             this.removeChatLoading(loadingId);
             this.appendChatMessage(reply, 'ai');
+            this.awardXP(2, 'KI-Assistent genutzt', 'ki');
 
             const qp = document.getElementById('ki-quick-prompts');
             if (qp && this.kiChatHistory.length > 2) qp.style.display = 'none';
@@ -2754,34 +2758,45 @@ Object.assign(App, {
 // "target" (Zielwert) und "progress" (aktueller Wert), damit in der UI ein
 // Fortschritt wie "45/50" angezeigt werden kann.
 const PROGRESS_BADGES = [
-    { id: 'first_step', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', target: 1, progress: p => p.totalActions || 0, check: p => p.totalActions >= 1 },
+    { id: 'first_step', category: 'Meilensteine', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', target: 1, progress: p => p.totalActions || 0, check: p => p.totalActions >= 1 },
+    { id: 'actions_50', category: 'Meilensteine', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', target: 50, progress: p => p.totalActions || 0, check: p => p.totalActions >= 50 },
+    { id: 'actions_200', category: 'Meilensteine', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', target: 200, progress: p => p.totalActions || 0, check: p => p.totalActions >= 200 },
+    { id: 'actions_500', category: 'Meilensteine', icon: 'fa-crown', name: 'Legende', desc: '500 Aktionen gesammelt', target: 500, progress: p => p.totalActions || 0, check: p => p.totalActions >= 500 },
 
-    { id: 'streak_3', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', target: 3, progress: p => p.streak || 0, check: p => p.streak >= 3 },
-    { id: 'streak_7', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', target: 7, progress: p => p.streak || 0, check: p => p.streak >= 7 },
-    { id: 'streak_14', icon: 'fa-fire', name: '14-Tage-Streak', desc: '14 Tage in Folge aktiv', target: 14, progress: p => p.streak || 0, check: p => p.streak >= 14 },
-    { id: 'streak_30', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', target: 30, progress: p => p.streak || 0, check: p => p.streak >= 30 },
-    { id: 'streak_50', icon: 'fa-fire', name: '50-Tage-Streak', desc: '50 Tage in Folge aktiv', target: 50, progress: p => p.streak || 0, check: p => p.streak >= 50 },
-    { id: 'streak_100', icon: 'fa-fire', name: '100-Tage-Streak', desc: '100 Tage in Folge aktiv', target: 100, progress: p => p.streak || 0, check: p => p.streak >= 100 },
+    { id: 'streak_3', category: 'Streak', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', target: 3, progress: p => p.streak || 0, check: p => p.streak >= 3 },
+    { id: 'streak_7', category: 'Streak', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', target: 7, progress: p => p.streak || 0, check: p => p.streak >= 7 },
+    { id: 'streak_14', category: 'Streak', icon: 'fa-fire', name: '14-Tage-Streak', desc: '14 Tage in Folge aktiv', target: 14, progress: p => p.streak || 0, check: p => p.streak >= 14 },
+    { id: 'streak_30', category: 'Streak', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', target: 30, progress: p => p.streak || 0, check: p => p.streak >= 30 },
+    { id: 'streak_50', category: 'Streak', icon: 'fa-fire', name: '50-Tage-Streak', desc: '50 Tage in Folge aktiv', target: 50, progress: p => p.streak || 0, check: p => p.streak >= 50 },
+    { id: 'streak_100', category: 'Streak', icon: 'fa-fire', name: '100-Tage-Streak', desc: '100 Tage in Folge aktiv', target: 100, progress: p => p.streak || 0, check: p => p.streak >= 100 },
 
-    { id: 'level_5', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', target: 5, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 5 },
-    { id: 'level_10', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', target: 10, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 10 },
-    { id: 'level_20', icon: 'fa-star', name: 'Level 20', desc: 'Level 20 erreicht', target: 20, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 20 },
+    { id: 'level_5', category: 'Level', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', target: 5, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 5 },
+    { id: 'level_10', category: 'Level', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', target: 10, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 10 },
+    { id: 'level_20', category: 'Level', icon: 'fa-star', name: 'Level 20', desc: 'Level 20 erreicht', target: 20, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 20 },
 
-    { id: 'actions_50', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', target: 50, progress: p => p.totalActions || 0, check: p => p.totalActions >= 50 },
-    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', target: 200, progress: p => p.totalActions || 0, check: p => p.totalActions >= 200 },
-    { id: 'actions_500', icon: 'fa-crown', name: 'Legende', desc: '500 Aktionen gesammelt', target: 500, progress: p => p.totalActions || 0, check: p => p.totalActions >= 500 },
+    { id: 'homework_10', category: 'Hausaufgaben', icon: 'fa-list-check', name: 'Fleißig', desc: '10 Hausaufgaben erledigt', target: 10, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 10 },
+    { id: 'homework_50', category: 'Hausaufgaben', icon: 'fa-list-check', name: 'Hausaufgaben-Held', desc: '50 Hausaufgaben erledigt', target: 50, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 50 },
 
-    { id: 'homework_10', icon: 'fa-list-check', name: 'Fleißig', desc: '10 Hausaufgaben erledigt', target: 10, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 10 },
-    { id: 'homework_50', icon: 'fa-list-check', name: 'Hausaufgaben-Held', desc: '50 Hausaufgaben erledigt', target: 50, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 50 },
+    { id: 'cards_50', category: 'Karteikarten', icon: 'fa-layer-group', name: 'Karteikarten-Fan', desc: '50 Karteikarten gelernt', target: 50, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 50 },
+    { id: 'cards_200', category: 'Karteikarten', icon: 'fa-layer-group', name: 'Karteikarten-Meister', desc: '200 Karteikarten gelernt', target: 200, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 200 },
 
-    { id: 'cards_50', icon: 'fa-layer-group', name: 'Karteikarten-Fan', desc: '50 Karteikarten gelernt', target: 50, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 50 },
-    { id: 'cards_200', icon: 'fa-layer-group', name: 'Karteikarten-Meister', desc: '200 Karteikarten gelernt', target: 200, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 200 },
+    { id: 'pomodoro_10', category: 'Pomodoro', icon: 'fa-stopwatch', name: 'Fokussiert', desc: '10 Pomodoro-Fokusphasen', target: 10, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 10 },
+    { id: 'pomodoro_50', category: 'Pomodoro', icon: 'fa-stopwatch', name: 'Pomodoro-Profi', desc: '50 Pomodoro-Fokusphasen', target: 50, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 50 },
 
-    { id: 'pomodoro_10', icon: 'fa-stopwatch', name: 'Fokussiert', desc: '10 Pomodoro-Fokusphasen', target: 10, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 10 },
-    { id: 'pomodoro_50', icon: 'fa-stopwatch', name: 'Pomodoro-Profi', desc: '50 Pomodoro-Fokusphasen', target: 50, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 50 },
+    { id: 'grades_10', category: 'Noten', icon: 'fa-calculator', name: 'Überblick', desc: '10 Noten eingetragen', target: 10, progress: p => p.stats?.grades || 0, check: p => (p.stats?.grades || 0) >= 10 },
+    { id: 'grades_50', category: 'Noten', icon: 'fa-calculator', name: 'Noten-Profi', desc: '50 Noten eingetragen', target: 50, progress: p => p.stats?.grades || 0, check: p => (p.stats?.grades || 0) >= 50 },
 
-    { id: 'grades_10', icon: 'fa-calculator', name: 'Überblick', desc: '10 Noten eingetragen', target: 10, progress: p => p.stats?.grades || 0, check: p => (p.stats?.grades || 0) >= 10 }
+    { id: 'events_10', category: 'Kalender', icon: 'fa-calendar-check', name: 'Terminplaner', desc: '10 Termine erstellt', target: 10, progress: p => p.stats?.events || 0, check: p => (p.stats?.events || 0) >= 10 },
+    { id: 'events_30', category: 'Kalender', icon: 'fa-calendar-check', name: 'Organisationstalent', desc: '30 Termine erstellt', target: 30, progress: p => p.stats?.events || 0, check: p => (p.stats?.events || 0) >= 30 },
+
+    { id: 'ki_10', category: 'KI-Assistent', icon: 'fa-robot', name: 'KI-Neugierig', desc: '10 Nachrichten an den KI-Assistenten gesendet', target: 10, progress: p => p.stats?.ki || 0, check: p => (p.stats?.ki || 0) >= 10 },
+    { id: 'ki_50', category: 'KI-Assistent', icon: 'fa-robot', name: 'KI-Vielnutzer', desc: '50 Nachrichten an den KI-Assistenten gesendet', target: 50, progress: p => p.stats?.ki || 0, check: p => (p.stats?.ki || 0) >= 50 },
+
+    { id: 'timetable_5', category: 'Stundenplan', icon: 'fa-table-cells', name: 'Stundenplan-Baumeister', desc: '5 Stundenplan-Einträge angelegt', target: 5, progress: p => p.stats?.timetable || 0, check: p => (p.stats?.timetable || 0) >= 5 }
 ];
+
+// Reihenfolge, in der die Badge-Kategorien im Fortschritt angezeigt werden
+const BADGE_CATEGORY_ORDER = ['Meilensteine', 'Streak', 'Level', 'Hausaufgaben', 'Karteikarten', 'Pomodoro', 'Noten', 'Kalender', 'KI-Assistent', 'Stundenplan'];
 
 Object.assign(App, {
 
@@ -2815,21 +2830,41 @@ Object.assign(App, {
         return d.toISOString().split('T')[0];
     },
 
+    daysBetween(dateStrA, dateStrB) {
+        const a = new Date(dateStrA + 'T00:00:00');
+        const b = new Date(dateStrB + 'T00:00:00');
+        return Math.round((b - a) / 86400000);
+    },
+
     // Prüft, ob der Streak gerissen ist: Duolingo-typisch bleibt er erhalten,
     // solange spätestens am Tag NACH der letzten Aktivität wieder etwas gemacht
     // wird (unabhängig von der Uhrzeit). Wurde ein ganzer Kalendertag komplett
     // ausgelassen, wird der Streak auf 0 zurückgesetzt — das prüfen wir hier aktiv
     // (beim Laden der Daten sowie vor jedem Streak-Render), damit die Flamme auch
     // ohne neue Aktion sofort korrekt "erloschen" ist.
+    //
+    // Streak-Freezes: Wurde genau EIN ganzer Tag ausgelassen und ist mindestens
+    // ein Freeze vorhanden, wird der Streak automatisch gerettet (kein Zutun
+    // nötig, ganz wie bei Duolingo). Mehrere ausgelassene Tage am Stück reißen
+    // den Streak trotzdem, ein Freeze schützt immer nur einen einzelnen Tag.
     checkStreakExpiry() {
         const p = this.progress;
         if (!p || !p.lastActiveDate || !p.streak) return;
         const today = this.todayStr();
         const yesterday = this.yesterdayStr();
-        if (p.lastActiveDate !== today && p.lastActiveDate !== yesterday) {
-            p.streak = 0;
+        if (p.lastActiveDate === today || p.lastActiveDate === yesterday) return;
+
+        const gap = this.daysBetween(p.lastActiveDate, today);
+        if (gap === 2 && (p.streakFreezes || 0) > 0) {
+            p.streakFreezes -= 1;
+            p.lastActiveDate = yesterday;
             this.saveData('progress', p);
+            this.showNotification(`🧊 Streak-Freeze eingesetzt – dein ${p.streak}-Tage-Streak bleibt erhalten!`, 'info');
+            return;
         }
+
+        p.streak = 0;
+        this.saveData('progress', p);
     },
 
     // Farbig ist die Flamme nur an Tagen, an denen bereits etwas gemacht wurde.
@@ -2852,6 +2887,8 @@ Object.assign(App, {
             p.lastActiveDate = today;
         }
 
+        const levelBefore = this.getLevelInfo(p.xp).level;
+
         p.xp += amount;
         p.totalActions = (p.totalActions || 0) + 1;
         if (statKey) {
@@ -2859,7 +2896,8 @@ Object.assign(App, {
             p.stats[statKey] = (p.stats[statKey] || 0) + 1;
         }
 
-        const newlyEarned = this.checkNewBadges();
+        const levelAfter = this.getLevelInfo(p.xp).level;
+        const { newlyEarned, freezesAwarded } = this.checkNewBadges();
 
         this.saveData('progress', p);
         this.renderStreakBadge();
@@ -2869,19 +2907,34 @@ Object.assign(App, {
         newlyEarned.forEach(b => {
             this.showNotification(`Abzeichen freigeschaltet: ${b.name} 🎉`, 'success');
         });
+        if (freezesAwarded > 0) {
+            this.showNotification(`🧊 ${freezesAwarded === 1 ? 'Streak-Freeze' : freezesAwarded + ' Streak-Freezes'} erhalten! (jetzt: ${p.streakFreezes})`, 'info');
+        }
+        if (levelAfter > levelBefore) {
+            this.playLevelUpSound();
+            this.showLevelUpCelebration(levelAfter);
+        }
     },
 
     checkNewBadges() {
         const p = this.progress;
         if (!p.badges) p.badges = [];
-        const newly = [];
+        if (p.streakFreezes === undefined) p.streakFreezes = 0;
+        const newlyEarned = [];
+        let freezesAwarded = 0;
+        const FREEZE_CAP = 3;
         PROGRESS_BADGES.forEach(b => {
             if (!p.badges.includes(b.id) && b.check(p)) {
                 p.badges.push(b.id);
-                newly.push(b);
+                newlyEarned.push(b);
+                // Streak-Meilensteine belohnen zusätzlich mit einem Streak-Freeze (bis zum Cap)
+                if (b.category === 'Streak' && p.streakFreezes < FREEZE_CAP) {
+                    p.streakFreezes += 1;
+                    freezesAwarded += 1;
+                }
             }
         });
-        return newly;
+        return { newlyEarned, freezesAwarded };
     },
 
     renderStreakBadge() {
@@ -2907,33 +2960,109 @@ Object.assign(App, {
             (p.streak || 0) === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv';
         document.getElementById('streak-hero-flame').classList.toggle('streak-active', (p.streak || 0) > 0 && activeToday);
 
+        const freezeCountEl = document.getElementById('streak-freeze-count');
+        const freezeIndicator = document.getElementById('streak-freeze-indicator');
+        if (freezeCountEl) freezeCountEl.textContent = p.streakFreezes || 0;
+        if (freezeIndicator) freezeIndicator.classList.toggle('has-freezes', (p.streakFreezes || 0) > 0);
+
         document.getElementById('level-badge').textContent = `Lvl ${level}`;
         document.getElementById('level-xp-current').textContent = xpIntoLevel;
         document.getElementById('level-xp-next').textContent = xpForNextLevel;
         document.getElementById('level-progress-fill').style.width = `${(xpIntoLevel / xpForNextLevel) * 100}%`;
 
+        const byCategory = {};
+        PROGRESS_BADGES.forEach(b => {
+            if (!byCategory[b.category]) byCategory[b.category] = [];
+            byCategory[b.category].push(b);
+        });
+
         const grid = document.getElementById('badges-grid');
-        grid.innerHTML = PROGRESS_BADGES.map(b => {
-            const earned = (p.badges || []).includes(b.id);
-            let progressHtml = '';
-            if (!earned && b.target && b.progress) {
-                const current = Math.min(b.progress(p) || 0, b.target);
-                const pct = Math.max(0, Math.min(100, (current / b.target) * 100));
-                progressHtml = `
-                    <div class="badge-progress">
-                        <div class="badge-progress-bar"><div class="badge-progress-fill" style="width:${pct}%;"></div></div>
-                        <div class="badge-progress-text">${current}/${b.target}</div>
+        grid.innerHTML = BADGE_CATEGORY_ORDER.filter(cat => byCategory[cat]).map(cat => {
+            const badgesInCat = byCategory[cat];
+            const earnedCount = badgesInCat.filter(b => (p.badges || []).includes(b.id)).length;
+
+            const tiles = badgesInCat.map(b => {
+                const earned = (p.badges || []).includes(b.id);
+                let progressHtml = '';
+                if (!earned && b.target && b.progress) {
+                    const current = Math.min(b.progress(p) || 0, b.target);
+                    const pct = Math.max(0, Math.min(100, (current / b.target) * 100));
+                    progressHtml = `
+                        <div class="badge-progress">
+                            <div class="badge-progress-bar"><div class="badge-progress-fill" style="width:${pct}%;"></div></div>
+                            <div class="badge-progress-text">${current}/${b.target}</div>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="badge-tile ${earned ? 'earned' : 'locked'}">
+                        <div class="badge-icon"><i class="fas ${b.icon}"></i></div>
+                        <div class="badge-name">${b.name}</div>
+                        <div class="badge-desc">${b.desc}</div>
+                        ${progressHtml}
                     </div>
                 `;
-            }
+            }).join('');
+
             return `
-                <div class="badge-tile ${earned ? 'earned' : 'locked'}">
-                    <div class="badge-icon"><i class="fas ${b.icon}"></i></div>
-                    <div class="badge-name">${b.name}</div>
-                    <div class="badge-desc">${b.desc}</div>
-                    ${progressHtml}
+                <div class="badge-category-group">
+                    <h4 class="badge-category-heading">${cat} <span class="badge-category-count">${earnedCount}/${badgesInCat.length}</span></h4>
+                    <div class="badge-category-grid">${tiles}</div>
                 </div>
             `;
         }).join('');
+    },
+
+    // ===== Level-Up-Feedback =====
+    playLevelUpSound() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 - E5 - G5 - C6
+            notes.forEach((freq, i) => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.type = 'triangle';
+                o.frequency.value = freq;
+                const start = ctx.currentTime + i * 0.11;
+                g.gain.setValueAtTime(0.0001, start);
+                g.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+                o.start(start);
+                o.stop(start + 0.4);
+            });
+        } catch (e) { /* ignore */ }
+    },
+
+    showLevelUpCelebration(level) {
+        const overlay = document.createElement('div');
+        overlay.className = 'levelup-overlay';
+
+        const colors = ['#15803d', '#f97316', '#3b82f6', '#eab308', '#ec4899'];
+        let confetti = '';
+        for (let i = 0; i < 26; i++) {
+            const left = Math.random() * 100;
+            const delay = (Math.random() * 0.4).toFixed(2);
+            const duration = (1.5 + Math.random() * 1).toFixed(2);
+            const color = colors[i % colors.length];
+            confetti += `<span class="levelup-confetti" style="left:${left}%;background:${color};animation-delay:${delay}s;animation-duration:${duration}s;"></span>`;
+        }
+
+        overlay.innerHTML = `
+            <div class="levelup-confetti-layer">${confetti}</div>
+            <div class="levelup-card">
+                <div class="levelup-star"><i class="fas fa-star"></i></div>
+                <div class="levelup-title">Level ${level} erreicht!</div>
+                <div class="levelup-sub">Weiter so – dein Fleiß zahlt sich aus 🎉</div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', () => overlay.remove());
+        setTimeout(() => {
+            overlay.classList.add('levelup-fade-out');
+            setTimeout(() => overlay.remove(), 400);
+        }, 2800);
     }
 });
