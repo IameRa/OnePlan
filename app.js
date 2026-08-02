@@ -358,6 +358,7 @@ const App = {
         }));
         this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
+        this.settings = map['settings'] || { hideGradeAverage: false };
     },
 
     async saveData(key, data) {
@@ -1336,6 +1337,10 @@ const App = {
             : '<p style="color: var(--text-secondary);">Alle Hausaufgaben erledigt! 🎉</p>';
 
         // Grade overview
+        const gradeHidden = !!this.settings?.hideGradeAverage;
+        const visIcon = document.getElementById('grade-visibility-icon');
+        if (visIcon) visIcon.className = `fas fa-eye${gradeHidden ? '-slash' : ''}`;
+
         if (this.grades.length > 0) {
             const subjects = {};
             this.grades.forEach(g => {
@@ -1360,11 +1365,11 @@ const App = {
 
             document.getElementById('grade-overview').innerHTML = `
                 <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; font-weight: bold; color: var(--primary-color);">
+                    <div class="grade-average-value ${gradeHidden ? 'grade-value-blurred' : ''}" style="font-size: 2.5rem; font-weight: bold; color: var(--primary-color);" onclick="App.toggleGradeVisibility()" title="${gradeHidden ? 'Zum Anzeigen tippen' : 'Zum Verbergen tippen'}">
                         ${(totalAvg / count).toFixed(2)}
                     </div>
                     <p>Gesamtdurchschnitt</p>
-                    <small>${this.grades.length} Noten in ${count} Fächern</small>
+                    <small class="${gradeHidden ? 'grade-value-blurred' : ''}">${this.grades.length} Noten in ${count} Fächern</small>
                 </div>
             `;
         } else {
@@ -1383,6 +1388,15 @@ const App = {
                 <p>${streak === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv'}</p>
             </div>
         `;
+    },
+
+    // Blendet den Notendurchschnitt auf dem Dashboard ein/aus (verpixelt),
+    // ähnlich dem Verbergen des Kontostands in Banking-Apps.
+    toggleGradeVisibility() {
+        if (!this.settings) this.settings = {};
+        this.settings.hideGradeAverage = !this.settings.hideGradeAverage;
+        this.saveData('settings', this.settings);
+        this.updateDashboard();
     },
 
     // ===== Flashcards =====

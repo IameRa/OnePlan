@@ -139,7 +139,12 @@
                         <div id="pending-homework"></div>
                     </div>
                     <div class="dashboard-card">
-                        <h3><i class="fas fa-chart-line"></i> Notendurchschnitt</h3>
+                        <h3 class="dashboard-card-header">
+                            <span><i class="fas fa-chart-line"></i> Notendurchschnitt</span>
+                            <button class="grade-visibility-toggle" onclick="App.toggleGradeVisibility()" title="Notendurchschnitt anzeigen/verbergen">
+                                <i class="fas fa-eye" id="grade-visibility-icon"></i>
+                            </button>
+                        </h3>
                         <div id="grade-overview"></div>
                     </div>
                     <div class="dashboard-card dashboard-streak-card">

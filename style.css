@@ -236,6 +236,44 @@ h3 {
     color: var(--primary-color);
 }
 
+.dashboard-card-header {
+    justify-content: space-between !important;
+}
+
+.dashboard-card-header span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.grade-visibility-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 1rem;
+    padding: 6px;
+    border-radius: 50%;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.grade-visibility-toggle:hover {
+    color: var(--primary-color);
+    background: var(--bg-color);
+}
+
+.grade-value-blurred {
+    filter: blur(8px);
+    user-select: none;
+    cursor: pointer;
+    transition: filter 0.2s ease;
+}
+
+.grade-value-blurred:hover {
+    filter: blur(6px);
+}
+
 /* ===== Buttons ===== */
 .btn-primary {
     background: var(--primary-color);
