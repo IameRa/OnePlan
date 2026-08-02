@@ -58,48 +58,59 @@ const Auth = {
         this.showApp(this.currentUser);
     },
 
+    // Registriert einen Listener nur, wenn das Element existiert — verhindert,
+    // dass ein einzelnes fehlendes Element (z.B. durch einen Cache-Übergang
+    // zwischen alter app.js und neuer index.html) die komplette App zum
+    // Einfrieren bringt.
+    on(id, event, handler) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+        else console.warn(`[Auth] Element #${id} nicht gefunden — evtl. veralteter Cache?`);
+    },
+
     setupListeners() {
-        document.getElementById('btn-login').addEventListener('click', () => this.login());
+        this.on('btn-login', 'click', () => this.login());
 
-        document.getElementById('show-forgot').addEventListener('click', (e) => {
+        this.on('show-forgot', 'click', (e) => {
             e.preventDefault();
-            document.getElementById('login-form').classList.remove('active');
-            document.getElementById('forgot-form').classList.add('active');
+            document.getElementById('login-form')?.classList.remove('active');
+            document.getElementById('forgot-form')?.classList.add('active');
         });
-        document.getElementById('show-login-from-forgot').addEventListener('click', (e) => {
+        this.on('show-login-from-forgot', 'click', (e) => {
             e.preventDefault();
-            document.getElementById('forgot-form').classList.remove('active');
-            document.getElementById('login-form').classList.add('active');
+            document.getElementById('forgot-form')?.classList.remove('active');
+            document.getElementById('login-form')?.classList.add('active');
         });
 
-        document.getElementById('btn-forgot').addEventListener('click', () => this.forgotPassword());
-        document.getElementById('btn-reset-password').addEventListener('click', () => this.resetPassword());
+        this.on('btn-forgot', 'click', () => this.forgotPassword());
+        this.on('btn-reset-password', 'click', () => this.resetPassword());
 
-        document.getElementById('btn-logout').addEventListener('click', () => this.logout());
-        document.getElementById('btn-change-password').addEventListener('click', () => this.openChangePasswordModal());
-        document.getElementById('btn-delete-account').addEventListener('click', () => this.deleteAccount());
-        document.getElementById('btn-theme-toggle').addEventListener('click', () => this.toggleTheme());
+        this.on('btn-logout', 'click', () => this.logout());
+        this.on('btn-change-password', 'click', () => this.openChangePasswordModal());
+        this.on('btn-delete-account', 'click', () => this.deleteAccount());
+        this.on('btn-theme-toggle', 'click', () => this.toggleTheme());
         this.syncThemeUI();
 
-        document.getElementById('user-avatar-btn').addEventListener('click', () => {
-            document.getElementById('user-dropdown').classList.toggle('hidden');
+        this.on('user-avatar-btn', 'click', () => {
+            document.getElementById('user-dropdown')?.classList.toggle('hidden');
         });
         document.addEventListener('click', (e) => {
-            if (!document.getElementById('user-menu-btn').contains(e.target)) {
-                document.getElementById('user-dropdown').classList.add('hidden');
+            const menuBtn = document.getElementById('user-menu-btn');
+            if (menuBtn && !menuBtn.contains(e.target)) {
+                document.getElementById('user-dropdown')?.classList.add('hidden');
             }
         });
 
         ['login-username', 'login-password'].forEach(id => {
-            document.getElementById(id).addEventListener('keydown', (e) => {
+            this.on(id, 'keydown', (e) => {
                 if (e.key === 'Enter') this.login();
             });
         });
-        document.getElementById('forgot-email').addEventListener('keydown', (e) => {
+        this.on('forgot-email', 'keydown', (e) => {
             if (e.key === 'Enter') this.forgotPassword();
         });
         ['reset-password', 'reset-password2'].forEach(id => {
-            document.getElementById(id).addEventListener('keydown', (e) => {
+            this.on(id, 'keydown', (e) => {
                 if (e.key === 'Enter') this.resetPassword();
             });
         });
