@@ -87,6 +87,7 @@ const Auth = {
 
         this.on('btn-logout', 'click', () => this.logout());
         this.on('btn-change-password', 'click', () => this.openChangePasswordModal());
+        this.on('btn-set-email', 'click', () => this.openSetEmailModal());
         this.on('btn-delete-account', 'click', () => this.deleteAccount());
         this.on('btn-theme-toggle', 'click', () => this.toggleTheme());
         this.syncThemeUI();
@@ -117,21 +118,30 @@ const Auth = {
     },
 
     async login() {
-        const email = document.getElementById('login-username').value.trim().toLowerCase();
+        const username = document.getElementById('login-username').value.trim().toLowerCase();
         const password = document.getElementById('login-password').value;
 
-        if (!email || !password) {
+        if (!username || !password) {
             this.showAuthError('login-form', 'Bitte alle Felder ausfüllen');
             return;
         }
 
         this.setLoading('btn-login', true);
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.functions.invoke('login-with-username', {
+            body: { username, password }
+        });
 
-        if (error) {
-            this.showAuthError('login-form', 'E-Mail oder Passwort falsch');
+        if (error || data?.error || !data?.session) {
+            this.showAuthError('login-form', 'Benutzername oder Passwort falsch');
+            this.setLoading('btn-login', false);
+            return;
         }
+
+        await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+        });
 
         this.setLoading('btn-login', false);
     },
@@ -343,6 +353,51 @@ const Auth = {
 
         document.getElementById('modal').classList.remove('active');
         App.showNotification('Passwort geändert', 'success');
+    },
+
+    // ===== E-Mail für "Passwort vergessen" hinterlegen =====
+    // Konten haben keine echte E-Mail beim Anlegen — damit "Passwort vergessen"
+    // trotzdem funktioniert, kann der Nutzer hier freiwillig seine echte
+    // E-Mail-Adresse hinterlegen. Läuft über eine Edge Function mit
+    // Admin-Rechten, damit keine Bestätigungsmail an eine nicht existierende
+    // alte Adresse nötig ist.
+    openSetEmailModal() {
+        document.getElementById('user-dropdown').classList.add('hidden');
+        const currentEmail = this.currentUser?.email?.endsWith('@oneplan.internal') ? '' : (this.currentUser?.email || '');
+        App.showModal(`
+            <h3><i class="fas fa-envelope"></i> E-Mail hinterlegen</h3>
+            <p class="field-hint">Wird nur für „Passwort vergessen" genutzt, nicht für den Login. Ohne hinterlegte E-Mail kannst du dein Passwort nur über deinen Admin zurücksetzen lassen.</p>
+            <input type="email" id="se-email" placeholder="Deine echte E-Mail-Adresse" value="${currentEmail}" autocomplete="email">
+            <div id="se-error" class="auth-error"></div>
+            <button class="btn-primary btn-full" id="btn-save-email" style="margin-top:10px;">
+                <i class="fas fa-check"></i> Speichern
+            </button>
+        `);
+        document.getElementById('btn-save-email').addEventListener('click', () => this.setRecoveryEmail());
+    },
+
+    async setRecoveryEmail() {
+        const email = document.getElementById('se-email').value.trim().toLowerCase();
+        const errEl = document.getElementById('se-error');
+        const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showErr('Bitte eine gültige E-Mail-Adresse eingeben');
+            return;
+        }
+
+        this.setLoading('btn-save-email', true);
+        const { data, error } = await supabase.functions.invoke('set-user-email', { body: { email } });
+        this.setLoading('btn-save-email', false);
+
+        if (error || data?.error) {
+            showErr(data?.error || error.message);
+            return;
+        }
+
+        this.currentUser.email = email;
+        document.getElementById('modal').classList.remove('active');
+        App.showNotification('E-Mail hinterlegt', 'success');
     }
 };
 
@@ -1264,13 +1319,12 @@ const App = {
     async adminCreateAccount() {
         const name = document.getElementById('admin-new-name').value.trim();
         const username = document.getElementById('admin-new-username').value.trim().toLowerCase();
-        const email = document.getElementById('admin-new-email').value.trim().toLowerCase();
         const password = document.getElementById('admin-new-password').value;
         const resultEl = document.getElementById('admin-create-user-result');
 
         resultEl.innerHTML = '';
 
-        if (!name || !username || !email || !password) {
+        if (!name || !username || !password) {
             resultEl.innerHTML = '<div class="auth-error" style="display:block;">Bitte alle Felder ausfüllen</div>';
             return;
         }
@@ -1281,7 +1335,7 @@ const App = {
 
         this.setLoadingBtn('btn-admin-create-user', true);
         const { data, error } = await supabase.functions.invoke('admin-create-user', {
-            body: { name, username, email, password }
+            body: { name, username, password }
         });
         this.setLoadingBtn('btn-admin-create-user', false);
 
@@ -1292,13 +1346,12 @@ const App = {
 
         resultEl.innerHTML = `
             <div class="auth-info" style="display:block;">
-                <i class="fas fa-check-circle"></i> Konto erstellt für <strong>${email}</strong>.<br>
-                Gib der Person diese Zugangsdaten weiter: E-Mail <strong>${email}</strong>, Passwort <strong>${password}</strong>.
+                <i class="fas fa-check-circle"></i> Konto erstellt für <strong>${username}</strong>.<br>
+                Gib der Person diese Zugangsdaten weiter: Benutzername <strong>${username}</strong>, Passwort <strong>${password}</strong>.
             </div>
         `;
         document.getElementById('admin-new-name').value = '';
         document.getElementById('admin-new-username').value = '';
-        document.getElementById('admin-new-email').value = '';
         document.getElementById('admin-new-password').value = '';
         this.showNotification('Konto erstellt', 'success');
     },

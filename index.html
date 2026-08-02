@@ -120,6 +120,9 @@
                     <button id="btn-change-password">
                         <i class="fas fa-key"></i> Passwort ändern
                     </button>
+                    <button id="btn-set-email">
+                        <i class="fas fa-envelope"></i> E-Mail hinterlegen
+                    </button>
                     <hr>
                     <button id="btn-logout">
                         <i class="fas fa-sign-out-alt"></i> Abmelden
@@ -603,10 +606,9 @@
                 <div id="feedback-admin-view" style="display:none;">
                     <div class="card admin-create-user-card">
                         <h3><i class="fas fa-user-plus" style="color:var(--primary-color);margin-right:8px;"></i>Neues Konto anlegen</h3>
-                        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:16px;">Erstellt direkt ein einsatzbereites Konto (keine Bestätigungsmail nötig). Gib der Person Name, E-Mail und Passwort weiter – sie kann das Passwort danach jederzeit selbst ändern.</p>
+                        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:16px;">Erstellt direkt ein einsatzbereites Konto (keine E-Mail nötig). Gib der Person Benutzername und Passwort weiter – sie meldet sich damit an und kann das Passwort danach jederzeit selbst ändern.</p>
                         <input type="text" id="admin-new-name" placeholder="Vollständiger Name" autocomplete="off">
                         <input type="text" id="admin-new-username" placeholder="Benutzername (nur a-z, 0-9, _)" autocomplete="off">
-                        <input type="email" id="admin-new-email" placeholder="E-Mail-Adresse" autocomplete="off">
                         <div style="display:flex;gap:8px;">
                             <input type="text" id="admin-new-password" placeholder="Passwort" autocomplete="off" style="flex:1;">
                             <button class="btn-secondary btn-small" type="button" onclick="App.generateAdminPassword()" title="Zufälliges Passwort erzeugen">
@@ -675,7 +677,7 @@
             <div id="login-form" class="auth-form active">
                 <h2>Willkommen zurück</h2>
                 <p class="auth-subtitle">Melde dich an, um fortzufahren</p>
-                <input type="text" id="login-username" placeholder="E-Mail-Adresse" autocomplete="email">
+                <input type="text" id="login-username" placeholder="Benutzername" autocomplete="username">
                 <input type="password" id="login-password" placeholder="Passwort" autocomplete="current-password">
                 <button id="btn-login" class="btn-primary btn-full">
                     <i class="fas fa-sign-in-alt"></i> Anmelden
