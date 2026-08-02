@@ -10,17 +10,30 @@ const Auth = {
     async init() {
         this.setupListeners();
         this._sessionHandled = false;
+        this._passwordRecovery = false;
 
         // Listen for auth changes. This also fires immediately with the
         // current session state when subscribed, so it covers the initial
         // page load too — no separate getSession()+loadProfile call needed.
         supabase.auth.onAuthStateChange(async (event, session) => {
+            // Nutzer kommt über den "Passwort zurücksetzen"-Link aus der E-Mail:
+            // Supabase liefert dafür eine gültige Session, aber wir wollen erst
+            // das neue Passwort abfragen, bevor die App normal geladen wird.
+            if (event === 'PASSWORD_RECOVERY') {
+                this._passwordRecovery = true;
+                document.getElementById('auth-overlay').classList.add('active');
+                document.getElementById('login-form').classList.remove('active');
+                document.getElementById('forgot-form').classList.remove('active');
+                document.getElementById('reset-form').classList.add('active');
+                return;
+            }
             if (event === 'SIGNED_OUT') {
                 this._sessionHandled = false;
+                this._passwordRecovery = false;
                 this.showAuthScreen();
                 return;
             }
-            if (session && !this._sessionHandled) {
+            if (session && !this._sessionHandled && !this._passwordRecovery) {
                 this._sessionHandled = true;
                 await this.loadProfile(session.user);
             }
@@ -47,20 +60,23 @@ const Auth = {
 
     setupListeners() {
         document.getElementById('btn-login').addEventListener('click', () => this.login());
-        document.getElementById('btn-register').addEventListener('click', () => this.register());
 
-        document.getElementById('show-register').addEventListener('click', (e) => {
+        document.getElementById('show-forgot').addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('login-form').classList.remove('active');
-            document.getElementById('register-form').classList.add('active');
+            document.getElementById('forgot-form').classList.add('active');
         });
-        document.getElementById('show-login').addEventListener('click', (e) => {
+        document.getElementById('show-login-from-forgot').addEventListener('click', (e) => {
             e.preventDefault();
-            document.getElementById('register-form').classList.remove('active');
+            document.getElementById('forgot-form').classList.remove('active');
             document.getElementById('login-form').classList.add('active');
         });
 
+        document.getElementById('btn-forgot').addEventListener('click', () => this.forgotPassword());
+        document.getElementById('btn-reset-password').addEventListener('click', () => this.resetPassword());
+
         document.getElementById('btn-logout').addEventListener('click', () => this.logout());
+        document.getElementById('btn-change-password').addEventListener('click', () => this.openChangePasswordModal());
         document.getElementById('btn-delete-account').addEventListener('click', () => this.deleteAccount());
         document.getElementById('btn-theme-toggle').addEventListener('click', () => this.toggleTheme());
         this.syncThemeUI();
@@ -79,9 +95,12 @@ const Auth = {
                 if (e.key === 'Enter') this.login();
             });
         });
-        ['reg-name', 'reg-username', 'reg-email', 'reg-password', 'reg-password2'].forEach(id => {
+        document.getElementById('forgot-email').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.forgotPassword();
+        });
+        ['reset-password', 'reset-password2'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') this.register();
+                if (e.key === 'Enter') this.resetPassword();
             });
         });
     },
@@ -106,67 +125,55 @@ const Auth = {
         this.setLoading('btn-login', false);
     },
 
-    async register() {
-        const name = document.getElementById('reg-name').value.trim();
-        const username = document.getElementById('reg-username').value.trim().toLowerCase();
-        const email = document.getElementById('reg-email').value.trim();
-        const password = document.getElementById('reg-password').value;
-        const password2 = document.getElementById('reg-password2').value;
-
-        if (!name || !username || !email || !password) {
-            this.showAuthError('register-form', 'Bitte alle Felder ausfüllen');
-            return;
-        }
-        if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-            this.showAuthError('register-form', 'Benutzername: 3–20 Zeichen, nur Buchstaben/Zahlen/_');
-            return;
-        }
-        if (password.length < 6) {
-            this.showAuthError('register-form', 'Passwort muss mindestens 6 Zeichen haben');
-            return;
-        }
-        if (password !== password2) {
-            this.showAuthError('register-form', 'Passwörter stimmen nicht überein');
+    async forgotPassword() {
+        const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+        if (!email) {
+            this.showAuthError('forgot-form', 'Bitte E-Mail-Adresse eingeben');
             return;
         }
 
-        // Check if username already taken
-        const { data: existing } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('username', username)
-            .maybeSingle();
-
-        if (existing) {
-            this.showAuthError('register-form', 'Benutzername bereits vergeben');
-            return;
-        }
-
-        this.setLoading('btn-register', true);
-
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { name, username } }
-        });
+        this.setLoading('btn-forgot', true);
+        const redirectTo = `${location.origin}${location.pathname}`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        this.setLoading('btn-forgot', false);
 
         if (error) {
-            this.showAuthError('register-form', error.message);
-            this.setLoading('btn-register', false);
+            this.showAuthError('forgot-form', error.message);
+            return;
+        }
+        // Bewusst dieselbe Meldung, unabhängig davon ob die E-Mail existiert (kein Konten-Enumeration)
+        this.showAuthInfo('forgot-form', 'Falls ein Konto mit dieser E-Mail existiert, wurde dir ein Link zum Zurücksetzen geschickt.');
+    },
+
+    async resetPassword() {
+        const p1 = document.getElementById('reset-password').value;
+        const p2 = document.getElementById('reset-password2').value;
+
+        if (!p1 || !p2) {
+            this.showAuthError('reset-form', 'Bitte beide Felder ausfüllen');
+            return;
+        }
+        if (p1.length < 6) {
+            this.showAuthError('reset-form', 'Passwort muss mindestens 6 Zeichen haben');
+            return;
+        }
+        if (p1 !== p2) {
+            this.showAuthError('reset-form', 'Passwörter stimmen nicht überein');
             return;
         }
 
-        // Create profile row
-        if (data.user) {
-            await supabase.from('profiles').insert({
-                id: data.user.id,
-                name,
-                username,
-                email
-            });
+        this.setLoading('btn-reset-password', true);
+        const { error } = await supabase.auth.updateUser({ password: p1 });
+        this.setLoading('btn-reset-password', false);
+
+        if (error) {
+            this.showAuthError('reset-form', error.message);
+            return;
         }
 
-        this.setLoading('btn-register', false);
+        this._passwordRecovery = false;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await this.loadProfile(session.user);
     },
 
     showApp(user) {
@@ -196,7 +203,8 @@ const Auth = {
         document.getElementById('mobile-nav').style.display = 'none';
         document.getElementById('user-dropdown').classList.add('hidden');
         document.getElementById('login-form').classList.add('active');
-        document.getElementById('register-form').classList.remove('active');
+        document.getElementById('forgot-form').classList.remove('active');
+        document.getElementById('reset-form').classList.remove('active');
         document.getElementById('login-username').value = '';
         document.getElementById('login-password').value = '';
         App.userId = null;
@@ -238,12 +246,15 @@ const Auth = {
 
     setLoading(btnId, loading) {
         const btn = document.getElementById(btnId);
-        btn.disabled = loading;
-        btn.innerHTML = loading
-            ? '<i class="fas fa-spinner fa-spin"></i> Bitte warten...'
-            : btnId === 'btn-login'
-                ? '<i class="fas fa-sign-in-alt"></i> Anmelden'
-                : '<i class="fas fa-user-plus"></i> Registrieren';
+        if (!btn) return;
+        if (loading) {
+            if (btn.dataset.idleHtml === undefined) btn.dataset.idleHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Bitte warten...';
+        } else {
+            btn.disabled = false;
+            if (btn.dataset.idleHtml !== undefined) btn.innerHTML = btn.dataset.idleHtml;
+        }
     },
 
     showAuthError(formId, msg) {
@@ -257,6 +268,70 @@ const Auth = {
         err.textContent = msg;
         err.style.display = 'block';
         setTimeout(() => { if (err) err.style.display = 'none'; }, 5000);
+    },
+
+    showAuthInfo(formId, msg) {
+        const form = document.getElementById(formId);
+        let info = form.querySelector('.auth-info');
+        if (!info) {
+            info = document.createElement('div');
+            info.className = 'auth-info';
+            form.querySelector('.btn-primary').before(info);
+        }
+        info.textContent = msg;
+        info.style.display = 'block';
+    },
+
+    // ===== Passwort ändern (im eingeloggten Zustand, über das Nutzermenü) =====
+    openChangePasswordModal() {
+        document.getElementById('user-dropdown').classList.add('hidden');
+        App.showModal(`
+            <h3><i class="fas fa-key"></i> Passwort ändern</h3>
+            <input type="password" id="cp-current" placeholder="Aktuelles Passwort" autocomplete="current-password">
+            <input type="password" id="cp-new" placeholder="Neues Passwort (mind. 6 Zeichen)" autocomplete="new-password">
+            <input type="password" id="cp-new2" placeholder="Neues Passwort wiederholen" autocomplete="new-password">
+            <div id="cp-error" class="auth-error"></div>
+            <button class="btn-primary btn-full" id="btn-save-password" style="margin-top:10px;">
+                <i class="fas fa-check"></i> Passwort speichern
+            </button>
+        `);
+        document.getElementById('btn-save-password').addEventListener('click', () => this.changePassword());
+    },
+
+    async changePassword() {
+        const current = document.getElementById('cp-current').value;
+        const next = document.getElementById('cp-new').value;
+        const next2 = document.getElementById('cp-new2').value;
+        const errEl = document.getElementById('cp-error');
+        const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+        if (!current || !next || !next2) { showErr('Bitte alle Felder ausfüllen'); return; }
+        if (next.length < 6) { showErr('Neues Passwort muss mindestens 6 Zeichen haben'); return; }
+        if (next !== next2) { showErr('Neue Passwörter stimmen nicht überein'); return; }
+
+        this.setLoading('btn-save-password', true);
+
+        // Aktuelles Passwort verifizieren, bevor es geändert wird
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: this.currentUser.email,
+            password: current
+        });
+        if (verifyError) {
+            this.setLoading('btn-save-password', false);
+            showErr('Aktuelles Passwort ist falsch');
+            return;
+        }
+
+        const { error } = await supabase.auth.updateUser({ password: next });
+        this.setLoading('btn-save-password', false);
+
+        if (error) {
+            showErr(error.message);
+            return;
+        }
+
+        document.getElementById('modal').classList.remove('active');
+        App.showNotification('Passwort geändert', 'success');
     }
 };
 
@@ -1165,6 +1240,69 @@ const App = {
             document.getElementById('feedback-user-view').style.display = 'none';
             document.getElementById('feedback-admin-view').style.display = 'block';
             this.loadAdminFeedback();
+        }
+    },
+
+    generateAdminPassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        let pw = '';
+        for (let i = 0; i < 10; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+        document.getElementById('admin-new-password').value = pw;
+    },
+
+    async adminCreateAccount() {
+        const name = document.getElementById('admin-new-name').value.trim();
+        const username = document.getElementById('admin-new-username').value.trim().toLowerCase();
+        const email = document.getElementById('admin-new-email').value.trim().toLowerCase();
+        const password = document.getElementById('admin-new-password').value;
+        const resultEl = document.getElementById('admin-create-user-result');
+
+        resultEl.innerHTML = '';
+
+        if (!name || !username || !email || !password) {
+            resultEl.innerHTML = '<div class="auth-error" style="display:block;">Bitte alle Felder ausfüllen</div>';
+            return;
+        }
+        if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+            resultEl.innerHTML = '<div class="auth-error" style="display:block;">Benutzername: 3–20 Zeichen, nur a-z/0-9/_</div>';
+            return;
+        }
+
+        this.setLoadingBtn('btn-admin-create-user', true);
+        const { data, error } = await supabase.functions.invoke('admin-create-user', {
+            body: { name, username, email, password }
+        });
+        this.setLoadingBtn('btn-admin-create-user', false);
+
+        if (error || data?.error) {
+            resultEl.innerHTML = `<div class="auth-error" style="display:block;">${data?.error || error.message}</div>`;
+            return;
+        }
+
+        resultEl.innerHTML = `
+            <div class="auth-info" style="display:block;">
+                <i class="fas fa-check-circle"></i> Konto erstellt für <strong>${email}</strong>.<br>
+                Gib der Person diese Zugangsdaten weiter: E-Mail <strong>${email}</strong>, Passwort <strong>${password}</strong>.
+            </div>
+        `;
+        document.getElementById('admin-new-name').value = '';
+        document.getElementById('admin-new-username').value = '';
+        document.getElementById('admin-new-email').value = '';
+        document.getElementById('admin-new-password').value = '';
+        this.showNotification('Konto erstellt', 'success');
+    },
+
+    // Kleiner generischer Loading-Helper für einzelne Buttons (analog zu Auth.setLoading)
+    setLoadingBtn(btnId, loading) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (loading) {
+            if (btn.dataset.idleHtml === undefined) btn.dataset.idleHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Bitte warten...';
+        } else {
+            btn.disabled = false;
+            if (btn.dataset.idleHtml !== undefined) btn.innerHTML = btn.dataset.idleHtml;
         }
     },
 

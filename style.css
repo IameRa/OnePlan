@@ -1177,9 +1177,21 @@ textarea {
     display: none;
 }
 
+.auth-info {
+    background: rgba(34,197,94,0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    display: none;
+}
+
 /* ===== User Menu ===== */
 .user-menu-btn {
     position: relative;
+    z-index: 500;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -2163,6 +2175,21 @@ textarea {
     border-radius: var(--radius);
     padding: 28px;
     box-shadow: var(--shadow);
+}
+
+.admin-create-user-card {
+    max-width: 600px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.admin-create-user-card .auth-error,
+.admin-create-user-card .auth-info {
+    margin-top: 14px;
+    margin-bottom: 0;
 }
 
 .feedback-admin-header {
