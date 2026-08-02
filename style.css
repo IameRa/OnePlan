@@ -2729,6 +2729,32 @@ textarea {
     line-height: 1.4;
 }
 
+.badge-progress {
+    margin-top: 10px;
+}
+
+.badge-progress-bar {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.badge-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+    border-radius: 999px;
+    transition: width 0.5s ease;
+}
+
+.badge-progress-text {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 800px) {
     .progress-top-row {
         grid-template-columns: 1fr;

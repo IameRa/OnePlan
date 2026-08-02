@@ -499,6 +499,7 @@ const App = {
         }));
         this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
+        this.checkStreakExpiry();
         this.settings = map['settings'] || { hideGradeAverage: false };
     },
 
@@ -1580,10 +1581,12 @@ const App = {
         }
 
         // Streak
+        this.checkStreakExpiry();
         const streak = this.progress?.streak || 0;
+        const streakActive = streak > 0 && this.isActiveToday();
         document.getElementById('dashboard-streak').innerHTML = `
             <div style="text-align: center;">
-                <div class="${streak > 0 ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streak > 0 ? '#f97316' : 'var(--text-light)'};">
+                <div class="${streakActive ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streakActive ? '#f97316' : 'var(--text-light)'};">
                     <i class="fas fa-fire"></i>
                 </div>
                 <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
@@ -2710,34 +2713,37 @@ Object.assign(App, {
 });
 
 // ===== Gamification / Fortschritt =====
+// Jedes Abzeichen kennt zusätzlich zu "check" (freigeschaltet ja/nein) auch
+// "target" (Zielwert) und "progress" (aktueller Wert), damit in der UI ein
+// Fortschritt wie "45/50" angezeigt werden kann.
 const PROGRESS_BADGES = [
-    { id: 'first_step', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', check: p => p.totalActions >= 1 },
+    { id: 'first_step', icon: 'fa-seedling', name: 'Erste Schritte', desc: 'Erste Aktion in OnePlan', target: 1, progress: p => p.totalActions || 0, check: p => p.totalActions >= 1 },
 
-    { id: 'streak_3', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', check: p => p.streak >= 3 },
-    { id: 'streak_7', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', check: p => p.streak >= 7 },
-    { id: 'streak_14', icon: 'fa-fire', name: '14-Tage-Streak', desc: '14 Tage in Folge aktiv', check: p => p.streak >= 14 },
-    { id: 'streak_30', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', check: p => p.streak >= 30 },
-    { id: 'streak_50', icon: 'fa-fire', name: '50-Tage-Streak', desc: '50 Tage in Folge aktiv', check: p => p.streak >= 50 },
-    { id: 'streak_100', icon: 'fa-fire', name: '100-Tage-Streak', desc: '100 Tage in Folge aktiv', check: p => p.streak >= 100 },
+    { id: 'streak_3', icon: 'fa-fire', name: '3-Tage-Streak', desc: '3 Tage in Folge aktiv', target: 3, progress: p => p.streak || 0, check: p => p.streak >= 3 },
+    { id: 'streak_7', icon: 'fa-fire', name: '7-Tage-Streak', desc: '7 Tage in Folge aktiv', target: 7, progress: p => p.streak || 0, check: p => p.streak >= 7 },
+    { id: 'streak_14', icon: 'fa-fire', name: '14-Tage-Streak', desc: '14 Tage in Folge aktiv', target: 14, progress: p => p.streak || 0, check: p => p.streak >= 14 },
+    { id: 'streak_30', icon: 'fa-fire', name: '30-Tage-Streak', desc: '30 Tage in Folge aktiv', target: 30, progress: p => p.streak || 0, check: p => p.streak >= 30 },
+    { id: 'streak_50', icon: 'fa-fire', name: '50-Tage-Streak', desc: '50 Tage in Folge aktiv', target: 50, progress: p => p.streak || 0, check: p => p.streak >= 50 },
+    { id: 'streak_100', icon: 'fa-fire', name: '100-Tage-Streak', desc: '100 Tage in Folge aktiv', target: 100, progress: p => p.streak || 0, check: p => p.streak >= 100 },
 
-    { id: 'level_5', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', check: p => App.getLevelInfo(p.xp).level >= 5 },
-    { id: 'level_10', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', check: p => App.getLevelInfo(p.xp).level >= 10 },
-    { id: 'level_20', icon: 'fa-star', name: 'Level 20', desc: 'Level 20 erreicht', check: p => App.getLevelInfo(p.xp).level >= 20 },
+    { id: 'level_5', icon: 'fa-star', name: 'Level 5', desc: 'Level 5 erreicht', target: 5, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 5 },
+    { id: 'level_10', icon: 'fa-star', name: 'Level 10', desc: 'Level 10 erreicht', target: 10, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 10 },
+    { id: 'level_20', icon: 'fa-star', name: 'Level 20', desc: 'Level 20 erreicht', target: 20, progress: p => App.getLevelInfo(p.xp).level, check: p => App.getLevelInfo(p.xp).level >= 20 },
 
-    { id: 'actions_50', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', check: p => p.totalActions >= 50 },
-    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', check: p => p.totalActions >= 200 },
-    { id: 'actions_500', icon: 'fa-crown', name: 'Legende', desc: '500 Aktionen gesammelt', check: p => p.totalActions >= 500 },
+    { id: 'actions_50', icon: 'fa-bolt', name: 'Dabeibleiber', desc: '50 Aktionen gesammelt', target: 50, progress: p => p.totalActions || 0, check: p => p.totalActions >= 50 },
+    { id: 'actions_200', icon: 'fa-crown', name: 'Profi', desc: '200 Aktionen gesammelt', target: 200, progress: p => p.totalActions || 0, check: p => p.totalActions >= 200 },
+    { id: 'actions_500', icon: 'fa-crown', name: 'Legende', desc: '500 Aktionen gesammelt', target: 500, progress: p => p.totalActions || 0, check: p => p.totalActions >= 500 },
 
-    { id: 'homework_10', icon: 'fa-list-check', name: 'Fleißig', desc: '10 Hausaufgaben erledigt', check: p => (p.stats?.homework || 0) >= 10 },
-    { id: 'homework_50', icon: 'fa-list-check', name: 'Hausaufgaben-Held', desc: '50 Hausaufgaben erledigt', check: p => (p.stats?.homework || 0) >= 50 },
+    { id: 'homework_10', icon: 'fa-list-check', name: 'Fleißig', desc: '10 Hausaufgaben erledigt', target: 10, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 10 },
+    { id: 'homework_50', icon: 'fa-list-check', name: 'Hausaufgaben-Held', desc: '50 Hausaufgaben erledigt', target: 50, progress: p => p.stats?.homework || 0, check: p => (p.stats?.homework || 0) >= 50 },
 
-    { id: 'cards_50', icon: 'fa-layer-group', name: 'Karteikarten-Fan', desc: '50 Karteikarten gelernt', check: p => (p.stats?.cards || 0) >= 50 },
-    { id: 'cards_200', icon: 'fa-layer-group', name: 'Karteikarten-Meister', desc: '200 Karteikarten gelernt', check: p => (p.stats?.cards || 0) >= 200 },
+    { id: 'cards_50', icon: 'fa-layer-group', name: 'Karteikarten-Fan', desc: '50 Karteikarten gelernt', target: 50, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 50 },
+    { id: 'cards_200', icon: 'fa-layer-group', name: 'Karteikarten-Meister', desc: '200 Karteikarten gelernt', target: 200, progress: p => p.stats?.cards || 0, check: p => (p.stats?.cards || 0) >= 200 },
 
-    { id: 'pomodoro_10', icon: 'fa-stopwatch', name: 'Fokussiert', desc: '10 Pomodoro-Fokusphasen', check: p => (p.stats?.pomodoro || 0) >= 10 },
-    { id: 'pomodoro_50', icon: 'fa-stopwatch', name: 'Pomodoro-Profi', desc: '50 Pomodoro-Fokusphasen', check: p => (p.stats?.pomodoro || 0) >= 50 },
+    { id: 'pomodoro_10', icon: 'fa-stopwatch', name: 'Fokussiert', desc: '10 Pomodoro-Fokusphasen', target: 10, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 10 },
+    { id: 'pomodoro_50', icon: 'fa-stopwatch', name: 'Pomodoro-Profi', desc: '50 Pomodoro-Fokusphasen', target: 50, progress: p => p.stats?.pomodoro || 0, check: p => (p.stats?.pomodoro || 0) >= 50 },
 
-    { id: 'grades_10', icon: 'fa-calculator', name: 'Überblick', desc: '10 Noten eingetragen', check: p => (p.stats?.grades || 0) >= 10 }
+    { id: 'grades_10', icon: 'fa-calculator', name: 'Überblick', desc: '10 Noten eingetragen', target: 10, progress: p => p.stats?.grades || 0, check: p => (p.stats?.grades || 0) >= 10 }
 ];
 
 Object.assign(App, {
@@ -2772,14 +2778,38 @@ Object.assign(App, {
         return d.toISOString().split('T')[0];
     },
 
+    // Prüft, ob der Streak gerissen ist: Duolingo-typisch bleibt er erhalten,
+    // solange spätestens am Tag NACH der letzten Aktivität wieder etwas gemacht
+    // wird (unabhängig von der Uhrzeit). Wurde ein ganzer Kalendertag komplett
+    // ausgelassen, wird der Streak auf 0 zurückgesetzt — das prüfen wir hier aktiv
+    // (beim Laden der Daten sowie vor jedem Streak-Render), damit die Flamme auch
+    // ohne neue Aktion sofort korrekt "erloschen" ist.
+    checkStreakExpiry() {
+        const p = this.progress;
+        if (!p || !p.lastActiveDate || !p.streak) return;
+        const today = this.todayStr();
+        const yesterday = this.yesterdayStr();
+        if (p.lastActiveDate !== today && p.lastActiveDate !== yesterday) {
+            p.streak = 0;
+            this.saveData('progress', p);
+        }
+    },
+
+    // Farbig ist die Flamme nur an Tagen, an denen bereits etwas gemacht wurde.
+    isActiveToday() {
+        return this.progress?.lastActiveDate === this.todayStr();
+    },
+
     awardXP(amount, reason, statKey) {
         const p = this.progress;
         const today = this.todayStr();
 
         if (p.lastActiveDate !== today) {
             if (p.lastActiveDate === this.yesterdayStr()) {
+                // Gestern aktiv, heute die erste Aktion -> Streak geht weiter
                 p.streak += 1;
             } else {
+                // Erste Aktion überhaupt, oder mindestens ein ganzer Tag ausgelassen -> Streak startet neu
                 p.streak = 1;
             }
             p.lastActiveDate = today;
@@ -2821,19 +2851,24 @@ Object.assign(App, {
         const el = document.getElementById('streak-flame-count');
         const badge = document.getElementById('streak-flame-badge');
         if (!el || !badge) return;
+        this.checkStreakExpiry();
         const streak = this.progress?.streak || 0;
         el.textContent = streak;
-        badge.classList.toggle('streak-active', streak > 0);
+        // Farbig nur, wenn heute bereits eine Aktion stattgefunden hat — sonst grau,
+        // auch wenn der Streak-Zähler selbst noch nicht auf 0 zurückgesetzt wurde.
+        badge.classList.toggle('streak-active', streak > 0 && this.isActiveToday());
     },
 
     renderProgress() {
+        this.checkStreakExpiry();
         const p = this.progress;
         const { level, xpIntoLevel, xpForNextLevel } = this.getLevelInfo(p.xp);
+        const activeToday = this.isActiveToday();
 
         document.getElementById('streak-hero-count').textContent = p.streak || 0;
         document.getElementById('streak-hero-label').textContent =
             (p.streak || 0) === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv';
-        document.getElementById('streak-hero-flame').classList.toggle('streak-active', (p.streak || 0) > 0);
+        document.getElementById('streak-hero-flame').classList.toggle('streak-active', (p.streak || 0) > 0 && activeToday);
 
         document.getElementById('level-badge').textContent = `Lvl ${level}`;
         document.getElementById('level-xp-current').textContent = xpIntoLevel;
@@ -2843,11 +2878,23 @@ Object.assign(App, {
         const grid = document.getElementById('badges-grid');
         grid.innerHTML = PROGRESS_BADGES.map(b => {
             const earned = (p.badges || []).includes(b.id);
+            let progressHtml = '';
+            if (!earned && b.target && b.progress) {
+                const current = Math.min(b.progress(p) || 0, b.target);
+                const pct = Math.max(0, Math.min(100, (current / b.target) * 100));
+                progressHtml = `
+                    <div class="badge-progress">
+                        <div class="badge-progress-bar"><div class="badge-progress-fill" style="width:${pct}%;"></div></div>
+                        <div class="badge-progress-text">${current}/${b.target}</div>
+                    </div>
+                `;
+            }
             return `
                 <div class="badge-tile ${earned ? 'earned' : 'locked'}">
                     <div class="badge-icon"><i class="fas ${b.icon}"></i></div>
                     <div class="badge-name">${b.name}</div>
                     <div class="badge-desc">${b.desc}</div>
+                    ${progressHtml}
                 </div>
             `;
         }).join('');
