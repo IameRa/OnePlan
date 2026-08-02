@@ -184,6 +184,25 @@ h1 {
     color: var(--text-primary);
 }
 
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.section-header h1 {
+    margin-bottom: 0;
+}
+
+.section-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 h3 {
     font-size: 1.1rem;
     margin-bottom: 16px;
@@ -236,6 +255,32 @@ h3 {
 .btn-primary:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary.btn-small {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-width: 1.5px;
 }
 
 .btn-icon {
@@ -879,6 +924,59 @@ textarea {
     color: var(--text-secondary);
 }
 
+/* ===== Sharing ===== */
+.share-code-box {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--primary-color);
+    background: var(--bg-color);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 16px 10px;
+    margin: 10px 0;
+}
+
+.import-preview-box {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-top: 14px;
+}
+
+.import-preview-box p {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+}
+
+.hw-share-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 40vh;
+    overflow-y: auto;
+    margin: 10px 0;
+}
+
+.hw-share-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.hw-share-item input {
+    margin-top: 3px;
+    width: auto;
+}
+
 /* ===== Empty State ===== */
 .empty-state {
     text-align: center;
@@ -1368,11 +1466,76 @@ textarea {
 
 .fc-deck-card .fc-stat-known { color: var(--success-color); font-weight: 600; }
 .fc-deck-card .fc-stat-unknown { color: var(--danger-color); font-weight: 600; }
+.fc-deck-card .fc-stat-due { color: var(--warning-color); font-weight: 600; }
 
 .fc-deck-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 14px;
+}
+
+/* Leitner-Boxverteilung im Deck */
+.fc-box-bar {
+    display: flex;
+    gap: 3px;
+    height: 8px;
+    margin-top: 12px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fc-box-seg {
+    border-radius: 2px;
+    min-width: 4px;
+    transition: var(--transition);
+}
+
+.fc-box-seg-1 { background: #ef4444; }
+.fc-box-seg-2 { background: #f97316; }
+.fc-box-seg-3 { background: #f59e0b; }
+.fc-box-seg-4 { background: #84cc16; }
+.fc-box-seg-5 { background: var(--success-color); }
+
+.fc-box-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 0.68rem;
+    color: var(--text-light);
+}
+
+/* Leitner-Infobox auf der Karteikarten-Seite */
+.leitner-info-box {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+}
+
+.leitner-info-icon {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-top: 2px;
+}
+
+.leitner-info-box h4 {
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.leitner-info-box p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.5;
 }
 
 /* Learn Mode */

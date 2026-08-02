@@ -155,7 +155,13 @@
 
             <!-- Stundenplan -->
             <section id="stundenplan" class="section">
-                <h1>Stundenplan</h1>
+                <div class="section-header">
+                    <h1>Stundenplan</h1>
+                    <div class="section-header-actions">
+                        <button class="btn-secondary btn-small" onclick="App.openImportModal()"><i class="fas fa-download"></i> Importieren</button>
+                        <button class="btn-secondary btn-small" onclick="App.shareTimetable()"><i class="fas fa-share-alt"></i> Teilen</button>
+                    </div>
+                </div>
                 <div class="timetable-container">
                     <table class="timetable">
                         <thead>
@@ -200,7 +206,13 @@
 
             <!-- Hausaufgaben -->
             <section id="hausaufgaben" class="section">
-                <h1>Hausaufgaben</h1>
+                <div class="section-header">
+                    <h1>Hausaufgaben</h1>
+                    <div class="section-header-actions">
+                        <button class="btn-secondary btn-small" onclick="App.openImportModal()"><i class="fas fa-download"></i> Importieren</button>
+                        <button class="btn-secondary btn-small" onclick="App.openHomeworkShareModal()"><i class="fas fa-share-alt"></i> Teilen</button>
+                    </div>
+                </div>
                 <div class="homework-container">
                     <div class="homework-form">
                         <h3>Neue Hausaufgabe</h3>
@@ -251,7 +263,21 @@
 
             <!-- Karteikarten -->
             <section id="karteikarten" class="section">
-                <h1>Karteikarten</h1>
+                <div class="section-header">
+                    <h1>Karteikarten</h1>
+                    <div class="section-header-actions">
+                        <button class="btn-secondary btn-small" onclick="App.openImportModal()"><i class="fas fa-download"></i> Stapel importieren</button>
+                    </div>
+                </div>
+
+                <div class="leitner-info-box">
+                    <i class="fas fa-brain leitner-info-icon"></i>
+                    <div>
+                        <h4>So funktioniert das Leitner-System</h4>
+                        <p>Jede Karte liegt in einer von 5 Boxen. Beantwortest du sie richtig, wandert sie eine Box weiter und wird erst später wieder fällig – bei Box 5 gilt sie als gemeistert. Bei einer falschen Antwort geht's zurück auf Box 1. So lernst du genau das, was du noch nicht sicher kannst, öfter.</p>
+                    </div>
+                </div>
+
                 <div class="flashcard-container">
                     <!-- Create Form -->
                     <div class="flashcard-form">

@@ -325,6 +325,13 @@ const App = {
         this.checkReminders();
         // Check reminders every minute
         setInterval(() => this.checkReminders(), 60000);
+
+        // Wurde die App über einen Teilen-Link (?import=CODE) geöffnet?
+        const importCode = new URLSearchParams(location.search).get('import');
+        if (importCode) {
+            this.openImportModal(importCode.toUpperCase());
+            history.replaceState(null, '', location.pathname);
+        }
     },
 
     // ===== Data Management =====
@@ -343,7 +350,12 @@ const App = {
         this.homework = map['homework'] || [];
         this.grades = map['grades'] || [];
         this.feedback = []; // now global via feedback_global table
-        this.flashcards = map['flashcards'] || [];
+        // Migration: ältere Karten ohne Leitner-Felder bekommen Box 1 und sind sofort fällig
+        this.flashcards = (map['flashcards'] || []).map(c => ({
+            ...c,
+            box: c.box || 1,
+            due: c.due || this.todayStr()
+        }));
         this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
     },
@@ -369,6 +381,30 @@ const App = {
             ]);
         }
         return timetable;
+    },
+
+    // ===== Leitner-System =====
+    // Box 1 = neu/falsch beantwortet, Box 5 = gemeistert.
+    // Wert = Anzahl Tage bis zur nächsten Wiederholung nach richtiger Antwort.
+    leitnerIntervals: { 1: 1, 2: 2, 3: 4, 4: 9, 5: 14 },
+
+    todayStr() {
+        return new Date().toISOString().slice(0, 10);
+    },
+
+    addDays(dateStr, days) {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() + days);
+        return d.toISOString().slice(0, 10);
+    },
+
+    // ===== Sharing: Code-Generierung =====
+    // Ohne mehrdeutige Zeichen (0/O, 1/I) für bessere Lesbarkeit beim Abtippen
+    generateShareCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+        return code;
     },
 
     // Feste Vorschlagsfarben für den Fach-Farbwähler
@@ -1366,7 +1402,7 @@ const App = {
             return;
         }
 
-        const card = { id: Date.now(), subject, front, back, known: false };
+        const card = { id: Date.now(), subject, front, back, box: 1, due: this.todayStr() };
         this.flashcards.push(card);
         this.saveData('flashcards', this.flashcards);
 
@@ -1399,19 +1435,35 @@ const App = {
             return;
         }
 
+        const today = this.todayStr();
         container.innerHTML = Object.entries(subjects).map(([subject, cards]) => {
-            const known = cards.filter(c => c.known).length;
+            const dueCount = cards.filter(c => c.due <= today).length;
+            const mastered = cards.filter(c => c.box >= 5).length;
+            const boxCounts = [1, 2, 3, 4, 5].map(b => cards.filter(c => (c.box || 1) === b).length);
+            const maxBox = Math.max(1, ...boxCounts);
             return `
                 <div class="fc-deck-card">
                     <h4><i class="fas fa-layer-group" style="color:var(--primary-color);margin-right:8px;"></i>${subject}</h4>
                     <div class="fc-count">${cards.length} Karte${cards.length !== 1 ? 'n' : ''}</div>
                     <div class="fc-deck-stats">
-                        <span class="fc-stat-known"><i class="fas fa-check"></i> ${known} gewusst</span>
-                        <span class="fc-stat-unknown"><i class="fas fa-times"></i> ${cards.length - known} offen</span>
+                        <span class="${dueCount > 0 ? 'fc-stat-due' : 'fc-stat-known'}"><i class="fas fa-clock"></i> ${dueCount} fällig</span>
+                        <span class="fc-stat-known"><i class="fas fa-star"></i> ${mastered} gemeistert</span>
+                    </div>
+                    <div class="fc-box-bar" title="Verteilung über die Leitner-Boxen 1–5">
+                        ${boxCounts.map((count, i) => `<div class="fc-box-seg fc-box-seg-${i + 1}" style="flex:${Math.max(count, count ? 0 : 0.001) || 0.05}${count === 0 ? ';opacity:0.15' : ''}"></div>`).join('')}
+                    </div>
+                    <div class="fc-box-labels">
+                        ${boxCounts.map((count, i) => `<span>B${i + 1}: ${count}</span>`).join('')}
                     </div>
                     <div class="fc-deck-actions">
-                        <button class="btn-primary btn-small" onclick="App.startLearn('${subject}', false)">
-                            <i class="fas fa-graduation-cap"></i> Lernen
+                        <button class="btn-primary btn-small" onclick="App.startLearn('${subject}', true)">
+                            <i class="fas fa-graduation-cap"></i> Lernen${dueCount > 0 ? ` (${dueCount})` : ''}
+                        </button>
+                        <button class="btn-secondary btn-small" onclick="App.startLearn('${subject}', false)">
+                            <i class="fas fa-redo"></i> Alle üben
+                        </button>
+                        <button class="btn-secondary btn-small" onclick="App.shareDeck('${subject}')" title="Diesen Stapel teilen">
+                            <i class="fas fa-share-alt"></i>
                         </button>
                         <button class="btn-small btn-danger" onclick="App.deleteDeck('${subject}')">
                             <i class="fas fa-trash"></i>
@@ -1422,21 +1474,27 @@ const App = {
         }).join('');
     },
 
-    startLearn(subject, wrongOnly) {
+    // onlyDue: true = nur fällige Karten (normales Lernen), false = ganzer Stapel ("Alle üben")
+    startLearn(subject, onlyDue) {
         let cards = this.flashcards.filter(c => c.subject === subject);
-        if (wrongOnly) cards = cards.filter(c => !c.known);
+        if (onlyDue) {
+            const today = this.todayStr();
+            cards = cards.filter(c => c.due <= today);
+        }
         if (cards.length === 0) {
-            this.showNotification('Keine Karten zum Lernen', 'warning');
+            this.showNotification(onlyDue ? 'Heute keine Karten fällig – versuch „Alle üben“' : 'Keine Karten zum Lernen', 'warning');
             return;
         }
 
         // Shuffle
         this.learnState = {
             subject,
+            onlyDue,
             queue: cards.sort(() => Math.random() - 0.5),
             index: 0,
             correct: 0,
-            wrong: 0
+            wrong: 0,
+            wrongIds: []
         };
 
         document.getElementById('flashcard-decks').style.display = 'none';
@@ -1487,9 +1545,14 @@ const App = {
         const { queue, index } = this.learnState;
         const card = queue[index];
 
-        // Update card known state
+        // Leitner-Logik: richtig -> eine Box weiter (max. 5), Fälligkeit nach Intervall.
+        // Falsch -> zurück auf Box 1, morgen wieder fällig.
         const fc = this.flashcards.find(c => c.id === card.id);
-        if (fc) fc.known = known;
+        if (fc) {
+            fc.box = known ? Math.min((fc.box || 1) + 1, 5) : 1;
+            fc.due = this.addDays(this.todayStr(), this.leitnerIntervals[fc.box]);
+            if (!known) this.learnState.wrongIds.push(fc.id);
+        }
         this.saveData('flashcards', this.flashcards);
 
         if (known) this.learnState.correct++;
@@ -1520,11 +1583,31 @@ const App = {
     },
 
     restartLearn() {
-        this.startLearn(this.learnState.subject, false);
+        this.startLearn(this.learnState.subject, this.learnState.onlyDue);
     },
 
     learnWrongOnly() {
-        this.startLearn(this.learnState.subject, true);
+        // Nur die in dieser Runde falsch beantworteten Karten sofort erneut abfragen,
+        // ohne auf die neue Fälligkeit (morgen) zu warten.
+        const { subject, wrongIds } = this.learnState;
+        const cards = this.flashcards.filter(c => wrongIds.includes(c.id));
+        if (cards.length === 0) {
+            this.showNotification('Keine falschen Karten in dieser Runde', 'warning');
+            return;
+        }
+        this.learnState = {
+            subject,
+            onlyDue: false,
+            queue: cards.sort(() => Math.random() - 0.5),
+            index: 0,
+            correct: 0,
+            wrong: 0,
+            wrongIds: []
+        };
+        document.getElementById('fc-done-screen').style.display = 'none';
+        document.getElementById('fc-card-area').style.display = 'block';
+        document.getElementById('fc-answer-btns').style.display = 'none';
+        this.showLearnCard();
     },
 
     exitLearnMode() {
@@ -1553,6 +1636,186 @@ const App = {
     showModal(content) {
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal').classList.add('active');
+    },
+
+    // ===== Sharing (Code/Link, Empfänger bekommt eigene Kopie) =====
+    async createShare(type, title, payload) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const code = this.generateShareCode();
+            const { error } = await supabase.from('shared_content').insert({
+                id: code,
+                owner_id: this.userId,
+                type,
+                title,
+                payload
+            });
+            if (!error) {
+                this.showShareResult(code, title);
+                return;
+            }
+            // 23505 = Unique-Violation (Code existiert schon) -> nochmal versuchen
+            if (error.code !== '23505') {
+                this.showNotification('Teilen fehlgeschlagen: ' + error.message, 'error');
+                return;
+            }
+        }
+        this.showNotification('Teilen fehlgeschlagen, bitte erneut versuchen', 'error');
+    },
+
+    showShareResult(code, title) {
+        const link = `${location.origin}${location.pathname}?import=${code}`;
+        this.showModal(`
+            <h3><i class="fas fa-share-alt"></i> „${title}“ geteilt</h3>
+            <p class="field-hint">Gib diesen Code weiter oder teile den Link. Die andere Person erhält beim Einlösen eine eigene Kopie – Änderungen wirken sich nicht gegenseitig aus.</p>
+            <div class="share-code-box">${code}</div>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+                <button class="btn-secondary" style="flex:1;" onclick="App.copyToClipboard('${code}', 'Code kopiert')"><i class="fas fa-copy"></i> Code kopieren</button>
+                <button class="btn-primary" style="flex:1;" onclick="App.copyToClipboard('${link}', 'Link kopiert')"><i class="fas fa-link"></i> Link kopieren</button>
+            </div>
+        `);
+    },
+
+    copyToClipboard(text, message) {
+        navigator.clipboard.writeText(text)
+            .then(() => this.showNotification(message, 'success'))
+            .catch(() => this.showNotification('Kopieren fehlgeschlagen', 'error'));
+    },
+
+    shareDeck(subject) {
+        const cards = this.flashcards.filter(c => c.subject === subject).map(c => ({ front: c.front, back: c.back }));
+        if (cards.length === 0) {
+            this.showNotification('Dieser Stapel ist leer', 'warning');
+            return;
+        }
+        this.createShare('flashcards', subject, cards);
+    },
+
+    shareTimetable() {
+        const name = Auth.currentUser?.name || Auth.currentUser?.username || 'Mein';
+        this.createShare('timetable', `${name} Stundenplan`, this.timetable);
+    },
+
+    openHomeworkShareModal() {
+        const open = this.homework.filter(h => !h.done);
+        if (open.length === 0) {
+            this.showNotification('Keine offenen Hausaufgaben zum Teilen', 'warning');
+            return;
+        }
+        this.showModal(`
+            <h3><i class="fas fa-share-alt"></i> Hausaufgaben teilen</h3>
+            <p class="field-hint">Wähle aus, welche Hausaufgaben du teilen möchtest.</p>
+            <div class="hw-share-list">
+                ${open.map(hw => `
+                    <label class="hw-share-item">
+                        <input type="checkbox" class="hw-share-check" value="${hw.id}" checked>
+                        <span><strong>${hw.subject}</strong> – ${hw.task} <span class="due-date">(${this.formatDate(hw.due)})</span></span>
+                    </label>
+                `).join('')}
+            </div>
+            <button class="btn-primary btn-full" style="margin-top:14px;" onclick="App.confirmHomeworkShare()"><i class="fas fa-share-alt"></i> Ausgewählte teilen</button>
+        `);
+    },
+
+    confirmHomeworkShare() {
+        const ids = Array.from(document.querySelectorAll('.hw-share-check:checked')).map(el => Number(el.value));
+        const items = this.homework
+            .filter(h => ids.includes(h.id))
+            .map(h => ({ subject: h.subject, task: h.task, due: h.due, priority: h.priority }));
+        if (items.length === 0) {
+            this.showNotification('Bitte mindestens eine Hausaufgabe auswählen', 'warning');
+            return;
+        }
+        const name = Auth.currentUser?.name || Auth.currentUser?.username || 'Geteilte';
+        this.createShare('homework', `${name} Hausaufgaben`, items);
+    },
+
+    openImportModal(prefillCode = '') {
+        this.showModal(`
+            <h3><i class="fas fa-download"></i> Code einlösen</h3>
+            <p class="field-hint">Gib den Code ein, den du von jemandem bekommen hast. Du erhältst eine eigene Kopie der Inhalte.</p>
+            <input type="text" id="import-code-input" placeholder="z.B. AB3XQ9" value="${prefillCode}" style="text-transform:uppercase;" maxlength="8">
+            <button class="btn-primary btn-full" style="margin-top:10px;" onclick="App.fetchSharedContent()"><i class="fas fa-search"></i> Abrufen</button>
+            <div id="import-preview"></div>
+        `);
+        if (prefillCode) this.fetchSharedContent();
+    },
+
+    async fetchSharedContent() {
+        const input = document.getElementById('import-code-input');
+        const code = input.value.trim().toUpperCase();
+        if (!code) {
+            this.showNotification('Bitte einen Code eingeben', 'error');
+            return;
+        }
+        const preview = document.getElementById('import-preview');
+        preview.innerHTML = '<p class="field-hint"><i class="fas fa-spinner fa-spin"></i> Wird gesucht…</p>';
+
+        const { data, error } = await supabase.rpc('get_shared_content', { p_code: code });
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (error || !row) {
+            preview.innerHTML = '<p class="field-hint" style="color:var(--danger-color);">Kein Inhalt mit diesem Code gefunden.</p>';
+            return;
+        }
+
+        const typeLabel = { timetable: 'Stundenplan', flashcards: 'Karteikarten-Stapel', homework: 'Hausaufgaben' }[row.type] || row.type;
+        const count = Array.isArray(row.payload) ? row.payload.length : null;
+        const warning = row.type === 'timetable'
+            ? '<p class="field-hint" style="color:var(--danger-color);"><i class="fas fa-triangle-exclamation"></i> Achtung: Dein aktueller Stundenplan wird dabei komplett ersetzt.</p>'
+            : '';
+
+        this._pendingImport = { type: row.type, title: row.title || '', payload: row.payload };
+
+        preview.innerHTML = `
+            <div class="import-preview-box">
+                <p><i class="fas fa-layer-group"></i> <strong>${typeLabel}</strong>: „${row.title || ''}“${count !== null ? ` · ${count} Einträge` : ''}</p>
+                ${warning}
+                <button class="btn-primary btn-full" onclick="App.applyImport()">
+                    <i class="fas fa-check"></i> Übernehmen
+                </button>
+            </div>
+        `;
+    },
+
+    applyImport() {
+        if (!this._pendingImport) return;
+        const { type, title, payload } = this._pendingImport;
+        if (type === 'timetable') {
+            if (!confirm('Deinen aktuellen Stundenplan wirklich komplett ersetzen?')) return;
+            this.timetable = payload;
+            this.saveData('timetable', this.timetable);
+            this.renderTimetable();
+            this.showNotification('Stundenplan übernommen', 'success');
+        } else if (type === 'flashcards') {
+            const cards = payload.map((c, i) => ({
+                id: Date.now() + i,
+                subject: title,
+                front: c.front,
+                back: c.back,
+                box: 1,
+                due: this.todayStr()
+            }));
+            this.flashcards.push(...cards);
+            this.saveData('flashcards', this.flashcards);
+            this.renderFlashcardDecks();
+            this.showNotification(`${cards.length} Karteikarten übernommen`, 'success');
+        } else if (type === 'homework') {
+            const items = payload.map((h, i) => ({
+                id: Date.now() + i,
+                subject: h.subject,
+                task: h.task,
+                due: h.due,
+                priority: h.priority,
+                done: false,
+                createdAt: new Date().toISOString()
+            }));
+            this.homework.push(...items);
+            this.saveData('homework', this.homework);
+            this.renderHomework();
+            this.showNotification(`${items.length} Hausaufgaben übernommen`, 'success');
+        }
+        this._pendingImport = null;
+        document.getElementById('modal').classList.remove('active');
     },
 
     // ===== Utilities =====
@@ -1957,7 +2220,8 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
                 subject,
                 front: c.front,
                 back: c.back,
-                known: false
+                box: 1,
+                due: this.todayStr()
             });
         });
 
