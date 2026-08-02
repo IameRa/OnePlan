@@ -2478,6 +2478,7 @@ Object.assign(App, {
     pomodoroState: {
         timer: null,
         remaining: 25 * 60,
+        endTime: null, // Wall-Clock-Zeitpunkt, an dem die Phase endet (ms seit Epoch)
         mode: 'work', // 'work' | 'short' | 'long'
         round: 0,
         running: false
@@ -2490,6 +2491,7 @@ Object.assign(App, {
 
         ['pomodoro-work-min', 'pomodoro-short-min', 'pomodoro-long-min', 'pomodoro-rounds'].forEach(id => {
             document.getElementById(id).addEventListener('change', () => {
+                this.clampPomodoroInput(id);
                 this.savePomodoroSettings();
                 if (!this.pomodoroState.running) this.resetPomodoro();
             });
@@ -2508,12 +2510,36 @@ Object.assign(App, {
         this.renderPomodoroDots();
     },
 
+    // Liest min/max direkt aus dem Input-Element und erzwingt sie – reine
+    // HTML-min/max-Attribute verhindern per Tastatur eingegebene Werte
+    // außerhalb des Bereichs (z.B. negative Zahlen) nämlich NICHT von selbst.
+    clampPomodoroValue(id, fallback) {
+        const el = document.getElementById(id);
+        if (!el) return fallback;
+        const min = parseInt(el.min, 10);
+        const max = parseInt(el.max, 10);
+        let val = parseInt(el.value, 10);
+        if (isNaN(val)) val = fallback;
+        if (!isNaN(min)) val = Math.max(min, val);
+        if (!isNaN(max)) val = Math.min(max, val);
+        return val;
+    },
+
+    // Schreibt den geclampten Wert sichtbar ins Feld zurück, damit der
+    // Nutzer merkt, dass z.B. "-5" auf das erlaubte Minimum korrigiert wurde.
+    clampPomodoroInput(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const fallback = { 'pomodoro-work-min': 25, 'pomodoro-short-min': 5, 'pomodoro-long-min': 15, 'pomodoro-rounds': 4 }[id];
+        el.value = this.clampPomodoroValue(id, fallback);
+    },
+
     getPomodoroDurations() {
         return {
-            work: (parseInt(document.getElementById('pomodoro-work-min').value) || 25) * 60,
-            short: (parseInt(document.getElementById('pomodoro-short-min').value) || 5) * 60,
-            long: (parseInt(document.getElementById('pomodoro-long-min').value) || 15) * 60,
-            rounds: parseInt(document.getElementById('pomodoro-rounds').value) || 4
+            work: this.clampPomodoroValue('pomodoro-work-min', 25) * 60,
+            short: this.clampPomodoroValue('pomodoro-short-min', 5) * 60,
+            long: this.clampPomodoroValue('pomodoro-long-min', 15) * 60,
+            rounds: this.clampPomodoroValue('pomodoro-rounds', 4)
         };
     },
 
@@ -2550,6 +2576,10 @@ Object.assign(App, {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+        // Ziel-Zeitpunkt statt reinem Zähler: so korrigiert sich der Timer
+        // beim nächsten Tick von selbst, egal ob setInterval durch einen
+        // Hintergrund-Tab gedrosselt wurde oder ein Tick mal ausgefallen ist.
+        this.pomodoroState.endTime = Date.now() + this.pomodoroState.remaining * 1000;
         this.pomodoroState.running = true;
         document.getElementById('pomodoro-start-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
         this.pomodoroState.timer = setInterval(() => this.tickPomodoro(), 1000);
@@ -2559,6 +2589,7 @@ Object.assign(App, {
         clearInterval(this.pomodoroState.timer);
         this.pomodoroState.timer = null;
         this.pomodoroState.running = false;
+        this.pomodoroState.endTime = null;
         document.getElementById('pomodoro-start-btn').innerHTML = '<i class="fas fa-play"></i> Start';
         document.title = 'OnePlan';
     },
@@ -2579,7 +2610,10 @@ Object.assign(App, {
     },
 
     tickPomodoro() {
-        this.pomodoroState.remaining--;
+        // Restzeit aus der tatsächlich vergangenen Wall-Clock-Zeit neu berechnen,
+        // statt einfach "-1" zu rechnen. Dadurch bleibt der Timer korrekt, auch
+        // wenn Ticks durch Tab-Drosselung/Hintergrund verzögert oder übersprungen wurden.
+        this.pomodoroState.remaining = Math.max(0, Math.round((this.pomodoroState.endTime - Date.now()) / 1000));
         if (this.pomodoroState.remaining <= 0) {
             this.completePomodoroPhase();
         } else {
@@ -2654,7 +2688,10 @@ Object.assign(App, {
         const d = this.getPomodoroDurations();
         const container = document.getElementById('pomodoro-dots');
         if (!container) return;
-        const current = this.pomodoroState.round % d.rounds;
+        // Während der langen Pause sind gerade alle Runden geschafft -> alle
+        // Punkte voll anzeigen. Vorher sprang die Anzeige an genau diesem
+        // Punkt fälschlich auf 0 zurück, weil round % rounds dann 0 ergibt.
+        const current = this.pomodoroState.mode === 'long' ? d.rounds : (this.pomodoroState.round % d.rounds);
         let html = '';
         for (let i = 0; i < d.rounds; i++) {
             html += `<span class="pomodoro-dot ${i < current ? 'filled' : ''}"></span>`;
