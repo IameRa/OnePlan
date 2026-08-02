@@ -145,6 +145,10 @@
                         <h3><i class="fas fa-tasks"></i> Offene Hausaufgaben</h3>
                         <div id="pending-homework"></div>
                     </div>
+                    <div class="dashboard-card dashboard-streak-card">
+                        <h3><i class="fas fa-fire"></i> Streak</h3>
+                        <div id="dashboard-streak"></div>
+                    </div>
                     <div class="dashboard-card">
                         <h3 class="dashboard-card-header">
                             <span><i class="fas fa-chart-line"></i> Notendurchschnitt</span>
@@ -153,10 +157,6 @@
                             </button>
                         </h3>
                         <div id="grade-overview"></div>
-                    </div>
-                    <div class="dashboard-card dashboard-streak-card">
-                        <h3><i class="fas fa-fire"></i> Streak</h3>
-                        <div id="dashboard-streak"></div>
                     </div>
                 </div>
             </section>
@@ -257,24 +257,35 @@
                     </div>
                 </div>
                 <div class="homework-container">
-                    <div class="homework-form">
-                        <h3>Neue Hausaufgabe</h3>
+                    <div class="homework-form grades-box">
+                        <div class="grades-box-header">
+                            <div class="grades-box-icon"><i class="fas fa-pen"></i></div>
+                            <div>
+                                <h3>Neue Hausaufgabe</h3>
+                                <p>Trag eine neue Aufgabe ein</p>
+                            </div>
+                        </div>
                         <input type="text" id="hw-subject" placeholder="Fach">
                         <textarea id="hw-task" placeholder="Aufgabe"></textarea>
-                        <input type="date" id="hw-due">
-                        <select id="hw-priority">
-                            <option value="low">Niedrig</option>
-                            <option value="medium">Mittel</option>
-                            <option value="high">Hoch</option>
-                        </select>
-                        <button id="add-homework" class="btn-primary">Hinzufügen</button>
+                        <div class="grade-form-row">
+                            <input type="date" id="hw-due">
+                            <select id="hw-priority">
+                                <option value="low">Niedrig</option>
+                                <option value="medium">Mittel</option>
+                                <option value="high">Hoch</option>
+                            </select>
+                        </div>
+                        <button id="add-homework" class="btn-primary"><i class="fas fa-plus"></i> Hinzufügen</button>
                     </div>
-                    <div class="homework-filters">
-                        <button class="filter-btn active" data-filter="all">Alle</button>
-                        <button class="filter-btn" data-filter="pending">Offen</button>
-                        <button class="filter-btn" data-filter="done">Erledigt</button>
+
+                    <div class="homework-main">
+                        <div class="homework-filters">
+                            <button class="filter-btn active" data-filter="all">Alle</button>
+                            <button class="filter-btn" data-filter="pending">Offen</button>
+                            <button class="filter-btn" data-filter="done">Erledigt</button>
+                        </div>
+                        <div id="homework-list" class="homework-list"></div>
                     </div>
-                    <div id="homework-list" class="homework-list"></div>
                 </div>
             </section>
 
@@ -329,11 +340,11 @@
                         <div class="grade-form-row">
                             <div>
                                 <label class="goal-label">Zielschnitt</label>
-                                <input type="number" id="goal-target" value="2.0" step="0.1">
+                                <input type="number" id="goal-target" placeholder="z.B. 2.0" step="0.1">
                             </div>
                             <div>
                                 <label class="goal-label">Gewichtung nächste Arbeit (%)</label>
-                                <input type="number" id="goal-weight" value="40" min="1" max="100">
+                                <input type="number" id="goal-weight" placeholder="z.B. 40" min="1" max="100">
                             </div>
                         </div>
 

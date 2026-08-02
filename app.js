@@ -1055,14 +1055,22 @@ const App = {
             return;
         }
 
+        const priorityLabels = { low: 'Niedrig', medium: 'Mittel', high: 'Hoch' };
+
         container.innerHTML = filtered.map(hw => `
             <div class="homework-item ${hw.done ? 'done' : ''} priority-${hw.priority}">
-                <div class="homework-info">
-                    <h4>${hw.subject}</h4>
-                    <p>${hw.task}</p>
-                    <span class="due-date">
-                        <i class="fas fa-clock"></i> Fällig: ${this.formatDate(hw.due)}
-                    </span>
+                <div class="homework-item-main">
+                    <div class="homework-avatar">${hw.subject.charAt(0).toUpperCase()}</div>
+                    <div class="homework-info">
+                        <div class="homework-info-top">
+                            <h4>${hw.subject}</h4>
+                            <span class="priority-badge priority-badge-${hw.priority}">${priorityLabels[hw.priority]}</span>
+                        </div>
+                        <p>${hw.task}</p>
+                        <span class="due-date">
+                            <i class="fas fa-clock"></i> Fällig: ${this.formatDate(hw.due)}
+                        </span>
+                    </div>
                 </div>
                 <div class="homework-actions">
                     <button class="btn-small btn-success" onclick="App.toggleHomework(${hw.id})">
@@ -1129,12 +1137,13 @@ const App = {
                 btn.classList.add('active');
                 this.state.goalSystem = btn.dataset.system;
                 const input = document.getElementById('goal-target');
+                const current = parseFloat(input.value);
                 if (this.state.goalSystem === '1-6') {
                     input.step = 0.1;
-                    if (parseFloat(input.value) > 6 || isNaN(parseFloat(input.value))) input.value = '2.0';
+                    if (!isNaN(current) && current > 6) input.value = '';
                 } else {
                     input.step = 1;
-                    if (parseFloat(input.value) <= 6 || isNaN(parseFloat(input.value))) input.value = '13';
+                    if (!isNaN(current) && current <= 6) input.value = '';
                 }
                 this.calculateGradeGoal();
             });
@@ -1190,7 +1199,7 @@ const App = {
         const subject = document.getElementById('goal-subject').value;
         const system = this.state.goalSystem || '1-6';
         const targetRaw = parseFloat(document.getElementById('goal-target').value);
-        const weight = Math.min(100, Math.max(1, parseFloat(document.getElementById('goal-weight').value) || 40));
+        const weightRaw = parseFloat(document.getElementById('goal-weight').value);
 
         const currentOut = document.getElementById('goal-current-out');
         const targetOut = document.getElementById('goal-target-out');
@@ -1200,14 +1209,20 @@ const App = {
 
         const currentAvg = subject ? this.subjectAverage(subject) : null;
 
-        if (!subject || currentAvg === null || isNaN(targetRaw)) {
-            currentOut.textContent = '–';
+        if (!subject || currentAvg === null || isNaN(targetRaw) || isNaN(weightRaw)) {
+            currentOut.textContent = currentAvg !== null ? currentAvg.toFixed(2) : '–';
             targetOut.textContent = '–';
             badge.classList.remove('warning', 'danger');
             badgeMain.textContent = 'Note –';
-            badgeSub.textContent = subject ? `Noch keine Noten für ${subject}` : 'Fach wählen und berechnen';
+            badgeSub.textContent = !subject
+                ? 'Fach wählen und berechnen'
+                : currentAvg === null
+                    ? `Noch keine Noten für ${subject}`
+                    : 'Zielschnitt und Gewichtung eingeben';
             return;
         }
+
+        const weight = Math.min(100, Math.max(1, weightRaw));
 
         currentOut.textContent = currentAvg.toFixed(2);
 
