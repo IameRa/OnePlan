@@ -725,8 +725,16 @@ const App = {
             return;
         }
 
-        container.innerHTML = '<h3>Anstehende Termine</h3>' + upcoming.map(event => `
+        const monthShort = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+
+        container.innerHTML = '<h3>Anstehende Termine</h3>' + upcoming.map(event => {
+            const d = new Date(event.date);
+            return `
             <div class="event-item">
+                <div class="event-date-badge">
+                    <div class="event-date-day">${d.getDate()}</div>
+                    <div class="event-date-month">${monthShort[d.getMonth()]}</div>
+                </div>
                 <div class="event-info">
                     <h4>${event.title}</h4>
                     <span>${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
@@ -736,7 +744,8 @@ const App = {
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
-        `).join('');
+        `;
+        }).join('');
     },
 
     deleteEvent(id) {
@@ -918,7 +927,7 @@ const App = {
                                 <div class="subject" ${color ? `style="color:${color};"` : ''}>${cell.subject}</div>
                                 <div class="teacher">${cell.teacher}</div>
                                 <div class="room">${cell.room}</div>
-                            ` : '<span style="color: var(--text-light)">-</span>'}
+                            ` : '<span class="empty-slot">–</span>'}
                         </div>
                     </td>
                 `;

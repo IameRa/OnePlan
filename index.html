@@ -165,34 +165,45 @@
             <section id="kalender" class="section">
                 <h1>Kalender</h1>
                 <div class="calendar-container">
-                    <div class="calendar-header">
-                        <button id="prev-month" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
-                        <h2 id="current-month"></h2>
-                        <button id="next-month" class="btn-icon"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="calendar-grid">
+                    <div class="calendar-main grades-box">
+                        <div class="calendar-header">
+                            <button id="prev-month" class="btn-icon"><i class="fas fa-chevron-left"></i></button>
+                            <h2 id="current-month"></h2>
+                            <button id="next-month" class="btn-icon"><i class="fas fa-chevron-right"></i></button>
+                        </div>
                         <div class="calendar-weekdays">
                             <span>Mo</span><span>Di</span><span>Mi</span><span>Do</span><span>Fr</span><span>Sa</span><span>So</span>
                         </div>
                         <div id="calendar-days" class="calendar-days"></div>
                     </div>
-                    <div class="event-form">
-                        <h3>Neuer Termin</h3>
-                        <input type="text" id="event-title" placeholder="Titel">
-                        <input type="date" id="event-date">
-                        <input type="time" id="event-time">
-                        <select id="event-reminder">
-                            <option value="0">Keine Erinnerung</option>
-                            <option value="5">5 Minuten vorher</option>
-                            <option value="15">15 Minuten vorher</option>
-                            <option value="30">30 Minuten vorher</option>
-                            <option value="60">1 Stunde vorher</option>
-                            <option value="1440">1 Tag vorher</option>
-                        </select>
-                        <textarea id="event-description" placeholder="Beschreibung"></textarea>
-                        <button id="add-event" class="btn-primary">Termin hinzufügen</button>
+
+                    <div class="calendar-side">
+                        <div class="event-form grades-box">
+                            <div class="grades-box-header">
+                                <div class="grades-box-icon"><i class="fas fa-calendar-plus"></i></div>
+                                <div>
+                                    <h3>Neuer Termin</h3>
+                                    <p>Trag einen Termin im Kalender ein</p>
+                                </div>
+                            </div>
+                            <input type="text" id="event-title" placeholder="Titel">
+                            <div class="grade-form-row">
+                                <input type="date" id="event-date">
+                                <input type="time" id="event-time">
+                            </div>
+                            <select id="event-reminder">
+                                <option value="0">Keine Erinnerung</option>
+                                <option value="5">5 Minuten vorher</option>
+                                <option value="15">15 Minuten vorher</option>
+                                <option value="30">30 Minuten vorher</option>
+                                <option value="60">1 Stunde vorher</option>
+                                <option value="1440">1 Tag vorher</option>
+                            </select>
+                            <textarea id="event-description" placeholder="Beschreibung"></textarea>
+                            <button id="add-event" class="btn-primary"><i class="fas fa-plus"></i> Termin hinzufügen</button>
+                        </div>
+                        <div id="event-list" class="event-list grades-box"></div>
                     </div>
-                    <div id="event-list" class="event-list"></div>
                 </div>
             </section>
 
@@ -206,21 +217,29 @@
                     </div>
                 </div>
                 <div class="timetable-container">
-                    <table class="timetable">
-                        <thead>
-                            <tr>
-                                <th>Stunde</th>
-                                <th>Montag</th>
-                                <th>Dienstag</th>
-                                <th>Mittwoch</th>
-                                <th>Donnerstag</th>
-                                <th>Freitag</th>
-                            </tr>
-                        </thead>
-                        <tbody id="timetable-body"></tbody>
-                    </table>
-                    <div class="timetable-edit">
-                        <h3>Stunde bearbeiten</h3>
+                    <div class="timetable-card">
+                        <table class="timetable">
+                            <thead>
+                                <tr>
+                                    <th class="timetable-th-period">Stunde</th>
+                                    <th>Montag</th>
+                                    <th>Dienstag</th>
+                                    <th>Mittwoch</th>
+                                    <th>Donnerstag</th>
+                                    <th>Freitag</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timetable-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="timetable-edit grades-box">
+                        <div class="grades-box-header">
+                            <div class="grades-box-icon"><i class="fas fa-table-cells"></i></div>
+                            <div>
+                                <h3>Stunde bearbeiten</h3>
+                                <p>Fach für einen Zeitslot eintragen</p>
+                            </div>
+                        </div>
                         <select id="edit-day">
                             <option value="0">Montag</option>
                             <option value="1">Dienstag</option>
@@ -235,14 +254,16 @@
                         </div>
                         <p class="field-hint">Start- und Endstunde gleich lassen für eine einzelne Stunde, oder eine spätere Endstunde wählen für eine Doppel-/Mehrfachstunde.</p>
                         <input type="text" id="edit-subject" placeholder="Fach">
-                        <input type="text" id="edit-teacher" placeholder="Lehrer/in">
-                        <input type="text" id="edit-room" placeholder="Raum">
+                        <div class="grade-form-row">
+                            <input type="text" id="edit-teacher" placeholder="Lehrer/in">
+                            <input type="text" id="edit-room" placeholder="Raum">
+                        </div>
                         <label class="color-picker-label">
                             <span>Farbe</span>
                             <input type="color" id="edit-color" value="#15803d">
                         </label>
                         <div id="color-presets" class="color-presets"></div>
-                        <button id="save-timetable" class="btn-primary">Speichern</button>
+                        <button id="save-timetable" class="btn-primary"><i class="fas fa-check"></i> Speichern</button>
                     </div>
                 </div>
             </section>
