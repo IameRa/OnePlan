@@ -3,6 +3,53 @@ const SUPABASE_URL = 'https://nothxzhzhjgpheqwquhy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdGh4emh6aGpncGhlcXdxdWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTIwNDcsImV4cCI6MjA5NjYyODA0N30.yDXDBzHXJxy_Re-dNejiXAZiZyzoyrTPlS7X7fP_YeI';
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ===== Schulferien Schleswig-Holstein =====
+// Quelle: Landesverordnung über Ferientermine (schleswig-holstein.de/Ferientermine),
+// Stand Ferienverordnung 2024/25 bis 2030/31. Gilt für das Festland; auf Sylt, Föhr,
+// Amrum, Helgoland und den Halligen enden die Sommerferien und beginnen die
+// Herbstferien jeweils eine Woche früher.
+const FERIEN_SH = [
+    { name: 'Sommerferien', start: '2026-07-04', end: '2026-08-15' },
+    { name: 'Herbstferien', start: '2026-10-12', end: '2026-10-24' },
+    { name: 'Weihnachtsferien', start: '2026-12-21', end: '2027-01-06' },
+    { name: 'Osterferien', start: '2027-03-30', end: '2027-04-10' },
+    { name: 'Himmelfahrt (schulfrei)', start: '2027-05-07', end: '2027-05-07' },
+    { name: 'Sommerferien', start: '2027-07-03', end: '2027-08-14' },
+    { name: 'Herbstferien', start: '2027-10-11', end: '2027-10-23' },
+    { name: 'Weihnachtsferien', start: '2027-12-23', end: '2028-01-08' },
+    { name: 'Osterferien', start: '2028-04-03', end: '2028-04-15' },
+    { name: 'Himmelfahrt (schulfrei)', start: '2028-05-26', end: '2028-05-26' },
+    { name: 'Sommerferien', start: '2028-06-24', end: '2028-08-04' },
+    { name: 'Herbstferien', start: '2028-10-16', end: '2028-10-30' },
+    { name: 'Weihnachtsferien', start: '2028-12-21', end: '2029-01-05' },
+    { name: 'Osterferien', start: '2029-03-23', end: '2029-04-06' },
+    { name: 'Himmelfahrt (schulfrei)', start: '2029-05-11', end: '2029-05-11' },
+    { name: 'Sommerferien', start: '2029-06-23', end: '2029-08-03' },
+    { name: 'Herbstferien', start: '2029-10-08', end: '2029-10-19' },
+    { name: 'Weihnachtsferien', start: '2029-12-21', end: '2030-01-08' },
+    { name: 'Osterferien', start: '2030-04-08', end: '2030-04-20' },
+    { name: 'Himmelfahrt (schulfrei)', start: '2030-05-31', end: '2030-05-31' },
+    { name: 'Sommerferien', start: '2030-07-08', end: '2030-08-17' },
+    { name: 'Herbstferien', start: '2030-10-14', end: '2030-10-25' },
+    { name: 'Weihnachtsferien', start: '2030-12-20', end: '2031-01-06' },
+    { name: 'Osterferien', start: '2031-03-28', end: '2031-04-10' },
+    { name: 'Himmelfahrt (schulfrei)', start: '2031-05-23', end: '2031-05-23' }
+];
+
+// ===== Stundenplan-Zeiten =====
+// Zentrale Definition der 8 Unterrichtsstunden, genutzt vom Stundenplan-Rendering
+// und vom "Nächste Stunde"-Widget auf dem Dashboard.
+const TIMETABLE_PERIODS = [
+    { label: '1.', start: '07:40', end: '08:25' },
+    { label: '2.', start: '08:30', end: '09:15' },
+    { label: '3.', start: '09:30', end: '10:15' },
+    { label: '4.', start: '10:20', end: '11:05' },
+    { label: '5.', start: '11:25', end: '12:10' },
+    { label: '6.', start: '12:15', end: '13:00' },
+    { label: '7.', start: '13:45', end: '14:30' },
+    { label: '8.', start: '14:30', end: '15:15' }
+];
+
 // ===== Account System =====
 const Auth = {
     currentUser: null,
@@ -611,6 +658,22 @@ const App = {
         this.renderEventList();
     },
 
+    // Gibt den Ferieneintrag zurück, in den das übergebene Datum (YYYY-MM-DD) fällt, sonst null.
+    getFerienForDate(dateStr) {
+        return FERIEN_SH.find(f => dateStr >= f.start && dateStr <= f.end) || null;
+    },
+
+    // Liefert die aktuell laufenden Ferien (falls heute Ferien sind) oder die nächsten bevorstehenden.
+    getCurrentOrNextFerien() {
+        const today = this.todayStr();
+        const current = this.getFerienForDate(today);
+        if (current) return { ...current, running: true };
+        const next = FERIEN_SH
+            .filter(f => f.start >= today)
+            .sort((a, b) => a.start.localeCompare(b.start))[0];
+        return next ? { ...next, running: false } : null;
+    },
+
     renderCalendar() {
         const year = this.state.currentMonth.getFullYear();
         const month = this.state.currentMonth.getMonth();
@@ -652,6 +715,12 @@ const App = {
             if (this.events.some(e => e.date === dateStr)) {
                 day.classList.add('has-event');
             }
+
+            const ferien = this.getFerienForDate(dateStr);
+            if (ferien) {
+                day.classList.add('is-ferien');
+                day.title = ferien.name;
+            }
             
             day.addEventListener('click', () => {
                 document.getElementById('event-date').value = dateStr;
@@ -668,6 +737,27 @@ const App = {
             day.className = 'calendar-day other-month';
             day.textContent = i;
             daysContainer.appendChild(day);
+        }
+
+        this.renderFerienInfo();
+    },
+
+    // Zeigt oberhalb des Kalenders an, ob gerade Ferien laufen oder wann die nächsten beginnen (SH).
+    renderFerienInfo() {
+        const el = document.getElementById('ferien-info');
+        if (!el) return;
+
+        const f = this.getCurrentOrNextFerien();
+        if (!f) {
+            el.innerHTML = '';
+            return;
+        }
+
+        const fmt = (iso) => this.formatDate(iso);
+        if (f.running) {
+            el.innerHTML = `<i class="fas fa-umbrella-beach"></i> Aktuell ${f.name} (bis ${fmt(f.end)})`;
+        } else {
+            el.innerHTML = `<i class="fas fa-umbrella-beach"></i> Nächste Ferien: ${f.name}, ${fmt(f.start)} – ${fmt(f.end)}`;
         }
     },
 
@@ -885,8 +975,7 @@ const App = {
         const tbody = document.getElementById('timetable-body');
         tbody.innerHTML = '';
 
-        const periods = ['1. (07:40-08:25)', '2. (08:30-09:15)', '3. (09:30-10:15)', '4. (10:20-11:05)', '5. (11:25-12:10)',
-                        '6. (12:15-13:00)', '7. (13:45-14:30)', '8. (14:30-15:15)'];
+        const periods = TIMETABLE_PERIODS.map(p => `${p.label} (${p.start}-${p.end})`);
 
         // skipRows[d] = wie viele kommende Zeilen für diesen Tag noch übersprungen werden müssen,
         // weil sie Teil einer Doppelstunden-Zelle (rowspan) weiter oben sind
@@ -1728,6 +1817,103 @@ const App = {
                 </div>
                 <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
                 <p>${streak === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv'}</p>
+            </div>
+        `;
+
+        this.renderNextLesson();
+    },
+
+    // ===== Nächste-Stunde-Widget (Dashboard) =====
+    // Sucht ausgehend von jetzt die nächste Stunde mit Inhalt im Stundenplan,
+    // unter Berücksichtigung von Wochenende und SH-Schulferien.
+    renderNextLesson() {
+        const el = document.getElementById('dashboard-next-lesson');
+        if (!el) return;
+
+        const now = new Date();
+        const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const todayIdx = (now.getDay() + 6) % 7; // Montag = 0 ... Sonntag = 6
+
+        const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+        // Sucht in this.timetable[period][dayIdx] den ersten befüllten Eintrag ab period 'fromPeriod'
+        const findLessonOnDay = (dayIdx, fromPeriod) => {
+            for (let p = fromPeriod; p < TIMETABLE_PERIODS.length; p++) {
+                const cell = (this.timetable[p] || [])[dayIdx];
+                if (cell && cell.subject) {
+                    return { period: p, cell };
+                }
+            }
+            return null;
+        };
+
+        const renderEmpty = (message) => {
+            el.innerHTML = `<p style="color: var(--text-secondary);">${message}</p>`;
+        };
+
+        // Schulfrei heute (Ferien) -> direkt anzeigen, wann's weitergeht
+        const todayFerien = this.getFerienForDate(this.todayStr());
+        if (todayFerien) {
+            renderEmpty(`${todayFerien.name} 🎉 – bis ${this.formatDate(todayFerien.end)}`);
+            return;
+        }
+
+        let dayIdx = todayIdx;
+        let fromPeriod = 0;
+        let daysAhead = 0;
+
+        // Ist heute noch Schule (Mo-Fr) und noch eine laufende/kommende Stunde übrig?
+        if (todayIdx <= 4) {
+            for (let p = 0; p < TIMETABLE_PERIODS.length; p++) {
+                if (TIMETABLE_PERIODS[p].end > nowHM) {
+                    fromPeriod = p;
+                    break;
+                }
+                fromPeriod = TIMETABLE_PERIODS.length; // alle Stunden heute vorbei
+            }
+        } else {
+            fromPeriod = TIMETABLE_PERIODS.length; // Wochenende: heute zählt nicht
+        }
+
+        let found = null;
+        if (fromPeriod < TIMETABLE_PERIODS.length) {
+            found = findLessonOnDay(dayIdx, fromPeriod);
+        }
+
+        // Nichts mehr heute -> nächste Schultage durchsuchen (max. 14 Tage voraus)
+        while (!found && daysAhead < 14) {
+            daysAhead++;
+            dayIdx = (dayIdx + 1) % 7;
+            const searchDate = new Date(now);
+            searchDate.setDate(searchDate.getDate() + daysAhead);
+            const searchDateStr = searchDate.toISOString().split('T')[0];
+
+            if (dayIdx > 4) continue; // Wochenende überspringen
+            if (this.getFerienForDate(searchDateStr)) continue; // Ferien überspringen
+
+            const lesson = findLessonOnDay(dayIdx, 0);
+            if (lesson) {
+                found = lesson;
+                break;
+            }
+        }
+
+        if (!found) {
+            renderEmpty('Kein Stundenplan hinterlegt');
+            return;
+        }
+
+        const period = TIMETABLE_PERIODS[found.period];
+        const cell = found.cell;
+        const isToday = daysAhead === 0;
+        const isTomorrow = daysAhead === 1;
+        const dayLabel = isToday ? 'Heute' : isTomorrow ? 'Morgen' : dayNames[dayIdx];
+
+        el.innerHTML = `
+            <div style="text-align: center;">
+                <div style="font-size: 1.6rem; font-weight: bold; color: var(--text-primary);">${cell.subject}</div>
+                <small style="color: var(--text-secondary);">${dayLabel} · ${period.label} Stunde (${period.start}-${period.end})</small>
+                ${(cell.room || cell.teacher) ? `<div style="margin-top: 8px;"><small>${[cell.room, cell.teacher].filter(Boolean).join(' · ')}</small></div>` : ''}
             </div>
         `;
     },

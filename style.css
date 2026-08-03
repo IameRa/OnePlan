@@ -485,6 +485,34 @@ textarea {
     background: white;
 }
 
+.calendar-day.is-ferien {
+    background: var(--border-color);
+}
+
+.calendar-day.today.is-ferien {
+    background: var(--primary-color);
+}
+
+.ferien-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.ferien-info:empty {
+    display: none;
+}
+
+.ferien-info i {
+    color: var(--primary-color);
+}
+
 .event-form input,
 .event-form select {
     margin-bottom: 14px;
