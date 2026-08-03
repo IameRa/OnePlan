@@ -564,7 +564,12 @@ const Auth = {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const gradeHidden = !!App.settings?.hideGradeAverage;
         const pushSupported = Push.isSupported();
-        const pushOn = pushSupported ? !!(await Push.getExistingSubscription()) : false;
+        // Nie unbegrenzt warten: falls der Service Worker nicht bereit wird
+        // (z.B. kein aktiver SW), soll sich das Fenster trotzdem öffnen.
+        const pushOn = pushSupported ? await Promise.race([
+            Push.getExistingSubscription().then(sub => !!sub).catch(() => false),
+            new Promise(resolve => setTimeout(() => resolve(false), 1200))
+        ]) : false;
         const user = this.currentUser || {};
         const displayName = user.name || user.username || user.email || '';
         const subtitle = user.username ? '@' + user.username : (user.email || '');
