@@ -1964,11 +1964,11 @@ const App = {
 
         stats.innerHTML = `
             <div class="feedback-stat-row">
-                <div class="feedback-stat"><div class="fs-num">${total}</div><div class="fs-label">Gesamt</div></div>
-                <div class="feedback-stat"><div class="fs-num">${avgRating.toFixed(1)} ★</div><div class="fs-label">Ø Bewertung</div></div>
-                <div class="feedback-stat"><div class="fs-num">${byType.bug}</div><div class="fs-label">Fehler</div></div>
-                <div class="feedback-stat"><div class="fs-num">${byType.suggestion}</div><div class="fs-label">Vorschläge</div></div>
-                <div class="feedback-stat"><div class="fs-num">${byType.praise}</div><div class="fs-label">Lob</div></div>
+                <div class="feedback-stat"><div class="fs-icon"><i class="fas fa-inbox"></i></div><div class="fs-num">${total}</div><div class="fs-label">Gesamt</div></div>
+                <div class="feedback-stat"><div class="fs-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;"><i class="fas fa-star"></i></div><div class="fs-num">${avgRating.toFixed(1)}</div><div class="fs-label">Ø Bewertung</div></div>
+                <div class="feedback-stat"><div class="fs-icon" style="background:rgba(239,68,68,0.12);color:#ef4444;"><i class="fas fa-bug"></i></div><div class="fs-num">${byType.bug}</div><div class="fs-label">Fehler</div></div>
+                <div class="feedback-stat"><div class="fs-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6;"><i class="fas fa-lightbulb"></i></div><div class="fs-num">${byType.suggestion}</div><div class="fs-label">Vorschläge</div></div>
+                <div class="feedback-stat"><div class="fs-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;"><i class="fas fa-heart"></i></div><div class="fs-num">${byType.praise}</div><div class="fs-label">Lob</div></div>
             </div>`;
 
         const filtered = filter === 'all' ? all : all.filter(f => f.type === filter);
@@ -1982,7 +1982,7 @@ const App = {
         const typeColors = { bug: '#ef4444', suggestion: '#3b82f6', praise: '#f59e0b', other: '#8b5cf6' };
 
         list.innerHTML = filtered.map(fb => `
-            <div class="feedback-admin-item">
+            <div class="feedback-admin-item" style="border-left-color:${typeColors[fb.type] || '#94a3b8'};">
                 <div class="feedback-admin-item-header">
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <span class="fb-type-badge" style="background:${typeColors[fb.type]}20;color:${typeColors[fb.type]};">${typeLabels[fb.type] || fb.type}</span>
@@ -2402,6 +2402,7 @@ const App = {
         container.innerHTML = Object.entries(subjects).map(([subject, cards]) => {
             const dueCount = cards.filter(c => c.due <= today).length;
             const mastered = cards.filter(c => c.box >= 5).length;
+            const masteryPct = Math.round((mastered / cards.length) * 100);
             const boxCounts = [1, 2, 3, 4, 5].map(b => cards.filter(c => (c.box || 1) === b).length);
             const maxBox = Math.max(1, ...boxCounts);
             return `
@@ -2411,6 +2412,10 @@ const App = {
                     <div class="fc-deck-stats">
                         <span class="${dueCount > 0 ? 'fc-stat-due' : 'fc-stat-known'}"><i class="fas fa-clock"></i> ${dueCount} fällig</span>
                         <span class="fc-stat-known"><i class="fas fa-star"></i> ${mastered} gemeistert</span>
+                    </div>
+                    <div class="fc-mastery-row" title="${masteryPct}% dieses Stapels gemeistert">
+                        <div class="fc-mastery-bar"><div class="fc-mastery-fill" style="width:${masteryPct}%;"></div></div>
+                        <span class="fc-mastery-pct">${masteryPct}%</span>
                     </div>
                     <div class="fc-box-bar" title="Verteilung über die Leitner-Boxen 1–5">
                         ${boxCounts.map((count, i) => `<div class="fc-box-seg fc-box-seg-${i + 1}" style="flex:${Math.max(count, count ? 0 : 0.001) || 0.05}${count === 0 ? ';opacity:0.15' : ''}"></div>`).join('')}
