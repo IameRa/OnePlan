@@ -2020,7 +2020,18 @@ const App = {
         grades: {
             label: 'Notendurchschnitt', icon: 'fa-chart-line', bodyId: 'grade-overview',
             headerExtra: '<button class="grade-visibility-toggle" onclick="App.toggleGradeVisibility()" title="Notendurchschnitt anzeigen/verbergen"><i class="fas fa-eye" id="grade-visibility-icon"></i></button>'
-        }
+        },
+        ferien: { label: 'Nächste Ferien', icon: 'fa-umbrella-beach', bodyId: 'dashboard-ferien' },
+        level: { label: 'Level & Fortschritt', icon: 'fa-star', bodyId: 'dashboard-level' },
+        gradeTrend: { label: 'Notentrend', icon: 'fa-chart-bar', bodyId: 'dashboard-grade-trend' },
+        topHomeworkSubject: { label: 'Meiste Hausaufgaben', icon: 'fa-book-open', bodyId: 'dashboard-top-hw-subject' },
+        weekPreview: { label: 'Wochenvorschau', icon: 'fa-calendar-week', bodyId: 'dashboard-week-preview' },
+        fcQuiz: { label: 'Karteikarten-Tagesquiz', icon: 'fa-question-circle', bodyId: 'dashboard-fc-quiz' },
+        quote: { label: 'Spruch des Tages', icon: 'fa-quote-left', bodyId: 'dashboard-quote' },
+        activityStats: { label: 'Aktivität gesamt', icon: 'fa-chart-pie', bodyId: 'dashboard-activity-stats' },
+        fcDue: { label: 'Fällige Karteikarten', icon: 'fa-layer-group', bodyId: 'dashboard-fc-due' },
+        todaySchedule: { label: 'Stundenplan heute', icon: 'fa-list-ol', bodyId: 'dashboard-today-schedule' },
+        lastBadge: { label: 'Letztes Abzeichen', icon: 'fa-award', bodyId: 'dashboard-last-badge' }
     },
 
     // Liefert die gespeicherte Reihenfolge/Sichtbarkeit, bereinigt um nicht mehr
@@ -2169,6 +2180,249 @@ const App = {
         }
 
         this.renderNextLesson();
+
+        // Nächste Ferien (Schleswig-Holstein)
+        const ferienEl = document.getElementById('dashboard-ferien');
+        if (ferienEl) {
+            const f = this.getCurrentOrNextFerien();
+            if (!f) {
+                ferienEl.innerHTML = '<p style="color: var(--text-secondary);">Keine Ferientermine hinterlegt</p>';
+            } else {
+                const targetDate = f.running ? f.end : f.start;
+                const daysLeft = this.daysBetween(this.todayStr(), targetDate);
+                const dayWord = daysLeft === 1 ? 'Tag' : 'Tage';
+                ferienEl.innerHTML = `
+                    <div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('kalender')" title="Zum Kalender">
+                        <div style="font-size: 2.2rem; font-weight: bold; color: var(--primary-color);">
+                            ${f.running ? '🎉' : daysLeft}
+                        </div>
+                        <p>${f.running ? `noch ${daysLeft} ${dayWord} ${f.name}` : `${dayWord} bis ${f.name}`}</p>
+                        <small style="color: var(--text-secondary);">${this.formatDate(f.start)} – ${this.formatDate(f.end)}</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Level & XP-Fortschritt
+        const levelEl = document.getElementById('dashboard-level');
+        if (levelEl) {
+            const p = this.progress || {};
+            const { level, xpIntoLevel, xpForNextLevel } = this.getLevelInfo(p.xp || 0);
+            levelEl.innerHTML = `
+                <div style="cursor: pointer;" onclick="App.navigateTo('fortschritt')" title="Zum Fortschritt">
+                    <div class="level-card-top" style="margin-bottom: 10px;">
+                        <span class="level-badge">Lvl ${level}</span>
+                        <span class="level-xp-text">${xpIntoLevel} / ${xpForNextLevel} XP</span>
+                    </div>
+                    <div class="level-progress-bar" style="margin-bottom: 6px;">
+                        <div class="level-progress-fill" style="width: ${(xpIntoLevel / xpForNextLevel) * 100}%;"></div>
+                    </div>
+                    <small style="color: var(--text-secondary);">Noch ${xpForNextLevel - xpIntoLevel} XP bis Level ${level + 1}</small>
+                </div>
+            `;
+        }
+
+        this.renderMoreDashboardWidgets();
+    },
+
+    // ===== Weitere Dashboard-Widgets =====
+    renderMoreDashboardWidgets() {
+        const today = this.todayStr();
+
+        // Notentrend: letzte vs. vorletzte Note je Fach (normalisiert, niedriger = besser)
+        const trendEl = document.getElementById('dashboard-grade-trend');
+        if (trendEl) {
+            const bySubject = {};
+            this.grades.forEach(g => {
+                if (!bySubject[g.subject]) bySubject[g.subject] = [];
+                bySubject[g.subject].push(g);
+            });
+            const norm = g => g.system === '1-15' ? this.pointsToGrade(g.value) : g.value;
+
+            const rows = Object.entries(bySubject).map(([subject, list]) => {
+                const sorted = [...list].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                const last = sorted[sorted.length - 1];
+                const prev = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+                let icon = 'fa-minus', cls = 'grade-trend-neutral';
+                if (prev) {
+                    const diff = norm(prev) - norm(last); // positiv = verbessert (Zahl kleiner geworden)
+                    if (diff > 0.001) { icon = 'fa-arrow-up'; cls = 'grade-trend-up'; }
+                    else if (diff < -0.001) { icon = 'fa-arrow-down'; cls = 'grade-trend-down'; }
+                }
+                return { subject, last, icon, cls, sortDate: new Date(last.createdAt) };
+            }).sort((a, b) => b.sortDate - a.sortDate).slice(0, 4);
+
+            trendEl.innerHTML = rows.length
+                ? rows.map(r => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-color);">
+                        <span>${r.subject}</span>
+                        <span class="${r.cls}"><i class="fas ${r.icon}"></i> ${r.last.value}${r.last.system === '1-15' ? ' P.' : ''}</span>
+                    </div>
+                `).join('')
+                : '<p style="color: var(--text-secondary);">Noch keine Noten</p>';
+        }
+
+        // Fach mit den meisten offenen Hausaufgaben
+        const topHwEl = document.getElementById('dashboard-top-hw-subject');
+        if (topHwEl) {
+            const openBySubject = {};
+            this.homework.filter(h => !h.done).forEach(h => {
+                openBySubject[h.subject] = (openBySubject[h.subject] || 0) + 1;
+            });
+            const entries = Object.entries(openBySubject).sort((a, b) => b[1] - a[1]);
+            topHwEl.innerHTML = entries.length
+                ? `<div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('hausaufgaben')" title="Zu den Hausaufgaben">
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--warning-color);">${entries[0][1]}</div>
+                        <p>offene ${entries[0][1] === 1 ? 'Aufgabe' : 'Aufgaben'} in <strong>${entries[0][0]}</strong></p>
+                   </div>`
+                : '<p style="color: var(--text-secondary);">Keine offenen Hausaufgaben 🎉</p>';
+        }
+
+        // Wochenvorschau: 7-Tage-Streifen mit Punkten für Termine/fällige Hausaufgaben
+        const weekEl = document.getElementById('dashboard-week-preview');
+        if (weekEl) {
+            const dayLetters = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+            const now = new Date();
+            let html = '<div style="display: flex; gap: 4px; justify-content: space-between;">';
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(now);
+                d.setDate(d.getDate() + i);
+                const dateStr = d.toISOString().split('T')[0];
+                const hasEvent = this.events.some(e => e.date === dateStr);
+                const hasHw = this.homework.some(h => !h.done && h.due === dateStr);
+                const dow = (d.getDay() + 6) % 7;
+                html += `
+                    <div style="flex: 1; text-align: center; padding: 6px 2px; border-radius: 8px; ${i === 0 ? 'background: rgba(21,128,61,0.12);' : ''}">
+                        <div style="font-size: 0.66rem; color: var(--text-secondary);">${dayLetters[dow]}</div>
+                        <div style="font-size: 0.85rem; font-weight: ${i === 0 ? '700' : '500'};">${d.getDate()}</div>
+                        <div style="display: flex; gap: 2px; justify-content: center; margin-top: 3px; height: 6px;">
+                            ${hasEvent ? '<span style="width:5px;height:5px;border-radius:50%;background:var(--secondary-color);display:inline-block;"></span>' : ''}
+                            ${hasHw ? '<span style="width:5px;height:5px;border-radius:50%;background:var(--warning-color);display:inline-block;"></span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            weekEl.innerHTML = html;
+        }
+
+        // Karteikarten-Tagesquiz: eine zufällige (aber pro Tag stabile) fällige Karte als Teaser
+        const quizEl = document.getElementById('dashboard-fc-quiz');
+        if (quizEl) {
+            const due = this.flashcards.filter(c => c.due <= today);
+            if (due.length === 0) {
+                quizEl.innerHTML = '<p style="color: var(--text-secondary);">Keine fälligen Karten – gut gemacht! 🎉</p>';
+            } else {
+                const seed = parseInt(today.replace(/-/g, ''), 10) % due.length;
+                const card = due[seed];
+                quizEl.innerHTML = `
+                    <div style="cursor: pointer;" onclick="App.startLearn(${JSON.stringify(card.subject)}, true)" title="Jetzt lernen">
+                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light); margin-bottom: 6px;">${card.subject}</div>
+                        <p style="font-weight: 600; color: var(--text-primary); margin: 0;">${card.front}</p>
+                        <small style="color: var(--text-secondary);">Tippen zum Lernen · ${due.length} fällig</small>
+                    </div>
+                `;
+            }
+        }
+
+        // Spruch des Tages: deterministisch nach Tag im Jahr, damit er über den Tag stabil bleibt
+        const quoteEl = document.getElementById('dashboard-quote');
+        if (quoteEl) {
+            const quotes = [
+                'Der Weg ist das Ziel – aber eine abgehakte To-Do-Liste fühlt sich trotzdem gut an.',
+                'Kleine Schritte jeden Tag schlagen große Sprünge, die nie stattfinden.',
+                'Fehler sind der Beweis, dass du es versuchst.',
+                'Konzentration schlägt Dauer – lieber 25 fokussierte Minuten als zwei zerstreute Stunden.',
+                'Du musst nicht perfekt sein, du musst nur weitermachen.',
+                'Das Gehirn ist wie ein Muskel: Wiederholung macht stark.',
+                'Motivation bringt dich in Gang, Gewohnheit hält dich am Laufen.',
+                'Jede Seite, die du heute liest, spart dir eine Nacht kurz vor der Prüfung.',
+                'Gut geplant ist halb gelernt.',
+                'Pausen sind Teil des Lernens, nicht die Unterbrechung davon.'
+            ];
+            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+            quoteEl.innerHTML = `<p style="font-style: italic; color: var(--text-primary); line-height: 1.5; margin: 0;">„${quotes[dayOfYear % quotes.length]}"</p>`;
+        }
+
+        // Aktivität gesamt: Lebenszeit-Statistik aus dem Gamification-System
+        const statsEl = document.getElementById('dashboard-activity-stats');
+        if (statsEl) {
+            const s = (this.progress && this.progress.stats) || {};
+            statsEl.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
+                    <div><div style="font-size: 1.4rem; font-weight: 700; color: var(--primary-color);">${s.homework || 0}</div><small style="color: var(--text-secondary);">Hausaufgaben</small></div>
+                    <div><div style="font-size: 1.4rem; font-weight: 700; color: var(--primary-color);">${s.cards || 0}</div><small style="color: var(--text-secondary);">Karten gelernt</small></div>
+                    <div><div style="font-size: 1.4rem; font-weight: 700; color: var(--primary-color);">${s.pomodoro || 0}</div><small style="color: var(--text-secondary);">Pomodoros</small></div>
+                    <div><div style="font-size: 1.4rem; font-weight: 700; color: var(--primary-color);">${s.grades || 0}</div><small style="color: var(--text-secondary);">Noten</small></div>
+                </div>
+            `;
+        }
+
+        // Fällige Karteikarten heute (gesamt über alle Fächer)
+        const fcDueEl = document.getElementById('dashboard-fc-due');
+        if (fcDueEl) {
+            const dueCount = this.flashcards.filter(c => c.due <= today).length;
+            fcDueEl.innerHTML = `
+                <div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('karteikarten')" title="Zu den Karteikarten">
+                    <div style="font-size: 2.2rem; font-weight: bold; color: ${dueCount > 0 ? 'var(--warning-color)' : 'var(--success-color)'};">${dueCount}</div>
+                    <p>${dueCount === 1 ? 'Karte fällig' : 'Karten fällig'}</p>
+                </div>
+            `;
+        }
+
+        // Stundenplan heute (kompletter Tag statt nur der nächsten Stunde)
+        const scheduleEl = document.getElementById('dashboard-today-schedule');
+        if (scheduleEl) {
+            const now = new Date();
+            const todayIdx = (now.getDay() + 6) % 7;
+            const todayFerien = this.getFerienForDate(today);
+
+            if (todayFerien) {
+                scheduleEl.innerHTML = `<p style="color: var(--text-secondary);">${todayFerien.name} 🎉</p>`;
+            } else if (todayIdx > 4) {
+                scheduleEl.innerHTML = '<p style="color: var(--text-secondary);">Kein Unterricht am Wochenende</p>';
+            } else {
+                const lessons = TIMETABLE_PERIODS
+                    .map((period, p) => ({ period, cell: (this.timetable[p] || [])[todayIdx] }))
+                    .filter(l => l.cell && l.cell.subject);
+
+                if (lessons.length === 0) {
+                    scheduleEl.innerHTML = '<p style="color: var(--text-secondary);">Kein Stundenplan für heute hinterlegt</p>';
+                } else {
+                    const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    scheduleEl.innerHTML = lessons.map(l => {
+                        const isPast = l.period.end <= nowHM;
+                        const isNow = l.period.start <= nowHM && nowHM < l.period.end;
+                        return `
+                            <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border-color); ${isPast ? 'opacity: 0.45;' : ''} ${isNow ? 'font-weight: 700;' : ''}">
+                                <span>${l.period.label} ${l.cell.subject}</span>
+                                <small style="color: var(--text-secondary);">${l.period.start}${l.cell.room ? ' · ' + l.cell.room : ''}</small>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+
+        // Letztes Abzeichen
+        const badgeEl = document.getElementById('dashboard-last-badge');
+        if (badgeEl) {
+            const badges = (this.progress && this.progress.badges) || [];
+            if (badges.length === 0) {
+                badgeEl.innerHTML = '<p style="color: var(--text-secondary);">Noch kein Abzeichen freigeschaltet</p>';
+            } else {
+                const def = PROGRESS_BADGES.find(b => b.id === badges[badges.length - 1]);
+                badgeEl.innerHTML = def
+                    ? `<div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('fortschritt')" title="Zum Fortschritt">
+                            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(21,128,61,0.12); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 8px;">
+                                <i class="fas ${def.icon}"></i>
+                            </div>
+                            <strong>${def.name}</strong>
+                            <p style="margin: 2px 0 0; font-size: 0.82rem; color: var(--text-secondary);">${def.desc}</p>
+                       </div>`
+                    : '<p style="color: var(--text-secondary);">Noch kein Abzeichen freigeschaltet</p>';
+            }
+        }
     },
 
     // ===== Nächste-Stunde-Widget (Dashboard) =====

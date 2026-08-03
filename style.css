@@ -3191,6 +3191,11 @@ textarea {
     color: var(--primary-color);
 }
 
+/* Notentrend-Widget */
+.grade-trend-up { color: var(--success-color); font-weight: 700; }
+.grade-trend-down { color: var(--danger-color); font-weight: 700; }
+.grade-trend-neutral { color: var(--text-secondary); font-weight: 600; }
+
 .fs-num {
     font-size: 1.5rem;
     font-weight: 700;
