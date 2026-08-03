@@ -1,3 +1,28 @@
+// ===== Boot-Splash =====
+// Wird sofort beim Laden angezeigt (siehe index.html) und hier wieder
+// ausgeblendet, sobald klar ist, ob Login-Screen oder App gezeigt wird.
+// Eine Mindestanzeigedauer verhindert ein störendes Aufblitzen bei
+// sehr schnellem Session-Check.
+const BOOT_SPLASH_MIN_MS = 700;
+const bootSplashShownAt = Date.now();
+let bootSplashHidden = false;
+
+function hideBootSplash() {
+    if (bootSplashHidden) return;
+    bootSplashHidden = true;
+    const el = document.getElementById('boot-splash');
+    if (!el) return;
+    const elapsed = Date.now() - bootSplashShownAt;
+    const wait = Math.max(0, BOOT_SPLASH_MIN_MS - elapsed);
+    setTimeout(() => {
+        el.classList.add('boot-splash-hide');
+        setTimeout(() => el.remove(), 500);
+    }, wait);
+}
+// Sicherheitsnetz: falls der Session-Check aus irgendeinem Grund nie
+// abschließt (z.B. Netzwerkfehler), soll der Splash trotzdem verschwinden.
+setTimeout(hideBootSplash, 8000);
+
 // ===== Supabase Setup =====
 const SUPABASE_URL = 'https://nothxzhzhjgpheqwquhy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdGh4emh6aGpncGhlcXdxdWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTIwNDcsImV4cCI6MjA5NjYyODA0N30.yDXDBzHXJxy_Re-dNejiXAZiZyzoyrTPlS7X7fP_YeI';
@@ -182,6 +207,7 @@ const Auth = {
                 document.getElementById('login-form').classList.remove('active');
                 document.getElementById('forgot-form').classList.remove('active');
                 document.getElementById('reset-form').classList.add('active');
+                hideBootSplash();
                 return;
             }
             if (event === 'SIGNED_OUT') {
@@ -201,6 +227,7 @@ const Auth = {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             document.getElementById('auth-overlay').classList.add('active');
+            hideBootSplash();
         }
     },
 
@@ -356,6 +383,7 @@ const Auth = {
         document.getElementById('loading-screen').style.display = 'flex';
         document.getElementById('user-menu-btn').style.display = 'flex';
         document.getElementById('mobile-nav').style.display = 'flex';
+        hideBootSplash();
 
         const displayName = user.name || user.email || 'Nutzer';
         const initials = displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -383,6 +411,7 @@ const Auth = {
         document.getElementById('login-username').value = '';
         document.getElementById('login-password').value = '';
         App.userId = null;
+        hideBootSplash();
     },
 
     async logout() {
