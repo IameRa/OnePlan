@@ -766,6 +766,38 @@ const App = {
             this.openImportModal(importCode.toUpperCase());
             history.replaceState(null, '', location.pathname);
         }
+
+        this.maybeShowPasswordHint();
+    },
+
+    // ===== Passwort-Empfehlung beim ersten Login =====
+    // Zeigt EINMALIG (kontogebunden über die Supabase-Settings, also auch
+    // geräteübergreifend) den Hinweis, das Passwort zu ändern. Wird direkt
+    // beim Anzeigen als "gezeigt" markiert, damit er garantiert nur beim
+    // allerersten Login erscheint und danach nie wieder.
+    maybeShowPasswordHint() {
+        if (!this.settings) this.settings = {};
+        if (this.settings.passwordHintShown) return;
+
+        this.settings.passwordHintShown = true;
+        this.saveData('settings', this.settings);
+
+        // Kurze Verzögerung, damit erst das Dashboard sichtbar wird und das
+        // Popup nicht mit dem Lade-Screen kollidiert.
+        setTimeout(() => {
+            this.showModal(`
+                <h3><i class="fas fa-shield-halved"></i> Passwort ändern empfohlen</h3>
+                <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                    Willkommen bei OnePlan! Aus Sicherheitsgründen empfehlen wir dir, dein Passwort jetzt zu ändern.
+                </p>
+                <button class="btn-primary btn-full" onclick="App.closeModal(); Auth.openChangePasswordModal();" style="margin-bottom: 8px;">
+                    <i class="fas fa-key"></i> Passwort jetzt ändern
+                </button>
+                <button class="btn-secondary btn-full" onclick="App.closeModal()">
+                    Später
+                </button>
+            `);
+        }, 600);
     },
 
     // ===== Data Management =====
