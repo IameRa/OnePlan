@@ -246,6 +246,52 @@ h3 {
     gap: 10px;
 }
 
+/* ===== Dashboard anpassen (Modal) ===== */
+.dashboard-widget-order-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dashboard-widget-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-secondary, rgba(128, 128, 128, 0.06));
+    border-radius: var(--radius);
+    padding: 10px 12px;
+}
+
+.dashboard-widget-drag-handle {
+    cursor: grab;
+    color: var(--text-light);
+    padding: 4px;
+    touch-action: none;
+}
+
+.dashboard-widget-drag-handle:active {
+    cursor: grabbing;
+}
+
+.dashboard-widget-row-icon {
+    color: var(--primary-color);
+    width: 20px;
+    text-align: center;
+}
+
+.dashboard-widget-row-label {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.dashboard-widget-row-ghost {
+    opacity: 0.4;
+}
+
 .grade-visibility-toggle {
     background: none;
     border: none;

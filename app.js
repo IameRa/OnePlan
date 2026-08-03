@@ -754,7 +754,7 @@ const App = {
         this.setupPomodoro();
         this.setupProgress();
         this.setupModal();
-        this.updateDashboard();
+        this.renderDashboardGrid();
         this.checkReminders();
         Push.init();
         // Check reminders every minute
@@ -795,6 +795,7 @@ const App = {
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         this.checkStreakExpiry();
         this.settings = map['settings'] || { hideGradeAverage: false };
+        if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
 
     async saveData(key, data) {
@@ -875,7 +876,7 @@ const App = {
         
         // Refresh section data
         switch(section) {
-            case 'dashboard': this.updateDashboard(); break;
+            case 'dashboard': this.renderDashboardGrid(); break;
             case 'kalender': this.renderCalendar(); break;
             case 'stundenplan': this.renderTimetable(); break;
             case 'hausaufgaben': this.renderHomework(); break;
@@ -1976,95 +1977,164 @@ const App = {
         }
     },
 
+    // ===== Dashboard: Personalisierung (Reihenfolge & Sichtbarkeit) =====
+    // Registry aller verfügbaren Dashboard-Widgets. `bodyId` ist die ID des
+    // Inhalts-Containers, den updateDashboard()/renderNextLesson() befüllen.
+    dashboardWidgetDefs: {
+        events: { label: 'Anstehende Termine', icon: 'fa-bell', bodyId: 'upcoming-events' },
+        homework: { label: 'Offene Hausaufgaben', icon: 'fa-tasks', bodyId: 'pending-homework' },
+        streak: { label: 'Streak', icon: 'fa-fire', bodyId: 'dashboard-streak', cardClass: 'dashboard-streak-card' },
+        nextLesson: { label: 'Nächste Stunde', icon: 'fa-clock', bodyId: 'dashboard-next-lesson' },
+        grades: {
+            label: 'Notendurchschnitt', icon: 'fa-chart-line', bodyId: 'grade-overview',
+            headerExtra: '<button class="grade-visibility-toggle" onclick="App.toggleGradeVisibility()" title="Notendurchschnitt anzeigen/verbergen"><i class="fas fa-eye" id="grade-visibility-icon"></i></button>'
+        }
+    },
+
+    // Liefert die gespeicherte Reihenfolge/Sichtbarkeit, bereinigt um nicht mehr
+    // existierende Widgets und ergänzt um neue Widgets (z.B. nach App-Updates),
+    // die noch nicht in den gespeicherten Einstellungen vorkommen.
+    getDashboardWidgetOrder() {
+        const allIds = Object.keys(this.dashboardWidgetDefs);
+        const stored = ((this.settings && this.settings.dashboardWidgets) || [])
+            .filter(w => allIds.includes(w.id));
+        const missing = allIds.filter(id => !stored.some(w => w.id === id));
+        return [...stored, ...missing.map(id => ({ id, visible: true }))];
+    },
+
+    // Baut das Dashboard-Grid entsprechend der aktuellen Reihenfolge/Sichtbarkeit
+    // neu auf und füllt es anschließend mit Live-Daten.
+    renderDashboardGrid() {
+        const grid = document.getElementById('dashboard-grid');
+        if (!grid) return;
+        if (!this.settings) this.settings = {};
+
+        const order = this.getDashboardWidgetOrder();
+        this.settings.dashboardWidgets = order;
+
+        const visible = order.filter(w => w.visible);
+        grid.innerHTML = visible.length
+            ? visible.map(w => {
+                const def = this.dashboardWidgetDefs[w.id];
+                if (!def) return '';
+                const heading = def.headerExtra
+                    ? `<h3 class="dashboard-card-header"><span><i class="fas ${def.icon}"></i> ${def.label}</span>${def.headerExtra}</h3>`
+                    : `<h3><i class="fas ${def.icon}"></i> ${def.label}</h3>`;
+                return `
+                    <div class="dashboard-card ${def.cardClass || ''}">
+                        ${heading}
+                        <div id="${def.bodyId}"></div>
+                    </div>
+                `;
+            }).join('')
+            : `<p style="color: var(--text-secondary); grid-column: 1 / -1; text-align: center; padding: 40px 0;">
+                   Alle Widgets sind ausgeblendet. Tippe oben auf „Anpassen“, um welche einzublenden.
+               </p>`;
+
+        this.updateDashboard();
+    },
+
     // ===== Dashboard =====
     updateDashboard() {
         const today = new Date().toISOString().split('T')[0];
 
         // Upcoming events
-        const upcomingEvents = this.events
-            .filter(e => e.date >= today)
-            .sort((a, b) => new Date(a.date) - new Date(b.date))
-            .slice(0, 5);
+        const upcomingEventsEl = document.getElementById('upcoming-events');
+        if (upcomingEventsEl) {
+            const upcomingEvents = this.events
+                .filter(e => e.date >= today)
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 5);
 
-        document.getElementById('upcoming-events').innerHTML = upcomingEvents.length
-            ? upcomingEvents.map(e => `
-                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    <strong>${e.title}</strong><br>
-                    <small>${this.formatDate(e.date)}${e.time ? ' · ' + e.time : ''}</small>
-                </div>
-            `).join('')
-            : '<p style="color: var(--text-secondary);">Keine Termine</p>';
+            upcomingEventsEl.innerHTML = upcomingEvents.length
+                ? upcomingEvents.map(e => `
+                    <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                        <strong>${e.title}</strong><br>
+                        <small>${this.formatDate(e.date)}${e.time ? ' · ' + e.time : ''}</small>
+                    </div>
+                `).join('')
+                : '<p style="color: var(--text-secondary);">Keine Termine</p>';
+        }
 
         // Pending homework
-        const pendingHomework = this.homework
-            .filter(h => !h.done && h.due >= today)
-            .sort((a, b) => new Date(a.due) - new Date(b.due))
-            .slice(0, 5);
+        const pendingHomeworkEl = document.getElementById('pending-homework');
+        if (pendingHomeworkEl) {
+            const pendingHomework = this.homework
+                .filter(h => !h.done && h.due >= today)
+                .sort((a, b) => new Date(a.due) - new Date(b.due))
+                .slice(0, 5);
 
-        document.getElementById('pending-homework').innerHTML = pendingHomework.length
-            ? pendingHomework.map(h => `
-                <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    <strong>${h.subject}</strong><br>
-                    <small>${h.task.substring(0, 50)}${h.task.length > 50 ? '...' : ''}</small><br>
-                    <small style="color: var(--warning-color);">Fällig: ${this.formatDate(h.due)}</small>
-                </div>
-            `).join('')
-            : '<p style="color: var(--text-secondary);">Alle Hausaufgaben erledigt! 🎉</p>';
+            pendingHomeworkEl.innerHTML = pendingHomework.length
+                ? pendingHomework.map(h => `
+                    <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                        <strong>${h.subject}</strong><br>
+                        <small>${h.task.substring(0, 50)}${h.task.length > 50 ? '...' : ''}</small><br>
+                        <small style="color: var(--warning-color);">Fällig: ${this.formatDate(h.due)}</small>
+                    </div>
+                `).join('')
+                : '<p style="color: var(--text-secondary);">Alle Hausaufgaben erledigt! 🎉</p>';
+        }
 
         // Grade overview
+        const gradeOverviewEl = document.getElementById('grade-overview');
         const gradeHidden = !!this.settings?.hideGradeAverage;
         const visIcon = document.getElementById('grade-visibility-icon');
         if (visIcon) visIcon.className = `fas fa-eye${gradeHidden ? '-slash' : ''}`;
 
-        if (this.grades.length > 0) {
-            const subjects = {};
-            this.grades.forEach(g => {
-                if (!subjects[g.subject]) subjects[g.subject] = [];
-                subjects[g.subject].push(g);
-            });
-
-            let totalAvg = 0;
-            let count = 0;
-            Object.values(subjects).forEach(grades => {
-                let weightedSum = 0;
-                let totalWeight = 0;
-                grades.forEach(g => {
-                    const normalized = g.system === '1-15' ? this.pointsToGrade(g.value) : g.value;
-                    weightedSum += normalized * g.weight;
-                    totalWeight += g.weight;
+        if (gradeOverviewEl) {
+            if (this.grades.length > 0) {
+                const subjects = {};
+                this.grades.forEach(g => {
+                    if (!subjects[g.subject]) subjects[g.subject] = [];
+                    subjects[g.subject].push(g);
                 });
-                const avg = weightedSum / totalWeight;
-                totalAvg += avg;
-                count++;
-            });
 
-            document.getElementById('grade-overview').innerHTML = `
-                <div style="text-align: center;">
-                    <div class="grade-average-value ${gradeHidden ? 'grade-value-blurred' : ''}" style="font-size: 2.5rem; font-weight: bold; color: var(--primary-color);" onclick="App.toggleGradeVisibility()" title="${gradeHidden ? 'Zum Anzeigen tippen' : 'Zum Verbergen tippen'}">
-                        ${(totalAvg / count).toFixed(2)}
+                let totalAvg = 0;
+                let count = 0;
+                Object.values(subjects).forEach(grades => {
+                    let weightedSum = 0;
+                    let totalWeight = 0;
+                    grades.forEach(g => {
+                        const normalized = g.system === '1-15' ? this.pointsToGrade(g.value) : g.value;
+                        weightedSum += normalized * g.weight;
+                        totalWeight += g.weight;
+                    });
+                    const avg = weightedSum / totalWeight;
+                    totalAvg += avg;
+                    count++;
+                });
+
+                gradeOverviewEl.innerHTML = `
+                    <div style="text-align: center;">
+                        <div class="grade-average-value ${gradeHidden ? 'grade-value-blurred' : ''}" style="font-size: 2.5rem; font-weight: bold; color: var(--primary-color);" onclick="App.toggleGradeVisibility()" title="${gradeHidden ? 'Zum Anzeigen tippen' : 'Zum Verbergen tippen'}">
+                            ${(totalAvg / count).toFixed(2)}
+                        </div>
+                        <p>Gesamtdurchschnitt</p>
+                        <small class="${gradeHidden ? 'grade-value-blurred' : ''}">${this.grades.length} Noten in ${count} Fächern</small>
                     </div>
-                    <p>Gesamtdurchschnitt</p>
-                    <small class="${gradeHidden ? 'grade-value-blurred' : ''}">${this.grades.length} Noten in ${count} Fächern</small>
-                </div>
-            `;
-        } else {
-            document.getElementById('grade-overview').innerHTML = 
-                '<p style="color: var(--text-secondary);">Noch keine Noten</p>';
+                `;
+            } else {
+                gradeOverviewEl.innerHTML =
+                    '<p style="color: var(--text-secondary);">Noch keine Noten</p>';
+            }
         }
 
         // Streak
         this.checkStreakExpiry();
-        const streak = this.progress?.streak || 0;
-        const streakActive = streak > 0 && this.isActiveToday();
-        document.getElementById('dashboard-streak').innerHTML = `
-            <div style="text-align: center;">
-                <div class="${streakActive ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streakActive ? '#f97316' : 'var(--text-light)'};">
-                    <i class="fas fa-fire"></i>
+        const streakEl = document.getElementById('dashboard-streak');
+        if (streakEl) {
+            const streak = this.progress?.streak || 0;
+            const streakActive = streak > 0 && this.isActiveToday();
+            streakEl.innerHTML = `
+                <div style="text-align: center;">
+                    <div class="${streakActive ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streakActive ? '#f97316' : 'var(--text-light)'};">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
+                    <p>${streak === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv'}</p>
                 </div>
-                <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
-                <p>${streak === 1 ? 'Tag in Folge aktiv' : 'Tage in Folge aktiv'}</p>
-            </div>
-        `;
+            `;
+        }
 
         this.renderNextLesson();
     },
@@ -2171,6 +2241,79 @@ const App = {
         this.settings.hideGradeAverage = !this.settings.hideGradeAverage;
         this.saveData('settings', this.settings);
         this.updateDashboard();
+    },
+
+    // ===== Dashboard anpassen (Reihenfolge & Sichtbarkeit der Widgets) =====
+    renderDashboardCustomizeModal() {
+        const order = this.getDashboardWidgetOrder();
+
+        const rows = order.map(w => {
+            const def = this.dashboardWidgetDefs[w.id];
+            if (!def) return '';
+            return `
+                <li class="dashboard-widget-row" data-widget-id="${w.id}">
+                    <span class="dashboard-widget-drag-handle" title="Ziehen zum Verschieben"><i class="fas fa-grip-vertical"></i></span>
+                    <span class="dashboard-widget-row-icon"><i class="fas ${def.icon}"></i></span>
+                    <span class="dashboard-widget-row-label">${def.label}</span>
+                    <label class="settings-switch">
+                        <input type="checkbox" class="dashboard-widget-visible-toggle" data-widget-id="${w.id}" ${w.visible ? 'checked' : ''}>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                </li>
+            `;
+        }).join('');
+
+        this.showModal(`
+            <h3><i class="fas fa-sliders-h"></i> Dashboard anpassen</h3>
+            <p class="settings-row-hint" style="margin-bottom: 16px;">Am Griff ziehen, um die Reihenfolge zu ändern. Mit dem Schalter Widgets aus- oder einblenden.</p>
+            <ul id="dashboard-widget-order-list" class="dashboard-widget-order-list">
+                ${rows}
+            </ul>
+            <button class="btn-primary" onclick="App.closeModal()" style="margin-top: 16px; width: 100%;">Fertig</button>
+        `);
+
+        const list = document.getElementById('dashboard-widget-order-list');
+        if (list) {
+            if (window.Sortable) {
+                Sortable.create(list, {
+                    handle: '.dashboard-widget-drag-handle',
+                    animation: 150,
+                    ghostClass: 'dashboard-widget-row-ghost',
+                    onEnd: () => this.saveDashboardOrderFromDOM()
+                });
+            }
+            list.querySelectorAll('.dashboard-widget-visible-toggle').forEach(cb => {
+                cb.addEventListener('change', () => this.toggleDashboardWidget(cb.dataset.widgetId, cb.checked));
+            });
+        }
+    },
+
+    // Liest die aktuelle Reihenfolge aus dem DOM (nach Drag&Drop) und speichert sie.
+    saveDashboardOrderFromDOM() {
+        const list = document.getElementById('dashboard-widget-order-list');
+        if (!list) return;
+        if (!this.settings) this.settings = {};
+
+        const visMap = {};
+        (this.settings.dashboardWidgets || []).forEach(w => { visMap[w.id] = w.visible; });
+
+        const ids = Array.from(list.querySelectorAll('.dashboard-widget-row')).map(li => li.dataset.widgetId);
+        this.settings.dashboardWidgets = ids.map(id => ({ id, visible: visMap[id] !== false }));
+
+        this.saveData('settings', this.settings);
+        this.renderDashboardGrid();
+    },
+
+    // Blendet ein einzelnes Widget ein/aus, ohne die Reihenfolge zu verändern.
+    toggleDashboardWidget(id, visible) {
+        if (!this.settings) this.settings = {};
+        if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
+
+        const widget = this.settings.dashboardWidgets.find(w => w.id === id);
+        if (widget) widget.visible = visible;
+
+        this.saveData('settings', this.settings);
+        this.renderDashboardGrid();
     },
 
     // ===== Flashcards =====
@@ -2429,6 +2572,11 @@ const App = {
         this.stopQrScan();
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal').classList.add('active');
+    },
+
+    closeModal() {
+        this.stopQrScan();
+        document.getElementById('modal').classList.remove('active');
     },
 
     // ===== Sharing (Code/Link, Empfänger bekommt eigene Kopie) =====
