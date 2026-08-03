@@ -1487,6 +1487,39 @@ textarea {
     margin: 10px 0;
 }
 
+.share-qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.share-qr-box {
+    background: #ffffff;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    line-height: 0;
+}
+
+.qr-scanner-wrap {
+    margin-top: 14px;
+}
+
+#qr-scanner-box {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+#qr-scanner-box video {
+    border-radius: var(--radius-sm);
+}
+
 .import-preview-box {
     background: var(--bg-color);
     border: 1px solid var(--border-color);

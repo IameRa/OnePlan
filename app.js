@@ -2385,14 +2385,19 @@ const App = {
     setupModal() {
         const modal = document.getElementById('modal');
         document.querySelector('.modal-close').addEventListener('click', () => {
+            this.stopQrScan();
             modal.classList.remove('active');
         });
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.remove('active');
+            if (e.target === modal) {
+                this.stopQrScan();
+                modal.classList.remove('active');
+            }
         });
     },
 
     showModal(content) {
+        this.stopQrScan();
         document.getElementById('modal-body').innerHTML = content;
         document.getElementById('modal').classList.add('active');
     },
@@ -2425,13 +2430,34 @@ const App = {
         const link = `${location.origin}${location.pathname}?import=${code}`;
         this.showModal(`
             <h3><i class="fas fa-share-alt"></i> „${title}“ geteilt</h3>
-            <p class="field-hint">Gib diesen Code weiter oder teile den Link. Die andere Person erhält beim Einlösen eine eigene Kopie – Änderungen wirken sich nicht gegenseitig aus.</p>
+            <p class="field-hint">Gib diesen Code weiter, teile den Link oder lass den QR-Code scannen. Die andere Person erhält beim Einlösen eine eigene Kopie – Änderungen wirken sich nicht gegenseitig aus.</p>
             <div class="share-code-box">${code}</div>
             <div style="display:flex;gap:10px;margin-top:12px;">
                 <button class="btn-secondary" style="flex:1;" onclick="App.copyToClipboard('${code}', 'Code kopiert')"><i class="fas fa-copy"></i> Code kopieren</button>
                 <button class="btn-primary" style="flex:1;" onclick="App.copyToClipboard('${link}', 'Link kopiert')"><i class="fas fa-link"></i> Link kopieren</button>
             </div>
+            <div class="share-qr-wrap">
+                <div class="share-qr-box" id="share-qr-box"></div>
+                <small class="field-hint">QR-Code scannen zum direkten Öffnen</small>
+            </div>
         `);
+        this.renderShareQr(link);
+    },
+
+    // Rendert den QR-Code separat, da er nach dem Einfügen des HTML
+    // (innerHTML in showModal) erst im DOM existiert.
+    renderShareQr(link) {
+        const box = document.getElementById('share-qr-box');
+        if (!box || typeof QRCode === 'undefined') return;
+        box.innerHTML = '';
+        new QRCode(box, {
+            text: link,
+            width: 160,
+            height: 160,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
     },
 
     copyToClipboard(text, message) {
@@ -2491,12 +2517,76 @@ const App = {
     openImportModal(prefillCode = '') {
         this.showModal(`
             <h3><i class="fas fa-download"></i> Code einlösen</h3>
-            <p class="field-hint">Gib den Code ein, den du von jemandem bekommen hast. Du erhältst eine eigene Kopie der Inhalte.</p>
+            <p class="field-hint">Gib den Code ein, den du von jemandem bekommen hast, oder scanne seinen QR-Code. Du erhältst eine eigene Kopie der Inhalte.</p>
             <input type="text" id="import-code-input" placeholder="z.B. AB3XQ9" value="${prefillCode}" style="text-transform:uppercase;" maxlength="8">
-            <button class="btn-primary btn-full" style="margin-top:10px;" onclick="App.fetchSharedContent()"><i class="fas fa-search"></i> Abrufen</button>
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button class="btn-primary" style="flex:1;" onclick="App.fetchSharedContent()"><i class="fas fa-search"></i> Abrufen</button>
+                <button class="btn-secondary" style="flex:1;" id="btn-scan-qr" onclick="App.startQrScan()"><i class="fas fa-qrcode"></i> QR-Code scannen</button>
+            </div>
+            <div id="qr-scanner-wrap" class="qr-scanner-wrap" style="display:none;">
+                <div id="qr-scanner-box"></div>
+                <button class="btn-secondary btn-full" style="margin-top:8px;" onclick="App.stopQrScan()"><i class="fas fa-xmark"></i> Scan abbrechen</button>
+            </div>
             <div id="import-preview"></div>
         `);
         if (prefillCode) this.fetchSharedContent();
+    },
+
+    // ===== QR-Code-Scanner (Kamera) zum Einlösen von Codes =====
+    async startQrScan() {
+        if (typeof Html5Qrcode === 'undefined') {
+            this.showNotification('QR-Scanner konnte nicht geladen werden', 'error');
+            return;
+        }
+        const wrap = document.getElementById('qr-scanner-wrap');
+        if (!wrap) return;
+        wrap.style.display = 'block';
+        this.stopQrScan();
+
+        const scanner = new Html5Qrcode('qr-scanner-box');
+        this._qrScanner = scanner;
+        try {
+            await scanner.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: 220 },
+                (decodedText) => this.handleQrScanResult(decodedText),
+                () => {} // wird bei jedem Frame ohne erkannten Code aufgerufen -> ignorieren
+            );
+        } catch (err) {
+            console.error('[QR] Kamera-Start fehlgeschlagen:', err);
+            this.showNotification('Kamera konnte nicht gestartet werden. Bitte Berechtigung erteilen.', 'error');
+            wrap.style.display = 'none';
+        }
+    },
+
+    handleQrScanResult(decodedText) {
+        this.stopQrScan();
+        const wrap = document.getElementById('qr-scanner-wrap');
+        if (wrap) wrap.style.display = 'none';
+
+        // QR kann entweder ein Teilen-Link (?import=CODE) oder direkt der Code sein
+        let code = decodedText.trim();
+        try {
+            const url = new URL(decodedText);
+            const param = url.searchParams.get('import');
+            if (param) code = param;
+        } catch (e) {
+            // kein gültiger Link -> decodedText direkt als Code verwenden
+        }
+        code = code.toUpperCase();
+
+        const input = document.getElementById('import-code-input');
+        if (input) input.value = code;
+        this.showNotification('QR-Code erkannt', 'success');
+        this.fetchSharedContent();
+    },
+
+    // Stoppt die laufende Kamera (Aufruf beim Abbrechen, Modal-Wechsel oder -Schließen)
+    stopQrScan() {
+        if (!this._qrScanner) return;
+        const scanner = this._qrScanner;
+        this._qrScanner = null;
+        scanner.stop().then(() => scanner.clear()).catch(() => {});
     },
 
     async fetchSharedContent() {
