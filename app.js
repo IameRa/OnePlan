@@ -243,10 +243,7 @@ const Auth = {
         this.on('btn-reset-password', 'click', () => this.resetPassword());
 
         this.on('btn-logout', 'click', () => this.logout());
-        this.on('btn-change-password', 'click', () => this.openChangePasswordModal());
-        this.on('btn-set-email', 'click', () => this.openSetEmailModal());
-        this.on('btn-delete-account', 'click', () => this.deleteAccount());
-        this.on('btn-theme-toggle', 'click', () => this.toggleTheme());
+        this.on('btn-open-settings', 'click', () => this.openSettingsModal());
         this.syncThemeUI();
 
         this.on('user-avatar-btn', 'click', () => {
@@ -555,6 +552,110 @@ const Auth = {
         this.currentUser.email = email;
         document.getElementById('modal').classList.remove('active');
         App.showNotification('E-Mail hinterlegt', 'success');
+    },
+
+    // ===== Einstellungen-Fenster =====
+    async openSettingsModal() {
+        document.getElementById('user-dropdown').classList.add('hidden');
+        await this.renderSettingsModal();
+    },
+
+    async renderSettingsModal() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const gradeHidden = !!App.settings?.hideGradeAverage;
+        const pushSupported = Push.isSupported();
+        const pushOn = pushSupported ? !!(await Push.getExistingSubscription()) : false;
+        const user = this.currentUser || {};
+        const displayName = user.name || user.username || user.email || '';
+        const subtitle = user.username ? '@' + user.username : (user.email || '');
+
+        App.showModal(`
+            <h3><i class="fas fa-gear"></i> Einstellungen</h3>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Darstellung</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-moon"></i></div>
+                    <div class="settings-row-text">
+                        <div class="settings-row-label">Dunkelmodus</div>
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="settings-theme-toggle" ${isDark ? 'checked' : ''}>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Dashboard</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-chart-line"></i></div>
+                    <div class="settings-row-text">
+                        <div class="settings-row-label">Notendurchschnitt anzeigen</div>
+                        <div class="settings-row-hint">Blendet den Wert auf dem Dashboard aus</div>
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="settings-grade-toggle" ${!gradeHidden ? 'checked' : ''}>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Benachrichtigungen</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-bell"></i></div>
+                    <div class="settings-row-text">
+                        <div class="settings-row-label">Push-Benachrichtigungen</div>
+                        ${!pushSupported ? '<div class="settings-row-hint">Auf diesem Gerät nicht unterstützt</div>' : ''}
+                    </div>
+                    <label class="settings-switch">
+                        <input type="checkbox" id="settings-push-toggle" ${pushOn ? 'checked' : ''} ${!pushSupported ? 'disabled' : ''}>
+                        <span class="settings-switch-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Konto</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-user"></i></div>
+                    <div class="settings-row-text">
+                        <div class="settings-row-label">${displayName}</div>
+                        ${subtitle ? `<div class="settings-row-hint">${subtitle}</div>` : ''}
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-key"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Passwort ändern</div></div>
+                    <button class="settings-row-action" onclick="Auth.openChangePasswordModal()"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-envelope"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">E-Mail hinterlegen</div></div>
+                    <button class="settings-row-action" onclick="Auth.openSetEmailModal()"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-sign-out-alt"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Abmelden</div></div>
+                    <button class="settings-row-action" onclick="Auth.logout()"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-icon" style="background:rgba(220,38,38,0.12);color:var(--danger-color);"><i class="fas fa-trash"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Konto löschen</div></div>
+                    <button class="settings-row-action danger" onclick="Auth.deleteAccount()"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <p class="settings-app-version">OnePlan</p>
+        `);
+
+        document.getElementById('settings-theme-toggle')?.addEventListener('change', () => this.toggleTheme());
+        document.getElementById('settings-grade-toggle')?.addEventListener('change', () => App.toggleGradeVisibility());
+        document.getElementById('settings-push-toggle')?.addEventListener('change', async () => {
+            await Push.toggle();
+            this.renderSettingsModal();
+        });
     }
 };
 
