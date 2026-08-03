@@ -1,5 +1,5 @@
 // OnePlan Service Worker
-const CACHE_VERSION = 'oneplan-v7';
+const CACHE_VERSION = 'oneplan-v8';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -91,6 +91,42 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || fetchPromise;
+    })
+  );
+});
+
+// Push-Benachrichtigungen: Server (Supabase Edge Function) schickt eine Payload
+// { title, body, url }, die hier als System-Benachrichtigung angezeigt wird —
+// funktioniert auch, wenn OnePlan gerade nicht geöffnet ist.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'OnePlan', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'OnePlan';
+  const options = {
+    body: data.body || '',
+    icon: './icon-192.png',
+    badge: './icon-96.png',
+    data: { url: data.url || './' }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Klick auf die Benachrichtigung: bestehenden Tab fokussieren, sonst neuen öffnen
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      const existing = clientsArr.find((c) => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return self.clients.openWindow(url);
     })
   );
 });

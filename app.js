@@ -3,6 +3,11 @@ const SUPABASE_URL = 'https://nothxzhzhjgpheqwquhy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdGh4emh6aGpncGhlcXdxdWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTIwNDcsImV4cCI6MjA5NjYyODA0N30.yDXDBzHXJxy_Re-dNejiXAZiZyzoyrTPlS7X7fP_YeI';
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ===== Push-Benachrichtigungen =====
+// Öffentlicher VAPID-Key aus `npx web-push generate-vapid-keys`. Der Private Key
+// gehört NUR als Supabase Edge-Function-Secret auf den Server, niemals hierhin.
+const VAPID_PUBLIC_KEY = 'BOsvbwTDCAkgrPNF_s50TTmi_rRX-4Q92q4A6_HEU2AF8g0UV0PxCZ7j3a2kLghjoptHrMmVjs9603GTWZxgddw';
+
 // ===== Schulferien Schleswig-Holstein =====
 // Quelle: Landesverordnung über Ferientermine (schleswig-holstein.de/Ferientermine),
 // Stand Ferienverordnung 2024/25 bis 2030/31. Gilt für das Festland; auf Sylt, Föhr,
@@ -49,6 +54,111 @@ const TIMETABLE_PERIODS = [
     { label: '7.', start: '13:45', end: '14:30' },
     { label: '8.', start: '14:30', end: '15:15' }
 ];
+
+// ===== Push-Benachrichtigungen (Web Push) =====
+const Push = {
+    on(id, event, handler) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    },
+
+    isSupported() {
+        return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    },
+
+    async init() {
+        this.on('btn-enable-push', 'click', () => this.toggle());
+        await this.syncButtonUI();
+    },
+
+    async getExistingSubscription() {
+        if (!this.isSupported()) return null;
+        const reg = await navigator.serviceWorker.ready;
+        return reg.pushManager.getSubscription();
+    },
+
+    async syncButtonUI() {
+        const btn = document.getElementById('btn-enable-push');
+        if (!btn) return;
+        if (!this.isSupported()) {
+            btn.style.display = 'none';
+            return;
+        }
+        btn.style.display = '';
+        const sub = await this.getExistingSubscription();
+        btn.innerHTML = sub
+            ? '<i class="fas fa-bell-slash"></i> Push-Benachrichtigungen deaktivieren'
+            : '<i class="fas fa-bell"></i> Push-Benachrichtigungen aktivieren';
+    },
+
+    async toggle() {
+        const sub = await this.getExistingSubscription();
+        if (sub) {
+            await this.unsubscribe(sub);
+        } else {
+            await this.subscribe();
+        }
+        this.syncButtonUI();
+    },
+
+    // Wandelt den base64url-kodierten VAPID-Key in das von PushManager erwartete Format um
+    urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+    },
+
+    async subscribe() {
+        if (!this.isSupported()) {
+            App.showNotification('Push-Benachrichtigungen werden von diesem Browser nicht unterstützt', 'error');
+            return;
+        }
+        if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.startsWith('HIER_')) {
+            App.showNotification('Push ist noch nicht eingerichtet (VAPID-Key fehlt)', 'error');
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            App.showNotification('Push-Berechtigung wurde nicht erteilt', 'warning');
+            return;
+        }
+
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+
+            const json = sub.toJSON();
+            const { error } = await supabase.from('push_subscriptions').upsert({
+                user_id: App.userId,
+                endpoint: json.endpoint,
+                p256dh: json.keys.p256dh,
+                auth: json.keys.auth
+            }, { onConflict: 'endpoint' });
+
+            if (error) throw error;
+            App.showNotification('Push-Benachrichtigungen aktiviert', 'success');
+        } catch (err) {
+            console.error('[Push] Abo fehlgeschlagen:', err);
+            App.showNotification('Push-Abo fehlgeschlagen', 'error');
+        }
+    },
+
+    async unsubscribe(sub) {
+        try {
+            const endpoint = sub.endpoint;
+            await sub.unsubscribe();
+            await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+            App.showNotification('Push-Benachrichtigungen deaktiviert', 'success');
+        } catch (err) {
+            console.error('[Push] Abmelden fehlgeschlagen:', err);
+        }
+    }
+};
 
 // ===== Account System =====
 const Auth = {
@@ -511,6 +621,7 @@ const App = {
         this.setupModal();
         this.updateDashboard();
         this.checkReminders();
+        Push.init();
         // Check reminders every minute
         setInterval(() => this.checkReminders(), 60000);
 
