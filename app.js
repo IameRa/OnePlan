@@ -1278,7 +1278,7 @@ const App = {
         const tbody = document.getElementById('timetable-body');
         tbody.innerHTML = '';
 
-        const periods = TIMETABLE_PERIODS.map(p => `${p.label} (${p.start}-${p.end})`);
+        const periods = TIMETABLE_PERIODS.map(p => `<span class="period-num">${p.label}</span><span class="period-time">${p.start}-${p.end}</span>`);
 
         // skipRows[d] = wie viele kommende Zeilen für diesen Tag noch übersprungen werden müssen,
         // weil sie Teil einer Doppelstunden-Zelle (rowspan) weiter oben sind

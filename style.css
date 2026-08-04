@@ -831,6 +831,16 @@ textarea {
     line-height: 1.4;
 }
 
+.day-abbr {
+    display: none;
+}
+
+.period-time {
+    display: block;
+    font-weight: 400;
+    opacity: 0.75;
+}
+
 .timetable-cell-double .subject::after {
     content: "\f0c1";
     font-family: "Font Awesome 5 Free";
@@ -1854,12 +1864,53 @@ textarea {
         padding-bottom: 90px;
     }
 
+    .timetable-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .timetable {
-        font-size: 0.75rem;
+        font-size: 0.68rem;
+        table-layout: fixed;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .timetable-th-period {
+        width: 32px;
     }
 
     .timetable th, .timetable td {
-        padding: 6px 3px;
+        padding: 4px 2px;
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .day-full {
+        display: none;
+    }
+
+    .day-abbr {
+        display: inline;
+    }
+
+    .period-time {
+        display: none;
+    }
+
+    .timetable-cell {
+        min-height: auto;
+    }
+
+    .timetable-cell .subject {
+        font-size: 0.68rem;
+        line-height: 1.15;
+    }
+
+    .timetable-cell .teacher,
+    .timetable-cell .room {
+        font-size: 0.6rem;
+        line-height: 1.15;
     }
 
     h1 {
