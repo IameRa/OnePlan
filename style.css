@@ -1609,6 +1609,69 @@ textarea {
     color: var(--text-secondary);
 }
 
+/* ===== Tutorial (Onboarding) ===== */
+.tutorial {
+    text-align: center;
+    padding-top: 4px;
+}
+
+.tutorial-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 1.6rem;
+    background: rgba(21, 128, 61, 0.12);
+    color: var(--primary-color);
+}
+
+.tutorial h3 {
+    margin: 0 0 10px;
+}
+
+.tutorial-text {
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 20px;
+}
+
+.tutorial-dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.tutorial-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-color);
+    transition: var(--transition);
+}
+
+.tutorial-dot.active {
+    width: 18px;
+    border-radius: 4px;
+    background: var(--primary-color);
+}
+
+.tutorial-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tutorial-actions .btn-primary,
+.tutorial-actions .btn-secondary {
+    flex: 1;
+}
+
 /* ===== Einstellungen ===== */
 .settings-group {
     margin-bottom: 22px;

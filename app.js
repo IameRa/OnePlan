@@ -651,6 +651,15 @@ const Auth = {
             </div>
 
             <div class="settings-group">
+                <div class="settings-group-title">Hilfe</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-map-signs"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Tutorial erneut ansehen</div></div>
+                    <button class="settings-row-action" onclick="App.closeModal(); App.startTutorial();"><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <div class="settings-group">
                 <div class="settings-group-title">Konto</div>
                 <div class="settings-row">
                     <div class="settings-row-icon"><i class="fas fa-user"></i></div>
@@ -770,7 +779,20 @@ const App = {
             history.replaceState(null, '', location.pathname);
         }
 
-        this.maybeShowPasswordHint();
+        this.maybeShowOnboarding();
+    },
+
+    // ===== Erstes Login: Tutorial, danach Passwort-Empfehlung =====
+    maybeShowOnboarding() {
+        if (!this.settings) this.settings = {};
+        if (this.settings.tutorialShown) {
+            this.maybeShowPasswordHint();
+            return;
+        }
+        this.settings.tutorialShown = true;
+        this.saveData('settings', this.settings);
+
+        setTimeout(() => this.startTutorial(() => this.maybeShowPasswordHint()), 600);
     },
 
     // ===== Passwort-Empfehlung beim ersten Login =====
@@ -801,6 +823,129 @@ const App = {
                 </button>
             `);
         }, 600);
+    },
+
+    // ===== Tutorial (Onboarding-Tour) =====
+    // Läuft beim allerersten Login (kontogebunden, siehe maybeShowOnboarding)
+    // einmalig durch die wichtigsten Bereiche der App. Kann jederzeit über
+    // die Einstellungen erneut gestartet werden (dann ohne onFinish-Callback).
+    tutorialSteps: [
+        {
+            icon: 'fa-hand-sparkles',
+            title: 'Willkommen bei OnePlan!',
+            text: 'OnePlan ist mittlerweile ganz schön vielseitig geworden — hier ein kurzer Rundgang durch die wichtigsten Bereiche. Dauert nur eine Minute.'
+        },
+        {
+            icon: 'fa-calendar-alt',
+            title: 'Kalender',
+            text: 'Termine, Klassenarbeiten und Ereignisse landen alle im Kalender — auf einen Blick für die ganze Woche oder den ganzen Monat.'
+        },
+        {
+            icon: 'fa-clock',
+            title: 'Stundenplan',
+            text: 'Trage deinen Stundenplan einmal ein und importiere ihn danach ganz einfach von Klassenkamerad:innen oder teile deinen eigenen.'
+        },
+        {
+            icon: 'fa-book',
+            title: 'Hausaufgaben',
+            text: 'Offene Aufgaben eintragen, abhaken und bei Bedarf mit der Klasse teilen — nichts geht mehr unter.'
+        },
+        {
+            icon: 'fa-calculator',
+            title: 'Notenrechner',
+            text: 'Noten eintragen und den Durchschnitt automatisch berechnen lassen, inklusive Gewichtung.'
+        },
+        {
+            icon: 'fa-layer-group',
+            title: 'Karteikarten',
+            text: 'Lerne mit dem Leitner-System: OnePlan merkt sich, welche Karten du kannst, und zeigt dir automatisch, was gerade fällig ist.'
+        },
+        {
+            icon: 'fa-stopwatch',
+            title: 'Pomodoro-Timer',
+            text: 'Konzentriert lernen mit Fokus-Phasen und eingebauten Pausen.'
+        },
+        {
+            icon: 'fa-robot',
+            title: 'KI-Assistent',
+            text: 'Hängst du bei den Hausaufgaben fest? Der KI-Assistent hilft dir direkt in der App weiter.'
+        },
+        {
+            icon: 'fa-fire',
+            title: 'Fortschritt & Punkte-Shop',
+            text: 'Für erledigte Aufgaben gibt es XP und Coins. Im Punkte-Shop tauschst du sie gegen neue Farben und Icons ein.'
+        },
+        {
+            icon: 'fa-comments',
+            title: 'Feedback',
+            text: 'Wünsche, Ideen oder Bugs? Über den Feedback-Bereich erreichst du uns direkt aus der App.'
+        }
+    ],
+    tutorialStepIndex: 0,
+    tutorialOnFinish: null,
+
+    startTutorial(onFinish) {
+        this.tutorialStepIndex = 0;
+        this.tutorialOnFinish = onFinish || null;
+        this.renderTutorialStep();
+    },
+
+    renderTutorialStep() {
+        const steps = this.tutorialSteps;
+        const i = this.tutorialStepIndex;
+        const step = steps[i];
+        const isLast = i === steps.length - 1;
+        const isFirst = i === 0;
+        const dots = steps.map((_, idx) => `<span class="tutorial-dot ${idx === i ? 'active' : ''}"></span>`).join('');
+
+        this.showModal(`
+            <div class="tutorial">
+                <div class="tutorial-icon"><i class="fas ${step.icon}"></i></div>
+                <h3>${step.title}</h3>
+                <p class="tutorial-text">${step.text}</p>
+                <div class="tutorial-dots">${dots}</div>
+                <div class="tutorial-actions">
+                    ${isFirst
+                        ? `<button class="btn-secondary" onclick="App.skipTutorial()">Überspringen</button>`
+                        : `<button class="btn-secondary" onclick="App.tutorialPrev()">Zurück</button>`}
+                    <button class="btn-primary" onclick="App.${isLast ? 'finishTutorial' : 'tutorialNext'}()">
+                        ${isLast ? 'Los geht\'s! <i class="fas fa-check"></i>' : 'Weiter <i class="fas fa-arrow-right"></i>'}
+                    </button>
+                </div>
+            </div>
+        `);
+    },
+
+    tutorialNext() {
+        if (this.tutorialStepIndex < this.tutorialSteps.length - 1) {
+            this.tutorialStepIndex++;
+            this.renderTutorialStep();
+        }
+    },
+
+    tutorialPrev() {
+        if (this.tutorialStepIndex > 0) {
+            this.tutorialStepIndex--;
+            this.renderTutorialStep();
+        }
+    },
+
+    skipTutorial() {
+        this.closeModal();
+        this.afterTutorialClosed();
+    },
+
+    finishTutorial() {
+        this.closeModal();
+        this.afterTutorialClosed();
+    },
+
+    afterTutorialClosed() {
+        if (this.tutorialOnFinish) {
+            const cb = this.tutorialOnFinish;
+            this.tutorialOnFinish = null;
+            setTimeout(cb, 400);
+        }
     },
 
     // ===== Data Management =====
