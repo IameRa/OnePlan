@@ -161,7 +161,13 @@
 
             <!-- Kalender -->
             <section id="kalender" class="section">
-                <h1>Kalender</h1>
+                <div class="section-header">
+                    <h1>Kalender</h1>
+                    <div class="section-header-actions">
+                        <button class="btn-secondary btn-small" onclick="App.openImportModal()"><i class="fas fa-download"></i> Importieren</button>
+                        <button class="btn-secondary btn-small" onclick="App.openEventShareModal()"><i class="fas fa-share-alt"></i> Teilen</button>
+                    </div>
+                </div>
                 <div class="calendar-container">
                     <div class="calendar-main grades-box">
                         <div class="calendar-header">

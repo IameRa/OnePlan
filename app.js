@@ -3106,6 +3106,42 @@ const App = {
         this.createShare('homework', `${name} Hausaufgaben`, items);
     },
 
+    openEventShareModal() {
+        const upcoming = this.events
+            .filter(e => new Date(e.date) >= new Date(new Date().toDateString()))
+            .sort((a, b) => new Date(a.date + 'T' + (a.time || '00:00')) - new Date(b.date + 'T' + (b.time || '00:00')));
+        if (upcoming.length === 0) {
+            this.showNotification('Keine anstehenden Termine zum Teilen', 'warning');
+            return;
+        }
+        this.showModal(`
+            <h3><i class="fas fa-share-alt"></i> Termine teilen</h3>
+            <p class="field-hint">Wähle aus, welche Termine du teilen möchtest.</p>
+            <div class="hw-share-list">
+                ${upcoming.map(event => `
+                    <label class="hw-share-item">
+                        <input type="checkbox" class="event-share-check" value="${event.id}" checked>
+                        <span><strong>${event.title}</strong> – ${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
+                    </label>
+                `).join('')}
+            </div>
+            <button class="btn-primary btn-full" style="margin-top:14px;" onclick="App.confirmEventShare()"><i class="fas fa-share-alt"></i> Ausgewählte teilen</button>
+        `);
+    },
+
+    confirmEventShare() {
+        const ids = Array.from(document.querySelectorAll('.event-share-check:checked')).map(el => Number(el.value));
+        const items = this.events
+            .filter(e => ids.includes(e.id))
+            .map(e => ({ title: e.title, date: e.date, time: e.time, reminder: e.reminder, description: e.description }));
+        if (items.length === 0) {
+            this.showNotification('Bitte mindestens einen Termin auswählen', 'warning');
+            return;
+        }
+        const name = Auth.currentUser?.name || Auth.currentUser?.username || 'Geteilte';
+        this.createShare('events', `${name} Termine`, items);
+    },
+
     openImportModal(prefillCode = '') {
         this.showModal(`
             <h3><i class="fas fa-download"></i> Code einlösen</h3>
@@ -3199,7 +3235,7 @@ const App = {
             return;
         }
 
-        const typeLabel = { timetable: 'Stundenplan', flashcards: 'Karteikarten-Stapel', homework: 'Hausaufgaben' }[row.type] || row.type;
+        const typeLabel = { timetable: 'Stundenplan', flashcards: 'Karteikarten-Stapel', homework: 'Hausaufgaben', events: 'Termine' }[row.type] || row.type;
         const count = Array.isArray(row.payload) ? row.payload.length : null;
         const warning = row.type === 'timetable'
             ? '<p class="field-hint" style="color:var(--danger-color);"><i class="fas fa-triangle-exclamation"></i> Achtung: Dein aktueller Stundenplan wird dabei komplett ersetzt.</p>'
@@ -3254,6 +3290,21 @@ const App = {
             this.saveData('homework', this.homework);
             this.renderHomework();
             this.showNotification(`${items.length} Hausaufgaben übernommen`, 'success');
+        } else if (type === 'events') {
+            const items = payload.map((e, i) => ({
+                id: Date.now() + i,
+                title: e.title,
+                date: e.date,
+                time: e.time || '',
+                reminder: e.reminder || 0,
+                description: e.description || '',
+                reminded: false
+            }));
+            this.events.push(...items);
+            this.saveData('events', this.events);
+            this.renderCalendar();
+            this.renderEventList();
+            this.showNotification(`${items.length} Termine übernommen`, 'success');
         }
         this._pendingImport = null;
         document.getElementById('modal').classList.remove('active');
