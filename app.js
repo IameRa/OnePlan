@@ -753,6 +753,7 @@ const App = {
         this.setupFlashcards();
         this.setupPomodoro();
         this.setupProgress();
+        this.setupShop();
         this.setupModal();
         this.renderDashboardGrid();
         this.checkReminders();
@@ -822,10 +823,14 @@ const App = {
             box: c.box || 1,
             due: c.due || this.todayStr()
         }));
-        this.progress = map['progress'] || { xp: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], streakFreezes: 0, stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
+        this.progress = map['progress'] || { xp: 0, coins: 0, streak: 0, lastActiveDate: null, totalActions: 0, badges: [], streakFreezes: 0, stats: { homework: 0, cards: 0, pomodoro: 0, grades: 0 } };
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
+        if (this.progress.coins === undefined) this.progress.coins = 0;
         this.checkStreakExpiry();
+        this.shop = map['shop'] || { items: [], history: [] };
+        if (!this.shop.items) this.shop.items = [];
+        if (!this.shop.history) this.shop.history = [];
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
@@ -916,6 +921,7 @@ const App = {
             case 'feedback': if (this.isAdmin()) this.loadAdminFeedback(); break;
             case 'karteikarten': this.renderFlashcardDecks(); break;
             case 'fortschritt': this.renderProgress(); break;
+            case 'shop': this.renderShop(); break;
         }
     },
 
@@ -3927,6 +3933,7 @@ Object.assign(App, {
         const levelBefore = this.getLevelInfo(p.xp).level;
 
         p.xp += amount;
+        p.coins = (p.coins || 0) + amount;
         p.totalActions = (p.totalActions || 0) + 1;
         if (statKey) {
             if (!p.stats) p.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
@@ -3939,6 +3946,7 @@ Object.assign(App, {
         this.saveData('progress', p);
         this.renderStreakBadge();
         if (this.state.currentSection === 'fortschritt') this.renderProgress();
+        if (this.state.currentSection === 'shop') this.renderShopBalance();
         if (this.state.currentSection === 'dashboard') this.updateDashboard();
 
         newlyEarned.forEach(b => {
@@ -4101,5 +4109,155 @@ Object.assign(App, {
             overlay.classList.add('levelup-fade-out');
             setTimeout(() => overlay.remove(), 400);
         }, 2800);
+    },
+
+    // ===== Punkte-Shop =====
+    // Eigene Belohnungen, die sich der Nutzer mit den zusammen mit XP
+    // gesammelten Punkten (progress.coins) "kaufen" kann. Items und der
+    // Einlöseverlauf werden unter dem Datenschlüssel 'shop' gespeichert.
+    shopIcons: ['fa-gamepad', 'fa-mobile-screen', 'fa-tv', 'fa-cookie-bite', 'fa-pizza-slice',
+        'fa-film', 'fa-couch', 'fa-bicycle', 'fa-basketball', 'fa-music',
+        'fa-shirt', 'fa-gift', 'fa-star', 'fa-mug-hot', 'fa-bed'],
+
+    setupShop() {
+        this.renderShopBalance();
+    },
+
+    renderShopBalance() {
+        const el = document.getElementById('shop-coin-balance');
+        if (el) el.textContent = this.progress?.coins || 0;
+    },
+
+    renderShop() {
+        this.renderShopBalance();
+        const grid = document.getElementById('shop-items-grid');
+        const empty = document.getElementById('shop-empty-state');
+        const items = this.shop?.items || [];
+
+        if (!grid) return;
+        empty.style.display = items.length ? 'none' : 'flex';
+
+        const coins = this.progress?.coins || 0;
+        grid.innerHTML = items.map(item => {
+            const affordable = coins >= item.cost;
+            return `
+                <div class="shop-item-card ${affordable ? '' : 'unaffordable'}">
+                    <div class="shop-item-actions">
+                        <button class="shop-item-icon-btn" title="Bearbeiten" onclick="App.openShopItemModal('${item.id}')"><i class="fas fa-pen"></i></button>
+                        <button class="shop-item-icon-btn danger" title="Löschen" onclick="App.deleteShopItem('${item.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div class="shop-item-icon"><i class="fas ${item.icon || 'fa-gift'}"></i></div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>
+                    <button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.redeemShopItem('${item.id}')">
+                        <i class="fas fa-check"></i> Einlösen
+                    </button>
+                </div>
+            `;
+        }).join('');
+    },
+
+    openShopItemModal(itemId) {
+        const item = itemId ? (this.shop.items || []).find(i => i.id === itemId) : null;
+        const iconOptions = this.shopIcons.map(icon =>
+            `<label class="shop-icon-option">
+                <input type="radio" name="shop-item-icon" value="${icon}" ${(item?.icon || 'fa-gift') === icon ? 'checked' : ''}>
+                <span><i class="fas ${icon}"></i></span>
+            </label>`
+        ).join('');
+
+        this.showModal(`
+            <h3><i class="fas fa-gift"></i> ${item ? 'Belohnung bearbeiten' : 'Belohnung erstellen'}</h3>
+            <label>Name der Belohnung</label>
+            <input type="text" id="shop-item-name" placeholder="z. B. 30 Min. Gaming" value="${item?.name || ''}">
+            <label>Kosten in Punkten</label>
+            <input type="number" id="shop-item-cost" min="1" placeholder="z. B. 50" value="${item?.cost || ''}">
+            <label>Icon</label>
+            <div class="shop-icon-picker">${iconOptions}</div>
+            <button class="btn-primary btn-full" style="margin-top:16px;" onclick="App.saveShopItem('${item?.id || ''}')">
+                <i class="fas fa-save"></i> Speichern
+            </button>
+        `);
+    },
+
+    saveShopItem(itemId) {
+        const name = document.getElementById('shop-item-name').value.trim();
+        const cost = parseInt(document.getElementById('shop-item-cost').value, 10);
+        const iconInput = document.querySelector('input[name="shop-item-icon"]:checked');
+        const icon = iconInput ? iconInput.value : 'fa-gift';
+
+        if (!name || !cost || cost < 1) {
+            this.showNotification('Bitte Namen und gültige Punktzahl eingeben', 'error');
+            return;
+        }
+
+        if (!this.shop.items) this.shop.items = [];
+        if (itemId) {
+            const item = this.shop.items.find(i => i.id === itemId);
+            if (item) { item.name = name; item.cost = cost; item.icon = icon; }
+        } else {
+            this.shop.items.push({ id: 'shop_' + Date.now(), name, cost, icon });
+        }
+
+        this.saveData('shop', this.shop);
+        this.closeModal();
+        this.renderShop();
+        this.showNotification(itemId ? 'Belohnung aktualisiert' : 'Belohnung erstellt', 'success');
+    },
+
+    deleteShopItem(itemId) {
+        if (!confirm('Diese Belohnung wirklich löschen?')) return;
+        this.shop.items = (this.shop.items || []).filter(i => i.id !== itemId);
+        this.saveData('shop', this.shop);
+        this.renderShop();
+        this.showNotification('Belohnung gelöscht', 'success');
+    },
+
+    redeemShopItem(itemId) {
+        const item = (this.shop.items || []).find(i => i.id === itemId);
+        if (!item) return;
+        const coins = this.progress?.coins || 0;
+        if (coins < item.cost) {
+            this.showNotification('Nicht genug Punkte für diese Belohnung', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - item.cost;
+        if (!this.shop.history) this.shop.history = [];
+        this.shop.history.unshift({
+            id: 'redeem_' + Date.now(),
+            name: item.name,
+            icon: item.icon,
+            cost: item.cost,
+            date: new Date().toISOString()
+        });
+        // Verlauf auf die letzten 100 Einträge begrenzen
+        if (this.shop.history.length > 100) this.shop.history = this.shop.history.slice(0, 100);
+
+        this.saveData('progress', this.progress);
+        this.saveData('shop', this.shop);
+        this.renderShop();
+        this.showNotification(`🎉 Eingelöst: ${item.name}`, 'success');
+    },
+
+    openShopHistoryModal() {
+        const history = this.shop?.history || [];
+        const rows = history.length
+            ? history.map(h => `
+                <div class="shop-history-row">
+                    <div class="shop-history-icon"><i class="fas ${h.icon || 'fa-gift'}"></i></div>
+                    <div class="shop-history-info">
+                        <strong>${h.name}</strong>
+                        <small>${new Date(h.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
+                    </div>
+                    <div class="shop-history-cost"><i class="fas fa-coins"></i> ${h.cost}</div>
+                </div>
+            `).join('')
+            : '<p style="color:var(--text-secondary);">Noch keine Belohnungen eingelöst.</p>';
+
+        this.showModal(`
+            <h3><i class="fas fa-clock-rotate-left"></i> Einlöse-Verlauf</h3>
+            <div class="shop-history-list">${rows}</div>
+        `);
     }
 });
