@@ -978,17 +978,19 @@
             const btn = document.getElementById('btn-install-app');
             if (btn) btn.style.display = 'none';
             deferredInstallPrompt = null;
-            InstallBanner.hide(true);
+            InstallBanner.hide();
         });
 
-        // Mobiler "App installieren"-Banner: fällt auf, ist aber jederzeit
-        // schließbar, und erscheint nur, solange OnePlan noch nicht als
-        // App installiert wurde. Auf Android/Chromium nutzt er denselben
-        // nativen Install-Prompt wie der Button im Nutzermenü; auf iOS
-        // (kein natives beforeinstallprompt) zeigt er stattdessen die
-        // "Teilen -> Zum Home-Bildschirm"-Anleitung als Modal.
+        // Mobiler "App installieren"-Banner: erscheint bei jedem Öffnen der
+        // Seite erneut, solange OnePlan noch nicht als App installiert wurde.
+        // Ein Klick auf "Schließen" blendet ihn nur für diesen Aufruf aus,
+        // nicht dauerhaft — sonst würde er gerade auf dem Handy, wo er am
+        // wichtigsten ist, nach einmaligem Wegtippen nie wieder erscheinen.
+        // Auf Android/Chromium nutzt er denselben nativen Install-Prompt wie
+        // der Button im Nutzermenü; auf iOS (kein natives beforeinstallprompt)
+        // zeigt er stattdessen die "Teilen -> Zum Home-Bildschirm"-Anleitung.
         const InstallBanner = {
-            dismissKey: 'oneplan-install-banner-dismissed',
+            dismissedThisVisit: false,
 
             isStandalone() {
                 return window.matchMedia('(display-mode: standalone)').matches
@@ -1005,15 +1007,10 @@
                     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             },
 
-            isDismissed() {
-                try { return localStorage.getItem(this.dismissKey) === 'true'; }
-                catch (e) { return false; }
-            },
-
             init() {
                 const closeBtn = document.getElementById('install-banner-close');
                 const actionBtn = document.getElementById('install-banner-action');
-                if (closeBtn) closeBtn.addEventListener('click', () => this.hide(true));
+                if (closeBtn) closeBtn.addEventListener('click', () => this.hide());
                 if (actionBtn) actionBtn.addEventListener('click', () => this.onAction());
                 this.update();
             },
@@ -1022,7 +1019,7 @@
                 const banner = document.getElementById('install-banner');
                 if (!banner) return;
 
-                if (this.isStandalone() || !this.isMobile() || this.isDismissed()) {
+                if (this.isStandalone() || !this.isMobile() || this.dismissedThisVisit) {
                     banner.classList.remove('active');
                     return;
                 }
@@ -1072,12 +1069,10 @@
                 this.update();
             },
 
-            hide(remember) {
+            hide() {
+                this.dismissedThisVisit = true;
                 const banner = document.getElementById('install-banner');
                 if (banner) banner.classList.remove('active');
-                if (remember) {
-                    try { localStorage.setItem(this.dismissKey, 'true'); } catch (e) {}
-                }
             }
         };
 
