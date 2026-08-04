@@ -927,6 +927,17 @@
         </ul>
     </div>
 
+    <!-- Mobile "App installieren"-Banner (nur mobil, nur solange nicht installiert) -->
+    <div id="install-banner" class="install-banner">
+        <div class="install-banner-icon"><i class="fas fa-mobile-screen-button"></i></div>
+        <div class="install-banner-text">
+            <strong>OnePlan installieren</strong>
+            <span id="install-banner-hint">Schneller Zugriff & Offline-Nutzung – direkt vom Startbildschirm.</span>
+        </div>
+        <button id="install-banner-action" class="btn-primary btn-small">Installieren</button>
+        <button id="install-banner-close" class="install-banner-close" aria-label="Banner schließen"><i class="fas fa-times"></i></button>
+    </div>
+
     <script src="app.js"></script>
     <script>
         // Service Worker registrieren (PWA: Offline-Fähigkeit & Installierbarkeit)
@@ -945,6 +956,7 @@
             deferredInstallPrompt = e;
             const btn = document.getElementById('btn-install-app');
             if (btn) btn.style.display = 'flex';
+            InstallBanner.update();
         });
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -956,15 +968,120 @@
                     await deferredInstallPrompt.userChoice;
                     deferredInstallPrompt = null;
                     installBtn.style.display = 'none';
+                    InstallBanner.update();
                 });
             }
+            InstallBanner.init();
         });
 
         window.addEventListener('appinstalled', () => {
             const btn = document.getElementById('btn-install-app');
             if (btn) btn.style.display = 'none';
             deferredInstallPrompt = null;
+            InstallBanner.hide(true);
         });
+
+        // Mobiler "App installieren"-Banner: fällt auf, ist aber jederzeit
+        // schließbar, und erscheint nur, solange OnePlan noch nicht als
+        // App installiert wurde. Auf Android/Chromium nutzt er denselben
+        // nativen Install-Prompt wie der Button im Nutzermenü; auf iOS
+        // (kein natives beforeinstallprompt) zeigt er stattdessen die
+        // "Teilen -> Zum Home-Bildschirm"-Anleitung als Modal.
+        const InstallBanner = {
+            dismissKey: 'oneplan-install-banner-dismissed',
+
+            isStandalone() {
+                return window.matchMedia('(display-mode: standalone)').matches
+                    || window.navigator.standalone === true;
+            },
+
+            isMobile() {
+                return window.matchMedia('(max-width: 768px)').matches;
+            },
+
+            isIOS() {
+                const ua = navigator.userAgent;
+                return /iPhone|iPad|iPod/i.test(ua)
+                    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            },
+
+            isDismissed() {
+                try { return localStorage.getItem(this.dismissKey) === 'true'; }
+                catch (e) { return false; }
+            },
+
+            init() {
+                const closeBtn = document.getElementById('install-banner-close');
+                const actionBtn = document.getElementById('install-banner-action');
+                if (closeBtn) closeBtn.addEventListener('click', () => this.hide(true));
+                if (actionBtn) actionBtn.addEventListener('click', () => this.onAction());
+                this.update();
+            },
+
+            update() {
+                const banner = document.getElementById('install-banner');
+                if (!banner) return;
+
+                if (this.isStandalone() || !this.isMobile() || this.isDismissed()) {
+                    banner.classList.remove('active');
+                    return;
+                }
+
+                // Auf iOS gibt es kein beforeinstallprompt-Event — dort zeigen
+                // wir den Banner trotzdem, aber mit Anleitung statt Prompt.
+                if (!this.isIOS() && !deferredInstallPrompt) {
+                    banner.classList.remove('active');
+                    return;
+                }
+
+                const hint = document.getElementById('install-banner-hint');
+                const actionBtn = document.getElementById('install-banner-action');
+                if (this.isIOS()) {
+                    if (hint) hint.textContent = 'Tippe unten auf „Teilen“ und dann auf „Zum Home-Bildschirm“.';
+                    if (actionBtn) actionBtn.textContent = 'Zeigen';
+                } else {
+                    if (hint) hint.textContent = 'Schneller Zugriff & Offline-Nutzung – direkt vom Startbildschirm.';
+                    if (actionBtn) actionBtn.textContent = 'Installieren';
+                }
+
+                banner.classList.add('active');
+            },
+
+            async onAction() {
+                if (this.isIOS()) {
+                    App.showModal(`
+                        <h3><i class="fas fa-mobile-screen-button"></i> OnePlan installieren</h3>
+                        <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                            So installierst du OnePlan auf deinem iPhone/iPad als App:
+                        </p>
+                        <ol style="margin: 0 0 18px; padding-left: 20px; color: var(--text-secondary); line-height: 1.8;">
+                            <li>Tippe unten in Safari auf das Teilen-Symbol <i class="fas fa-arrow-up-from-bracket"></i></li>
+                            <li>Wähle „Zum Home-Bildschirm“</li>
+                            <li>Tippe oben rechts auf „Hinzufügen“</li>
+                        </ol>
+                        <button class="btn-primary btn-full" onclick="App.closeModal()">Verstanden</button>
+                    `);
+                    return;
+                }
+                if (!deferredInstallPrompt) return;
+                deferredInstallPrompt.prompt();
+                await deferredInstallPrompt.userChoice;
+                deferredInstallPrompt = null;
+                const installBtn = document.getElementById('btn-install-app');
+                if (installBtn) installBtn.style.display = 'none';
+                this.update();
+            },
+
+            hide(remember) {
+                const banner = document.getElementById('install-banner');
+                if (banner) banner.classList.remove('active');
+                if (remember) {
+                    try { localStorage.setItem(this.dismissKey, 'true'); } catch (e) {}
+                }
+            }
+        };
+
+        window.matchMedia('(max-width: 768px)').addEventListener('change', () => InstallBanner.update());
     </script>
 </body>
 </html>
