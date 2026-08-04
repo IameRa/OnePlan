@@ -749,11 +749,36 @@ const App = {
         selectedRating: 0,
         homeworkFilter: 'all',
         previewAccent: null,
-        previewFlame: null
+        previewFlame: null,
+        previewCardDesign: null,
+        previewTitleFont: null,
+        collapsedCategories: {}
+    },
+
+    // Merkt sich für Badge- und Shop-Kategorien, ob sie ein-/ausgeklappt sind
+    // (persistiert in localStorage, damit es nach einem Reload erhalten bleibt).
+    loadCollapsedCategories() {
+        try {
+            this.state.collapsedCategories = JSON.parse(localStorage.getItem('oneplan-collapsed-categories')) || {};
+        } catch (e) {
+            this.state.collapsedCategories = {};
+        }
+    },
+
+    isCategoryCollapsed(key) {
+        return !!this.state.collapsedCategories[key];
+    },
+
+    toggleCategory(key) {
+        this.state.collapsedCategories[key] = !this.state.collapsedCategories[key];
+        localStorage.setItem('oneplan-collapsed-categories', JSON.stringify(this.state.collapsedCategories));
+        const group = document.querySelector(`[data-category-key="${key}"]`);
+        if (group) group.classList.toggle('collapsed', this.state.collapsedCategories[key]);
     },
 
     // Initialize the application
     async init() {
+        this.loadCollapsedCategories();
         await this.loadAllData();
         this.setupNavigation();
         this.setupCalendar();
@@ -988,7 +1013,7 @@ const App = {
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         if (this.progress.coins === undefined) this.progress.coins = 0;
         this.checkStreakExpiry();
-        this.shop = map['shop'] || { unlockedAccents: ['default'], activeAccent: 'default', unlockedLevelUpIcons: ['star'], activeLevelUpIcon: 'star', unlockedFlames: ['classic'], activeFlame: 'classic', history: [] };
+        this.shop = map['shop'] || { unlockedAccents: ['default'], activeAccent: 'default', unlockedLevelUpIcons: ['star'], activeLevelUpIcon: 'star', unlockedFlames: ['classic'], activeFlame: 'classic', unlockedCardDesigns: ['classic'], activeCardDesign: 'classic', unlockedTitleFonts: ['default'], activeTitleFont: 'default', history: [] };
         if (!this.shop.unlockedAccents || !this.shop.unlockedAccents.length) this.shop.unlockedAccents = ['default'];
         if (!this.shop.unlockedAccents.includes('default')) this.shop.unlockedAccents.push('default');
         if (!this.shop.activeAccent) this.shop.activeAccent = 'default';
@@ -998,9 +1023,17 @@ const App = {
         if (!this.shop.unlockedFlames || !this.shop.unlockedFlames.length) this.shop.unlockedFlames = ['classic'];
         if (!this.shop.unlockedFlames.includes('classic')) this.shop.unlockedFlames.push('classic');
         if (!this.shop.activeFlame) this.shop.activeFlame = 'classic';
+        if (!this.shop.unlockedCardDesigns || !this.shop.unlockedCardDesigns.length) this.shop.unlockedCardDesigns = ['classic'];
+        if (!this.shop.unlockedCardDesigns.includes('classic')) this.shop.unlockedCardDesigns.push('classic');
+        if (!this.shop.activeCardDesign) this.shop.activeCardDesign = 'classic';
+        if (!this.shop.unlockedTitleFonts || !this.shop.unlockedTitleFonts.length) this.shop.unlockedTitleFonts = ['default'];
+        if (!this.shop.unlockedTitleFonts.includes('default')) this.shop.unlockedTitleFonts.push('default');
+        if (!this.shop.activeTitleFont) this.shop.activeTitleFont = 'default';
         if (!this.shop.history) this.shop.history = [];
         this.applyAccent(this.shop.activeAccent);
         this.applyFlame(this.shop.activeFlame);
+        this.applyCardDesign(this.shop.activeCardDesign);
+        this.applyTitleFont(this.shop.activeTitleFont);
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
@@ -1077,6 +1110,8 @@ const App = {
         if (this.state.currentSection === 'shop' && section !== 'shop') {
             if (this.state.previewAccent) this.stopAccentPreview(true);
             if (this.state.previewFlame) this.stopFlamePreview(true);
+            if (this.state.previewCardDesign) this.stopCardDesignPreview(true);
+            if (this.state.previewTitleFont) this.stopTitleFontPreview(true);
         }
 
         document.querySelectorAll('.nav-links li').forEach(item => {
@@ -2730,6 +2765,11 @@ const App = {
     setupFlashcards() {
         document.getElementById('add-flashcard').addEventListener('click', () => this.addFlashcard());
         document.getElementById('fc-back-to-decks').addEventListener('click', () => this.exitLearnMode());
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('flashcard-learn-mode').style.display === 'flex') {
+                this.exitLearnMode();
+            }
+        });
         this.renderFlashcardDecks();
     },
 
@@ -2844,7 +2884,7 @@ const App = {
         };
 
         document.getElementById('flashcard-decks').style.display = 'none';
-        document.getElementById('flashcard-learn-mode').style.display = 'block';
+        document.getElementById('flashcard-learn-mode').style.display = 'flex';
         document.getElementById('fc-done-screen').style.display = 'none';
         document.getElementById('fc-card-area').style.display = 'block';
         document.getElementById('fc-answer-btns').style.display = 'none';
@@ -4275,9 +4315,15 @@ Object.assign(App, {
                 `;
             }).join('');
 
+            const catKey = `badge:${cat}`;
+            const collapsed = this.isCategoryCollapsed(catKey);
             return `
-                <div class="badge-category-group">
-                    <h4 class="badge-category-heading">${cat} <span class="badge-category-count">${earnedCount}/${badgesInCat.length}</span></h4>
+                <div class="badge-category-group ${collapsed ? 'collapsed' : ''}" data-category-key="${catKey}">
+                    <h4 class="badge-category-heading" onclick="App.toggleCategory('${catKey}')">
+                        <i class="fas fa-chevron-right category-collapse-caret"></i>
+                        <span class="category-heading-label">${cat}</span>
+                        <span class="badge-category-count">${earnedCount}/${badgesInCat.length}</span>
+                    </h4>
                     <div class="badge-category-grid">${tiles}</div>
                 </div>
             `;
@@ -4383,6 +4429,26 @@ Object.assign(App, {
         { id: 'gold', name: 'Goldflamme', desc: 'Die seltenste Farbe im Shop', cost: 160, color: '#eab308', glow: 'rgba(234, 179, 8, 0.6)' }
     ],
 
+    cardDesignCatalog: [
+        { id: 'classic', name: 'Klassisch', desc: 'Das original OnePlan-Kartendesign', cost: 0, front: ['var(--primary-color)', 'var(--primary-dark)'], back: ['#1e293b', '#334155'] },
+        { id: 'ocean', name: 'Ozean', desc: 'Kühle Blautöne für Vorder- und Rückseite', cost: 60, front: ['#0284c7', '#075985'], back: ['#0c4a6e', '#164e63'] },
+        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warme Orange-Rot-Verläufe', cost: 70, front: ['#f97316', '#dc2626'], back: ['#7c2d12', '#9d174d'] },
+        { id: 'forest', name: 'Wald', desc: 'Sattes, ruhiges Grün', cost: 80, front: ['#16a34a', '#166534'], back: ['#14532d', '#052e16'] },
+        { id: 'lavender', name: 'Lavendel', desc: 'Sanftes, edles Violett', cost: 90, front: ['#8b5cf6', '#6d28d9'], back: ['#4c1d95', '#312e81'] },
+        { id: 'mono', name: 'Mono', desc: 'Schlichtes Schwarz-Grau, sehr aufgeräumt', cost: 100, front: ['#111827', '#1f2937'], back: ['#374151', '#4b5563'] },
+        { id: 'gold', name: 'Gold', desc: 'Edles Design für Vielkarteikartenlerner', cost: 130, front: ['#ca8a04', '#92400e'], back: ['#78350f', '#451a03'] }
+    ],
+
+    titleFontCatalog: [
+        { id: 'default', name: 'Standard', desc: 'Die normale OnePlan-Schrift', cost: 0, fontFamily: 'inherit', previewFont: 'inherit' },
+        { id: 'poppins', name: 'Poppins', desc: 'Rund, modern und freundlich', cost: 60, fontFamily: "'Poppins', sans-serif", previewFont: "'Poppins', sans-serif" },
+        { id: 'grotesk', name: 'Space Grotesk', desc: 'Klar, technisch, aufgeräumt', cost: 80, fontFamily: "'Space Grotesk', sans-serif", previewFont: "'Space Grotesk', sans-serif" },
+        { id: 'fraunces', name: 'Fraunces', desc: 'Elegante Serifenschrift', cost: 100, fontFamily: "'Fraunces', serif", previewFont: "'Fraunces', serif" },
+        { id: 'caveat', name: 'Caveat', desc: 'Verspielt und handschriftlich', cost: 90, fontFamily: "'Caveat', cursive", previewFont: "'Caveat', cursive" },
+        { id: 'bebas', name: 'Bebas Neue', desc: 'Kräftige Headline-Schrift', cost: 110, fontFamily: "'Bebas Neue', sans-serif", previewFont: "'Bebas Neue', sans-serif" }
+    ],
+
+
     // Streak-Freezes werden mit jedem bereits vorhandenen Freeze teurer –
     // sie sollen ein wertvolles, bewusst eingesetztes Gut bleiben, kein
     // Spontankauf.
@@ -4436,6 +4502,48 @@ Object.assign(App, {
     stopFlamePreview(skipRender) {
         this.state.previewFlame = null;
         this.applyFlame(this.shop?.activeFlame || 'classic');
+        if (!skipRender) this.renderShop();
+    },
+
+    applyCardDesign(designId) {
+        const item = this.cardDesignCatalog.find(d => d.id === designId) || this.cardDesignCatalog[0];
+        document.documentElement.style.setProperty('--fc-front-start', item.front[0]);
+        document.documentElement.style.setProperty('--fc-front-end', item.front[1]);
+        document.documentElement.style.setProperty('--fc-back-start', item.back[0]);
+        document.documentElement.style.setProperty('--fc-back-end', item.back[1]);
+    },
+
+    // Vorschau eines Karteikarten-Designs: färbt die Vorschau-Mini-Karte im
+    // Shop und, falls die Karteikarten-Ansicht offen ist, auch die echte
+    // Lernkarte um – ohne zu kaufen oder zu speichern.
+    previewCardDesign(designId) {
+        this.state.previewCardDesign = designId;
+        this.applyCardDesign(designId);
+        this.renderShop();
+    },
+
+    stopCardDesignPreview(skipRender) {
+        this.state.previewCardDesign = null;
+        this.applyCardDesign(this.shop?.activeCardDesign || 'classic');
+        if (!skipRender) this.renderShop();
+    },
+
+    applyTitleFont(fontId) {
+        const item = this.titleFontCatalog.find(f => f.id === fontId) || this.titleFontCatalog[0];
+        document.documentElement.style.setProperty('--title-font', item.fontFamily);
+    },
+
+    // Vorschau einer Titel-Schriftart: wirkt sofort auf Sidebar-Logo und
+    // Seitentitel, ohne zu kaufen oder zu speichern.
+    previewTitleFont(fontId) {
+        this.state.previewTitleFont = fontId;
+        this.applyTitleFont(fontId);
+        this.renderShop();
+    },
+
+    stopTitleFontPreview(skipRender) {
+        this.state.previewTitleFont = null;
+        this.applyTitleFont(this.shop?.activeTitleFont || 'default');
         if (!skipRender) this.renderShop();
     },
 
@@ -4575,6 +4683,70 @@ Object.assign(App, {
             `;
         }).join('');
 
+        // Kosmetik: Karteikarten-Design
+        const unlockedCardDesigns = this.shop?.unlockedCardDesigns || ['classic'];
+        const activeCardDesign = this.shop?.activeCardDesign || 'classic';
+        const previewingCardDesign = this.state.previewCardDesign;
+        const cardDesignCards = this.cardDesignCatalog.map(item => {
+            const isUnlocked = unlockedCardDesigns.includes(item.id);
+            const isActive = activeCardDesign === item.id;
+            const isPreviewing = previewingCardDesign === item.id;
+            const affordable = coins >= item.cost;
+            let btn;
+            if (isActive) {
+                btn = `<button class="btn-secondary btn-small shop-item-redeem-btn" disabled><i class="fas fa-check"></i> Aktiv</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" onclick="App.equipCardDesign('${item.id}')"><i class="fas fa-paintbrush"></i> Anwenden</button>`;
+            } else {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyCardDesign('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
+            }
+            const previewBtn = isActive ? '' : (isPreviewing
+                ? `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.stopCardDesignPreview()"><i class="fas fa-eye-slash"></i> Vorschau beenden</button>`
+                : `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.previewCardDesign('${item.id}')"><i class="fas fa-eye"></i> Vorschau</button>`);
+            return `
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isPreviewing ? '<div class="shop-item-badge shop-item-badge-preview">Vorschau</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : ''))}
+                    <div class="shop-item-icon fc-swatch" style="background:linear-gradient(135deg, ${item.front[0]}, ${item.front[1]});"><i class="fas fa-clone"></i></div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-desc">${item.desc}</div>
+                    ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
+                    <div class="shop-item-btn-row">${previewBtn}${btn}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Kosmetik: App-Titel-Schriftart
+        const unlockedTitleFonts = this.shop?.unlockedTitleFonts || ['default'];
+        const activeTitleFont = this.shop?.activeTitleFont || 'default';
+        const previewingTitleFont = this.state.previewTitleFont;
+        const titleFontCards = this.titleFontCatalog.map(item => {
+            const isUnlocked = unlockedTitleFonts.includes(item.id);
+            const isActive = activeTitleFont === item.id;
+            const isPreviewing = previewingTitleFont === item.id;
+            const affordable = coins >= item.cost;
+            let btn;
+            if (isActive) {
+                btn = `<button class="btn-secondary btn-small shop-item-redeem-btn" disabled><i class="fas fa-check"></i> Aktiv</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" onclick="App.equipTitleFont('${item.id}')"><i class="fas fa-paintbrush"></i> Anwenden</button>`;
+            } else {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyTitleFont('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
+            }
+            const previewBtn = isActive ? '' : (isPreviewing
+                ? `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.stopTitleFontPreview()"><i class="fas fa-eye-slash"></i> Vorschau beenden</button>`
+                : `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.previewTitleFont('${item.id}')"><i class="fas fa-eye"></i> Vorschau</button>`);
+            return `
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isPreviewing ? '<div class="shop-item-badge shop-item-badge-preview">Vorschau</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : ''))}
+                    <div class="shop-item-icon shop-font-swatch" style="font-family:${item.previewFont};">Aa</div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-desc">${item.desc}</div>
+                    ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
+                    <div class="shop-item-btn-row">${previewBtn}${btn}</div>
+                </div>
+            `;
+        }).join('');
+
         // Streak-Freeze (wird mit jedem Kauf teurer)
         const freezes = this.progress?.streakFreezes || 0;
         const capped = freezes >= this.MAX_STREAK_FREEZES;
@@ -4607,22 +4779,66 @@ Object.assign(App, {
                     <span>Vorschau aktiv: <strong>${this.flameCatalog.find(f => f.id === previewingFlame)?.name || ''}</strong> – so sieht deine Streak-Flamme gerade aus.</span>
                     <button class="btn-secondary btn-small" onclick="App.stopFlamePreview()">Zurücksetzen</button>
                 </div>
+            ` : '',
+            previewingCardDesign ? `
+                <div class="shop-preview-banner">
+                    <i class="fas fa-clone"></i>
+                    <span>Vorschau aktiv: <strong>${this.cardDesignCatalog.find(d => d.id === previewingCardDesign)?.name || ''}</strong> – so sehen deine Karteikarten gerade aus.</span>
+                    <button class="btn-secondary btn-small" onclick="App.stopCardDesignPreview()">Zurücksetzen</button>
+                </div>
+            ` : '',
+            previewingTitleFont ? `
+                <div class="shop-preview-banner">
+                    <i class="fas fa-font"></i>
+                    <span>Vorschau aktiv: <strong>${this.titleFontCatalog.find(f => f.id === previewingTitleFont)?.name || ''}</strong> – so sieht der App-Titel gerade aus.</span>
+                    <button class="btn-secondary btn-small" onclick="App.stopTitleFontPreview()">Zurücksetzen</button>
+                </div>
             ` : ''
         ].join('');
 
+        const shopCategory = (key, icon, title, hint, contentHtml, extraHtml) => {
+            const collapsed = this.isCategoryCollapsed(key);
+            return `
+                <div class="shop-category-group ${collapsed ? 'collapsed' : ''}" data-category-key="${key}">
+                    <h3 class="badges-heading shop-category-heading" onclick="App.toggleCategory('${key}')">
+                        <i class="fas fa-chevron-right category-collapse-caret"></i>
+                        <i class="fas ${icon}" style="color:var(--primary-color);"></i>
+                        <span class="category-heading-label">${title}</span>
+                    </h3>
+                    <div class="shop-category-body">
+                        ${hint ? `<p class="shop-category-hint">${hint}</p>` : ''}
+                        ${extraHtml || ''}
+                        <div class="shop-items-grid">${contentHtml}</div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // Live-Vorschau-Karte: zeigt das aktuell aktive bzw. gerade
+        // vorgeschaute Kartendesign direkt im Shop als echte Mini-Karteikarte
+        // zum Antippen/Umdrehen – man muss dafür nicht erst in die
+        // Karteikarten-Ansicht wechseln.
+        const cardDesignPreviewName = this.cardDesignCatalog.find(d => d.id === (previewingCardDesign || activeCardDesign))?.name || '';
+        const cardDesignLivePreview = `
+            <div class="shop-fc-preview-wrap">
+                <div class="shop-fc-preview-card" onclick="this.querySelector('.shop-fc-preview-inner').classList.toggle('flipped')">
+                    <div class="shop-fc-preview-inner">
+                        <div class="shop-fc-preview-front"><span class="shop-fc-preview-label">Frage</span>Wie sieht deine Karte aus?</div>
+                        <div class="shop-fc-preview-back"><span class="shop-fc-preview-label">Antwort</span>So wie hier! 🎉</div>
+                    </div>
+                </div>
+                <p class="shop-fc-preview-hint"><i class="fas fa-hand-pointer"></i> Tippen zum Umdrehen – zeigt „${cardDesignPreviewName}“</p>
+            </div>
+        `;
+
         grid.innerHTML = `
             ${previewBanners}
-            <h3 class="badges-heading shop-category-heading"><i class="fas fa-snowflake" style="color:var(--primary-color);"></i> Streak-Schutz</h3>
-            <div class="shop-items-grid">${freezeCard}</div>
-            <h3 class="badges-heading shop-category-heading"><i class="fas fa-palette" style="color:var(--primary-color);"></i> Akzentfarbe</h3>
-            <p class="shop-category-hint">Mit „Vorschau“ siehst du die Farbe live in der ganzen App, ohne sie zu kaufen.</p>
-            <div class="shop-items-grid">${accentCards}</div>
-            <h3 class="badges-heading shop-category-heading"><i class="fas fa-wand-magic-sparkles" style="color:var(--primary-color);"></i> Level-Up-Icon</h3>
-            <p class="shop-category-hint">Mit „Vorschau“ siehst du kurz, wie dein nächstes Level-Up aussehen würde.</p>
-            <div class="shop-items-grid">${levelUpCards}</div>
-            <h3 class="badges-heading shop-category-heading"><i class="fas fa-fire" style="color:var(--primary-color);"></i> Streak-Flamme</h3>
-            <p class="shop-category-hint">Mit „Vorschau“ siehst du die Flammenfarbe live im Dashboard, in der Kopfleiste und im Fortschritt.</p>
-            <div class="shop-items-grid">${flameCards}</div>
+            ${shopCategory('shop:freeze', 'fa-snowflake', 'Streak-Schutz', '', freezeCard)}
+            ${shopCategory('shop:accent', 'fa-palette', 'Akzentfarbe', 'Mit „Vorschau“ siehst du die Farbe live in der ganzen App, ohne sie zu kaufen.', accentCards)}
+            ${shopCategory('shop:levelup', 'fa-wand-magic-sparkles', 'Level-Up-Icon', 'Mit „Vorschau“ siehst du kurz, wie dein nächstes Level-Up aussehen würde.', levelUpCards)}
+            ${shopCategory('shop:flame', 'fa-fire', 'Streak-Flamme', 'Mit „Vorschau“ siehst du die Flammenfarbe live im Dashboard, in der Kopfleiste und im Fortschritt.', flameCards)}
+            ${shopCategory('shop:carddesign', 'fa-clone', 'Karteikarten-Design', 'Mit „Vorschau“ siehst du das Design sofort unten in der Mini-Karte und live an deinen echten Karteikarten.', cardDesignCards, cardDesignLivePreview)}
+            ${shopCategory('shop:titlefont', 'fa-font', 'App-Titel-Schriftart', 'Mit „Vorschau“ siehst du die Schriftart live im Sidebar-Logo und in den Seitentiteln.', titleFontCards)}
         `;
     },
 
@@ -4721,6 +4937,72 @@ Object.assign(App, {
         }
         this.renderShop();
         this.showNotification('🔥 Neue Flammenfarbe angewendet', 'success');
+    },
+
+    buyCardDesign(designId) {
+        const item = this.cardDesignCatalog.find(d => d.id === designId);
+        if (!item) return;
+        const unlocked = this.shop.unlockedCardDesigns || (this.shop.unlockedCardDesigns = ['classic']);
+        if (unlocked.includes(designId)) return;
+
+        const coins = this.progress?.coins || 0;
+        if (coins < item.cost) {
+            this.showNotification('Nicht genug Punkte für dieses Kartendesign', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - item.cost;
+        unlocked.push(designId);
+        this.recordShopPurchase(item.name, 'fa-clone', item.cost);
+        this.equipCardDesign(designId, true);
+    },
+
+    equipCardDesign(designId, skipSave) {
+        const unlocked = this.shop?.unlockedCardDesigns || ['classic'];
+        if (!unlocked.includes(designId)) return;
+        this.shop.activeCardDesign = designId;
+        this.state.previewCardDesign = null;
+        this.applyCardDesign(designId);
+        if (!skipSave) this.saveData('shop', this.shop);
+        else {
+            this.saveData('progress', this.progress);
+            this.saveData('shop', this.shop);
+        }
+        this.renderShop();
+        this.showNotification('🗂️ Neues Kartendesign angewendet', 'success');
+    },
+
+    buyTitleFont(fontId) {
+        const item = this.titleFontCatalog.find(f => f.id === fontId);
+        if (!item) return;
+        const unlocked = this.shop.unlockedTitleFonts || (this.shop.unlockedTitleFonts = ['default']);
+        if (unlocked.includes(fontId)) return;
+
+        const coins = this.progress?.coins || 0;
+        if (coins < item.cost) {
+            this.showNotification('Nicht genug Punkte für diese Schriftart', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - item.cost;
+        unlocked.push(fontId);
+        this.recordShopPurchase(item.name, 'fa-font', item.cost);
+        this.equipTitleFont(fontId, true);
+    },
+
+    equipTitleFont(fontId, skipSave) {
+        const unlocked = this.shop?.unlockedTitleFonts || ['default'];
+        if (!unlocked.includes(fontId)) return;
+        this.shop.activeTitleFont = fontId;
+        this.state.previewTitleFont = null;
+        this.applyTitleFont(fontId);
+        if (!skipSave) this.saveData('shop', this.shop);
+        else {
+            this.saveData('progress', this.progress);
+            this.saveData('shop', this.shop);
+        }
+        this.renderShop();
+        this.showNotification('🔤 Neue Titel-Schriftart angewendet', 'success');
     },
 
     buyStreakFreeze() {

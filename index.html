@@ -29,6 +29,9 @@
         })();
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Space+Grotesk:wght@600;700&family=Fraunces:wght@600;700&family=Caveat:wght@600;700&family=Bebas+Neue&display=swap">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -450,43 +453,46 @@
                         <!-- Deck List -->
                         <div id="flashcard-decks" class="flashcard-decks"></div>
 
-                        <!-- Learn Mode -->
-                        <div id="flashcard-learn-mode" class="flashcard-learn-mode" style="display:none;">
-                            <div class="learn-header">
-                                <button id="fc-back-to-decks" class="btn-icon"><i class="fas fa-arrow-left"></i></button>
-                                <h3 id="fc-learn-title"></h3>
-                                <span id="fc-progress-text" class="fc-progress-text"></span>
-                            </div>
-                            <div class="fc-progress-bar"><div id="fc-progress-fill" class="fc-progress-fill"></div></div>
-
-                            <div id="fc-card-area" class="fc-card-area">
-                                <div class="fc-card" id="fc-card" onclick="App.flipCard()">
-                                    <div class="fc-card-inner" id="fc-card-inner">
-                                        <div class="fc-card-front">
-                                            <span class="fc-label">Frage</span>
-                                            <p id="fc-front-text"></p>
-                                        </div>
-                                        <div class="fc-card-back">
-                                            <span class="fc-label">Antwort</span>
-                                            <p id="fc-back-text"></p>
-                                        </div>
-                                    </div>
-                                    <div class="fc-flip-hint" id="fc-flip-hint"><i class="fas fa-hand-pointer"></i> Tippen zum Umdrehen</div>
+                        <!-- Learn Mode (als Pop-up-Fenster) -->
+                        <div id="flashcard-learn-mode" class="flashcard-learn-mode" style="display:none;" onclick="if (event.target === this) App.exitLearnMode();">
+                            <div class="fc-learn-popup">
+                                <div class="learn-header">
+                                    <button id="fc-back-to-decks" class="btn-icon"><i class="fas fa-arrow-left"></i></button>
+                                    <h3 id="fc-learn-title"></h3>
+                                    <span id="fc-progress-text" class="fc-progress-text"></span>
+                                    <button class="btn-icon fc-learn-close" onclick="App.exitLearnMode()"><i class="fas fa-times"></i></button>
                                 </div>
-                            </div>
+                                <div class="fc-progress-bar"><div id="fc-progress-fill" class="fc-progress-fill"></div></div>
 
-                            <div id="fc-answer-btns" class="fc-answer-btns" style="display:none;">
-                                <button class="btn-fc-wrong" onclick="App.answerCard(false)"><i class="fas fa-times"></i> Nicht gewusst</button>
-                                <button class="btn-fc-correct" onclick="App.answerCard(true)"><i class="fas fa-check"></i> Gewusst</button>
-                            </div>
+                                <div id="fc-card-area" class="fc-card-area">
+                                    <div class="fc-card" id="fc-card" onclick="App.flipCard()">
+                                        <div class="fc-card-inner" id="fc-card-inner">
+                                            <div class="fc-card-front">
+                                                <span class="fc-label">Frage</span>
+                                                <p id="fc-front-text"></p>
+                                            </div>
+                                            <div class="fc-card-back">
+                                                <span class="fc-label">Antwort</span>
+                                                <p id="fc-back-text"></p>
+                                            </div>
+                                        </div>
+                                        <div class="fc-flip-hint" id="fc-flip-hint"><i class="fas fa-hand-pointer"></i> Tippen zum Umdrehen</div>
+                                    </div>
+                                </div>
 
-                            <div id="fc-done-screen" class="fc-done-screen" style="display:none;">
-                                <i class="fas fa-trophy"></i>
-                                <h3>Runde abgeschlossen!</h3>
-                                <p id="fc-done-stats"></p>
-                                <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
-                                    <button class="btn-primary" onclick="App.restartLearn()"><i class="fas fa-redo"></i> Wiederholen</button>
-                                    <button class="btn-primary" onclick="App.learnWrongOnly()" id="fc-wrong-btn"><i class="fas fa-times-circle"></i> Falsche wiederholen</button>
+                                <div id="fc-answer-btns" class="fc-answer-btns" style="display:none;">
+                                    <button class="btn-fc-wrong" onclick="App.answerCard(false)"><i class="fas fa-times"></i> Nicht gewusst</button>
+                                    <button class="btn-fc-correct" onclick="App.answerCard(true)"><i class="fas fa-check"></i> Gewusst</button>
+                                </div>
+
+                                <div id="fc-done-screen" class="fc-done-screen" style="display:none;">
+                                    <i class="fas fa-trophy"></i>
+                                    <h3>Runde abgeschlossen!</h3>
+                                    <p id="fc-done-stats"></p>
+                                    <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
+                                        <button class="btn-primary" onclick="App.restartLearn()"><i class="fas fa-redo"></i> Wiederholen</button>
+                                        <button class="btn-primary" onclick="App.learnWrongOnly()" id="fc-wrong-btn"><i class="fas fa-times-circle"></i> Falsche wiederholen</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
