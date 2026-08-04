@@ -2026,12 +2026,9 @@ const App = {
         gradeTrend: { label: 'Notentrend', icon: 'fa-chart-bar', bodyId: 'dashboard-grade-trend' },
         topHomeworkSubject: { label: 'Meiste Hausaufgaben', icon: 'fa-book-open', bodyId: 'dashboard-top-hw-subject' },
         weekPreview: { label: 'Wochenvorschau', icon: 'fa-calendar-week', bodyId: 'dashboard-week-preview' },
-        fcQuiz: { label: 'Karteikarten-Tagesquiz', icon: 'fa-question-circle', bodyId: 'dashboard-fc-quiz' },
-        quote: { label: 'Spruch des Tages', icon: 'fa-quote-left', bodyId: 'dashboard-quote' },
         activityStats: { label: 'Aktivität gesamt', icon: 'fa-chart-pie', bodyId: 'dashboard-activity-stats' },
         fcDue: { label: 'Fällige Karteikarten', icon: 'fa-layer-group', bodyId: 'dashboard-fc-due' },
-        todaySchedule: { label: 'Stundenplan heute', icon: 'fa-list-ol', bodyId: 'dashboard-today-schedule' },
-        lastBadge: { label: 'Letztes Abzeichen', icon: 'fa-award', bodyId: 'dashboard-last-badge' }
+        todaySchedule: { label: 'Stundenplan heute', icon: 'fa-list-ol', bodyId: 'dashboard-today-schedule' }
     },
 
     // Liefert die gespeicherte Reihenfolge/Sichtbarkeit, bereinigt um nicht mehr
@@ -2039,10 +2036,13 @@ const App = {
     // die noch nicht in den gespeicherten Einstellungen vorkommen.
     getDashboardWidgetOrder() {
         const allIds = Object.keys(this.dashboardWidgetDefs);
+        // Neu hinzukommende Widgets sind standardmäßig aus – nur diese drei Kern-Widgets
+        // sind von Anfang an sichtbar. Alles andere muss der Nutzer bewusst einschalten.
+        const defaultOnIds = ['nextLesson', 'events', 'homework'];
         const stored = ((this.settings && this.settings.dashboardWidgets) || [])
             .filter(w => allIds.includes(w.id));
         const missing = allIds.filter(id => !stored.some(w => w.id === id));
-        return [...stored, ...missing.map(id => ({ id, visible: true }))];
+        return [...stored, ...missing.map(id => ({ id, visible: defaultOnIds.includes(id) }))];
     },
 
     // Baut das Dashboard-Grid entsprechend der aktuellen Reihenfolge/Sichtbarkeit
@@ -2306,44 +2306,6 @@ const App = {
             weekEl.innerHTML = html;
         }
 
-        // Karteikarten-Tagesquiz: eine zufällige (aber pro Tag stabile) fällige Karte als Teaser
-        const quizEl = document.getElementById('dashboard-fc-quiz');
-        if (quizEl) {
-            const due = this.flashcards.filter(c => c.due <= today);
-            if (due.length === 0) {
-                quizEl.innerHTML = '<p style="color: var(--text-secondary);">Keine fälligen Karten – gut gemacht! 🎉</p>';
-            } else {
-                const seed = parseInt(today.replace(/-/g, ''), 10) % due.length;
-                const card = due[seed];
-                quizEl.innerHTML = `
-                    <div style="cursor: pointer;" onclick="App.startLearn(${JSON.stringify(card.subject)}, true)" title="Jetzt lernen">
-                        <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light); margin-bottom: 6px;">${card.subject}</div>
-                        <p style="font-weight: 600; color: var(--text-primary); margin: 0;">${card.front}</p>
-                        <small style="color: var(--text-secondary);">Tippen zum Lernen · ${due.length} fällig</small>
-                    </div>
-                `;
-            }
-        }
-
-        // Spruch des Tages: deterministisch nach Tag im Jahr, damit er über den Tag stabil bleibt
-        const quoteEl = document.getElementById('dashboard-quote');
-        if (quoteEl) {
-            const quotes = [
-                'Der Weg ist das Ziel – aber eine abgehakte To-Do-Liste fühlt sich trotzdem gut an.',
-                'Kleine Schritte jeden Tag schlagen große Sprünge, die nie stattfinden.',
-                'Fehler sind der Beweis, dass du es versuchst.',
-                'Konzentration schlägt Dauer – lieber 25 fokussierte Minuten als zwei zerstreute Stunden.',
-                'Du musst nicht perfekt sein, du musst nur weitermachen.',
-                'Das Gehirn ist wie ein Muskel: Wiederholung macht stark.',
-                'Motivation bringt dich in Gang, Gewohnheit hält dich am Laufen.',
-                'Jede Seite, die du heute liest, spart dir eine Nacht kurz vor der Prüfung.',
-                'Gut geplant ist halb gelernt.',
-                'Pausen sind Teil des Lernens, nicht die Unterbrechung davon.'
-            ];
-            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-            quoteEl.innerHTML = `<p style="font-style: italic; color: var(--text-primary); line-height: 1.5; margin: 0;">„${quotes[dayOfYear % quotes.length]}"</p>`;
-        }
-
         // Aktivität gesamt: Lebenszeit-Statistik aus dem Gamification-System
         const statsEl = document.getElementById('dashboard-activity-stats');
         if (statsEl) {
@@ -2401,26 +2363,6 @@ const App = {
                         `;
                     }).join('');
                 }
-            }
-        }
-
-        // Letztes Abzeichen
-        const badgeEl = document.getElementById('dashboard-last-badge');
-        if (badgeEl) {
-            const badges = (this.progress && this.progress.badges) || [];
-            if (badges.length === 0) {
-                badgeEl.innerHTML = '<p style="color: var(--text-secondary);">Noch kein Abzeichen freigeschaltet</p>';
-            } else {
-                const def = PROGRESS_BADGES.find(b => b.id === badges[badges.length - 1]);
-                badgeEl.innerHTML = def
-                    ? `<div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('fortschritt')" title="Zum Fortschritt">
-                            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(21,128,61,0.12); color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 8px;">
-                                <i class="fas ${def.icon}"></i>
-                            </div>
-                            <strong>${def.name}</strong>
-                            <p style="margin: 2px 0 0; font-size: 0.82rem; color: var(--text-secondary);">${def.desc}</p>
-                       </div>`
-                    : '<p style="color: var(--text-secondary);">Noch kein Abzeichen freigeschaltet</p>';
             }
         }
     },
