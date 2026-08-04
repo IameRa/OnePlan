@@ -832,8 +832,10 @@ const App = {
     tutorialSteps: [
         {
             icon: 'fa-hand-sparkles',
-            title: 'Willkommen bei OnePlan!',
-            text: 'OnePlan ist mittlerweile ganz schön vielseitig geworden — hier ein kurzer Rundgang durch die wichtigsten Bereiche. Dauert nur eine Minute.'
+            title: 'Willkommen bei OnePlan! 🎉',
+            titleReplay: 'Nochmal alles im Überblick',
+            text: 'Schön, dass du da bist! Das ist deine allererste Anmeldung — bevor es losgeht, zeigen wir dir in ein paar kurzen Schritten, was OnePlan alles kann.',
+            textReplay: 'Hier nochmal ein kompakter Rundgang durch die wichtigsten Bereiche von OnePlan.'
         },
         {
             icon: 'fa-calendar-alt',
@@ -883,10 +885,15 @@ const App = {
     ],
     tutorialStepIndex: 0,
     tutorialOnFinish: null,
+    tutorialFirstOpen: false,
 
     startTutorial(onFinish) {
         this.tutorialStepIndex = 0;
         this.tutorialOnFinish = onFinish || null;
+        // Nur der Aufruf beim allerersten Login übergibt einen onFinish-Callback
+        // (siehe maybeShowOnboarding) — daran unterscheiden wir "echter erster
+        // Start" von "über die Einstellungen erneut angesehen".
+        this.tutorialFirstOpen = !!onFinish;
         this.renderTutorialStep();
     },
 
@@ -896,18 +903,24 @@ const App = {
         const step = steps[i];
         const isLast = i === steps.length - 1;
         const isFirst = i === 0;
-        const dots = steps.map((_, idx) => `<span class="tutorial-dot ${idx === i ? 'active' : ''}"></span>`).join('');
+        const progressPct = Math.round(((i + 1) / steps.length) * 100);
+        const dots = steps.map((_, idx) => `<span class="tutorial-dot ${idx === i ? 'active' : idx < i ? 'done' : ''}"></span>`).join('');
+
+        const title = (isFirst && !this.tutorialFirstOpen && step.titleReplay) ? step.titleReplay : step.title;
+        const text = (isFirst && !this.tutorialFirstOpen && step.textReplay) ? step.textReplay : step.text;
 
         this.showModal(`
             <div class="tutorial">
+                <div class="tutorial-progress-track"><div class="tutorial-progress-fill" style="width:${progressPct}%;"></div></div>
+                <div class="tutorial-step-label">Schritt ${i + 1} von ${steps.length}</div>
                 <div class="tutorial-icon"><i class="fas ${step.icon}"></i></div>
-                <h3>${step.title}</h3>
-                <p class="tutorial-text">${step.text}</p>
+                <h3>${title}</h3>
+                <p class="tutorial-text">${text}</p>
                 <div class="tutorial-dots">${dots}</div>
                 <div class="tutorial-actions">
                     ${isFirst
                         ? `<button class="btn-secondary" onclick="App.skipTutorial()">Überspringen</button>`
-                        : `<button class="btn-secondary" onclick="App.tutorialPrev()">Zurück</button>`}
+                        : `<button class="btn-secondary" onclick="App.tutorialPrev()"><i class="fas fa-arrow-left"></i> Zurück</button>`}
                     <button class="btn-primary" onclick="App.${isLast ? 'finishTutorial' : 'tutorialNext'}()">
                         ${isLast ? 'Los geht\'s! <i class="fas fa-check"></i>' : 'Weiter <i class="fas fa-arrow-right"></i>'}
                     </button>

@@ -1613,29 +1613,62 @@ textarea {
 .tutorial {
     text-align: center;
     padding-top: 4px;
+    animation: tutorial-step-in 0.35s ease;
+}
+
+@keyframes tutorial-step-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tutorial-progress-track {
+    height: 4px;
+    border-radius: 4px;
+    background: var(--bg-color);
+    overflow: hidden;
+    margin: 0 0 18px;
+}
+
+.tutorial-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+    transition: width 0.35s ease;
+}
+
+.tutorial-step-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 14px;
 }
 
 .tutorial-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 16px;
-    font-size: 1.6rem;
-    background: rgba(21, 128, 61, 0.12);
-    color: var(--primary-color);
+    margin: 0 auto 18px;
+    font-size: 1.9rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    box-shadow: 0 10px 20px -8px rgba(21, 128, 61, 0.5);
 }
 
 .tutorial h3 {
     margin: 0 0 10px;
+    font-size: 1.2rem;
 }
 
 .tutorial-text {
     color: var(--text-secondary);
-    line-height: 1.5;
-    margin: 0 0 20px;
+    line-height: 1.55;
+    margin: 0 0 22px;
+    padding: 0 4px;
 }
 
 .tutorial-dots {
@@ -1643,7 +1676,7 @@ textarea {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 
 .tutorial-dot {
@@ -1654,8 +1687,12 @@ textarea {
     transition: var(--transition);
 }
 
+.tutorial-dot.done {
+    background: var(--primary-light);
+}
+
 .tutorial-dot.active {
-    width: 18px;
+    width: 20px;
     border-radius: 4px;
     background: var(--primary-color);
 }
@@ -1670,6 +1707,10 @@ textarea {
 .tutorial-actions .btn-primary,
 .tutorial-actions .btn-secondary {
     flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 /* ===== Einstellungen ===== */
