@@ -81,6 +81,10 @@
                     <i class="fas fa-clock"></i>
                     <span>Stundenplan</span>
                 </li>
+                <li data-section="vertretungsplan">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Vertretungsplan</span>
+                </li>
                 <li data-section="hausaufgaben">
                     <i class="fas fa-book"></i>
                     <span>Hausaufgaben</span>
@@ -260,6 +264,51 @@
                         <div id="color-presets" class="color-presets"></div>
                         <button id="save-timetable" class="btn-primary"><i class="fas fa-check"></i> Speichern</button>
                     </div>
+                </div>
+            </section>
+
+            <!-- Vertretungsplan (WebUntis) -->
+            <section id="vertretungsplan" class="section">
+                <div class="tab-hero">
+                    <div class="tab-hero-icon tab-hero-icon-green"><i class="fas fa-exchange-alt"></i></div>
+                    <div>
+                        <h1>Vertretungsplan</h1>
+                        <p>Direkt aus WebUntis – Ausfälle, Vertretungen und dein synchronisierter Stundenplan.</p>
+                    </div>
+                </div>
+
+                <!-- Setup: noch nicht verbunden -->
+                <div id="untis-setup-card" class="card" style="max-width: 480px; display: none;">
+                    <h3><i class="fas fa-link" style="color: var(--primary-color); margin-right: 8px;"></i>Mit WebUntis verbinden</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 16px;">
+                        Schule und Server findest du in der Adresszeile, wenn du dich im Browser bei WebUntis anmeldest
+                        (z.B. <code>https://mese.webuntis.com/WebUntis/?school=musterschule</code> → Server <code>mese.webuntis.com</code>, Schule <code>musterschule</code>).
+                        Deine Zugangsdaten werden verschlüsselt gespeichert und nur serverseitig zum Abruf bei Untis verwendet.
+                    </p>
+                    <input type="text" id="untis-server" placeholder="Server (z.B. mese.webuntis.com)">
+                    <input type="text" id="untis-school" placeholder="Schule (Schulkürzel aus der URL)">
+                    <input type="text" id="untis-username" placeholder="Untis-Benutzername" autocomplete="off">
+                    <input type="password" id="untis-password" placeholder="Untis-Passwort" autocomplete="new-password">
+                    <button id="untis-connect-btn" class="btn-primary" style="margin-top: 8px;">
+                        <i class="fas fa-plug"></i> Verbinden
+                    </button>
+                    <div id="untis-setup-error" style="display: none; margin-top: 12px; padding: 10px 14px; background: rgba(239,68,68,0.1); color: var(--danger-color); border-radius: 8px; font-size: 0.85rem;"></div>
+                </div>
+
+                <!-- Verbunden: Status + Vertretungen -->
+                <div id="untis-connected-view" style="display: none;">
+                    <div class="card untis-status-card">
+                        <div>
+                            <strong id="untis-status-label">Verbunden</strong>
+                            <p id="untis-status-detail" style="margin: 2px 0 0; color: var(--text-secondary); font-size: 0.85rem;"></p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="untis-sync-btn" class="btn-secondary btn-small"><i class="fas fa-sync"></i> Jetzt synchronisieren</button>
+                            <button id="untis-disconnect-btn" class="btn-secondary btn-small"><i class="fas fa-unlink"></i> Trennen</button>
+                        </div>
+                    </div>
+
+                    <div id="untis-substitutions-list"></div>
                 </div>
             </section>
 
@@ -888,6 +937,7 @@
             <button id="close-more-menu"><i class="fas fa-times"></i></button>
         </div>
         <ul>
+            <li data-section="vertretungsplan"><i class="fas fa-exchange-alt"></i><span>Vertretungsplan</span></li>
             <li data-section="ki-assistent"><i class="fas fa-robot"></i><span>KI-Assistent</span></li>
             <li data-section="pomodoro"><i class="fas fa-stopwatch"></i><span>Pomodoro</span></li>
             <li data-section="fortschritt"><i class="fas fa-fire"></i><span>Fortschritt</span></li>

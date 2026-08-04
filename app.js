@@ -185,6 +185,152 @@ const Push = {
     }
 };
 
+// ===== WebUntis-Integration (Vertretungsplan & Stundenplan-Sync) =====
+const Untis = {
+    on(id, event, handler) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    },
+
+    init() {
+        this.on('untis-connect-btn', 'click', () => this.connect());
+        this.on('untis-sync-btn', 'click', () => this.sync());
+        this.on('untis-disconnect-btn', 'click', () => this.disconnect());
+    },
+
+    async render() {
+        const setupCard = document.getElementById('untis-setup-card');
+        const connectedView = document.getElementById('untis-connected-view');
+        if (!setupCard || !connectedView) return;
+
+        const { data, error } = await supabase
+            .from('untis_credentials')
+            .select('school, server, username, updated_at')
+            .eq('user_id', App.userId)
+            .maybeSingle();
+
+        if (error) console.error('[Untis] Status konnte nicht geladen werden:', error);
+
+        if (data) {
+            setupCard.style.display = 'none';
+            connectedView.style.display = 'block';
+            document.getElementById('untis-status-label').textContent = `Verbunden als ${data.username}`;
+            const lastSync = data.updated_at
+                ? new Date(data.updated_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                : 'noch nie';
+            document.getElementById('untis-status-detail').textContent = `Schule: ${data.school} · Zuletzt synchronisiert: ${lastSync}`;
+            this.renderSubstitutions();
+        } else {
+            setupCard.style.display = 'block';
+            connectedView.style.display = 'none';
+        }
+    },
+
+    renderSubstitutions() {
+        const el = document.getElementById('untis-substitutions-list');
+        if (!el) return;
+
+        const today = App.todayStr();
+        const subs = (App.untisSubstitutions || [])
+            .filter(s => s.date >= today)
+            .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+        if (subs.length === 0) {
+            el.innerHTML = '<p style="color: var(--text-secondary); padding: 20px 0;">Keine Vertretungen oder Ausfälle in den nächsten Tagen 🎉</p>';
+            return;
+        }
+
+        const byDate = {};
+        subs.forEach(s => { (byDate[s.date] = byDate[s.date] || []).push(s); });
+
+        const typeLabel = { cancelled: 'Ausfall', irregular: 'Vertretung' };
+        const typeClass = { cancelled: 'untis-badge-cancelled', irregular: 'untis-badge-irregular' };
+
+        el.innerHTML = Object.entries(byDate).map(([date, items]) => `
+            <div class="untis-day-group">
+                <h4>${App.formatDate(date)}</h4>
+                ${items.map(s => `
+                    <div class="untis-sub-item">
+                        <span class="untis-badge ${typeClass[s.code] || 'untis-badge-info'}">${typeLabel[s.code] || 'Info'}</span>
+                        <div class="untis-sub-main">
+                            <strong>${s.period} ${s.subject}</strong>
+                            <small>${s.time}${s.room ? ' · ' + s.room : ''}${s.teacher ? ' · ' + s.teacher : ''}</small>
+                            ${(s.info || s.substText) ? `<p>${[s.info, s.substText].filter(Boolean).join(' – ')}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    },
+
+    async connect() {
+        const server = document.getElementById('untis-server').value.trim();
+        const school = document.getElementById('untis-school').value.trim();
+        const username = document.getElementById('untis-username').value.trim();
+        const password = document.getElementById('untis-password').value;
+        const errEl = document.getElementById('untis-setup-error');
+        errEl.style.display = 'none';
+
+        if (!server || !school || !username || !password) {
+            errEl.textContent = 'Bitte alle Felder ausfüllen.';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('untis-connect-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verbinde...';
+
+        try {
+            const { data, error } = await supabase.functions.invoke('untis-save-credentials', {
+                body: { server, school, username, password }
+            });
+            if (error || !data?.success) throw new Error(data?.error || error?.message || 'Verbindung fehlgeschlagen');
+
+            document.getElementById('untis-password').value = '';
+            App.showNotification('Mit WebUntis verbunden', 'success');
+            await this.sync();
+            await this.render();
+        } catch (err) {
+            errEl.textContent = err.message || 'Verbindung fehlgeschlagen. Bitte Zugangsdaten prüfen.';
+            errEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plug"></i> Verbinden';
+        }
+    },
+
+    async sync() {
+        const btn = document.getElementById('untis-sync-btn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Synchronisiere...'; }
+
+        try {
+            const { data, error } = await supabase.functions.invoke('untis-sync', { body: {} });
+            if (error || !data?.success) throw new Error(data?.error || error?.message || 'Synchronisierung fehlgeschlagen');
+
+            await App.loadAllData();
+            App.renderTimetable();
+            await this.render();
+            App.showNotification('WebUntis synchronisiert', 'success');
+        } catch (err) {
+            App.showNotification(err.message || 'Synchronisierung fehlgeschlagen', 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync"></i> Jetzt synchronisieren'; }
+        }
+    },
+
+    async disconnect() {
+        if (!confirm('WebUntis-Verbindung wirklich trennen? Deine hinterlegten Zugangsdaten werden gelöscht.')) return;
+        try {
+            await supabase.from('untis_credentials').delete().eq('user_id', App.userId);
+            App.showNotification('WebUntis-Verbindung getrennt', 'success');
+            await this.render();
+        } catch (err) {
+            App.showNotification('Trennen fehlgeschlagen', 'error');
+        }
+    }
+};
+
 // ===== Account System =====
 const Auth = {
     currentUser: null,
@@ -757,6 +903,7 @@ const App = {
         this.renderDashboardGrid();
         this.checkReminders();
         Push.init();
+        Untis.init();
         // Check reminders every minute
         setInterval(() => this.checkReminders(), 60000);
 
@@ -826,6 +973,7 @@ const App = {
         if (!this.progress.stats) this.progress.stats = { homework: 0, cards: 0, pomodoro: 0, grades: 0 };
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         this.checkStreakExpiry();
+        this.untisSubstitutions = map['untisSubstitutions'] || [];
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
@@ -916,6 +1064,7 @@ const App = {
             case 'feedback': if (this.isAdmin()) this.loadAdminFeedback(); break;
             case 'karteikarten': this.renderFlashcardDecks(); break;
             case 'fortschritt': this.renderProgress(); break;
+            case 'vertretungsplan': Untis.render(); break;
         }
     },
 
