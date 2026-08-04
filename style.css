@@ -50,6 +50,27 @@
     --ki-accent-dark: #6d28d9;
 }
 
+/* ===== Shop-Akzentfarben (kosmetische Freischaltungen) ===== */
+[data-accent="mint"]   { --primary-color: #0d9488; --primary-dark: #0f766e; --primary-light: #2dd4bf; --secondary-color: #14b8a6; }
+[data-accent="ocean"]  { --primary-color: #0284c7; --primary-dark: #075985; --primary-light: #38bdf8; --secondary-color: #0ea5e9; }
+[data-accent="indigo"] { --primary-color: #4f46e5; --primary-dark: #3730a3; --primary-light: #818cf8; --secondary-color: #6366f1; }
+[data-accent="berry"]  { --primary-color: #7c3aed; --primary-dark: #5b21b6; --primary-light: #a78bfa; --secondary-color: #8b5cf6; }
+[data-accent="sunset"] { --primary-color: #ea580c; --primary-dark: #9a3412; --primary-light: #fb923c; --secondary-color: #f97316; }
+[data-accent="cherry"] { --primary-color: #dc2626; --primary-dark: #991b1b; --primary-light: #f87171; --secondary-color: #e11d48; }
+[data-accent="slate"]  { --primary-color: #475569; --primary-dark: #334155; --primary-light: #94a3b8; --secondary-color: #64748b; }
+[data-accent="gold"]   { --primary-color: #ca8a04; --primary-dark: #854d0e; --primary-light: #facc15; --secondary-color: #eab308; }
+[data-accent="rose"]   { --primary-color: #db2777; --primary-dark: #9d174d; --primary-light: #f472b6; --secondary-color: #ec4899; }
+
+[data-theme="dark"][data-accent="mint"]   { --primary-color: #2dd4bf; --primary-dark: #0d9488; --primary-light: #5eead4; --secondary-color: #2dd4bf; }
+[data-theme="dark"][data-accent="ocean"]  { --primary-color: #38bdf8; --primary-dark: #0284c7; --primary-light: #7dd3fc; --secondary-color: #22d3ee; }
+[data-theme="dark"][data-accent="indigo"] { --primary-color: #818cf8; --primary-dark: #4f46e5; --primary-light: #a5b4fc; --secondary-color: #818cf8; }
+[data-theme="dark"][data-accent="berry"]  { --primary-color: #a78bfa; --primary-dark: #7c3aed; --primary-light: #c4b5fd; --secondary-color: #a78bfa; }
+[data-theme="dark"][data-accent="sunset"] { --primary-color: #fb923c; --primary-dark: #ea580c; --primary-light: #fdba74; --secondary-color: #fb923c; }
+[data-theme="dark"][data-accent="cherry"] { --primary-color: #f87171; --primary-dark: #dc2626; --primary-light: #fca5a5; --secondary-color: #fb7185; }
+[data-theme="dark"][data-accent="slate"]  { --primary-color: #94a3b8; --primary-dark: #64748b; --primary-light: #cbd5e1; --secondary-color: #94a3b8; }
+[data-theme="dark"][data-accent="gold"]   { --primary-color: #facc15; --primary-dark: #ca8a04; --primary-light: #fde047; --secondary-color: #eab308; }
+[data-theme="dark"][data-accent="rose"]   { --primary-color: #f472b6; --primary-dark: #db2777; --primary-light: #f9a8d4; --secondary-color: #f472b6; }
+
 /* ===== Dark Mode ===== */
 [data-theme="dark"] {
     --primary-color: #22c55e;
@@ -4025,6 +4046,55 @@ textarea {
 
 .shop-item-card.unaffordable {
     opacity: 0.6;
+}
+
+.shop-item-card.equipped {
+    box-shadow: 0 0 0 2px var(--primary-color), var(--shadow);
+}
+
+.shop-item-card.premium {
+    background: linear-gradient(160deg, rgba(56, 189, 248, 0.1), var(--card-bg) 55%);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.shop-item-card.premium .shop-item-icon {
+    background: rgba(56, 189, 248, 0.18);
+    color: #0ea5e9;
+}
+
+.shop-category-heading {
+    margin: 24px 0 12px;
+}
+
+.shop-category-heading:first-child {
+    margin-top: 0;
+}
+
+.shop-item-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.shop-item-badge-owned {
+    background: var(--bg-color);
+    color: var(--text-secondary);
+}
+
+.shop-item-desc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: -4px;
+}
+
+.accent-swatch {
+    color: #fff !important;
 }
 
 .shop-item-actions {

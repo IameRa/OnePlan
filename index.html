@@ -577,7 +577,7 @@
                     <div class="tab-hero-icon" style="background:#eab30820;color:#eab308;"><i class="fas fa-store"></i></div>
                     <div>
                         <h1>Punkte-Shop</h1>
-                        <p>Leg eigene Belohnungen fest und tausche deine gesammelten Punkte dagegen ein.</p>
+                        <p>Tausche deine gesammelten Punkte gegen App-Anpassungen und Streak-Freezes ein.</p>
                     </div>
                 </div>
 
@@ -593,20 +593,7 @@
                 </div>
                 <p class="shop-hint"><i class="fas fa-circle-info"></i> Du bekommst Punkte automatisch zusammen mit XP – bei Hausaufgaben, Karteikarten, Pomodoro-Sessions, Noten, Terminen und dem KI-Assistenten.</p>
 
-                <div class="section-header" style="margin-top:24px;">
-                    <h3 class="badges-heading" style="margin:0;"><i class="fas fa-gift" style="color:var(--primary-color);"></i> Deine Belohnungen</h3>
-                    <div class="section-header-actions">
-                        <button class="btn-primary btn-small" onclick="App.openShopItemModal()">
-                            <i class="fas fa-plus"></i> Belohnung erstellen
-                        </button>
-                    </div>
-                </div>
-
-                <div class="shop-empty-state" id="shop-empty-state" style="display:none;">
-                    <i class="fas fa-gift"></i>
-                    <p>Noch keine Belohnungen angelegt.<br>Erstelle deine erste Belohnung – z. B. "30 Min. Gaming" für 50 Punkte.</p>
-                </div>
-                <div class="shop-items-grid" id="shop-items-grid"></div>
+                <div id="shop-items-grid" style="margin-top:24px;"></div>
             </section>
 
             <!-- Pomodoro -->

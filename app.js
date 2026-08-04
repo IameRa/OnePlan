@@ -828,9 +828,15 @@ const App = {
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         if (this.progress.coins === undefined) this.progress.coins = 0;
         this.checkStreakExpiry();
-        this.shop = map['shop'] || { items: [], history: [] };
-        if (!this.shop.items) this.shop.items = [];
+        this.shop = map['shop'] || { unlockedAccents: ['default'], activeAccent: 'default', unlockedLevelUpIcons: ['star'], activeLevelUpIcon: 'star', history: [] };
+        if (!this.shop.unlockedAccents || !this.shop.unlockedAccents.length) this.shop.unlockedAccents = ['default'];
+        if (!this.shop.unlockedAccents.includes('default')) this.shop.unlockedAccents.push('default');
+        if (!this.shop.activeAccent) this.shop.activeAccent = 'default';
+        if (!this.shop.unlockedLevelUpIcons || !this.shop.unlockedLevelUpIcons.length) this.shop.unlockedLevelUpIcons = ['star'];
+        if (!this.shop.unlockedLevelUpIcons.includes('star')) this.shop.unlockedLevelUpIcons.push('star');
+        if (!this.shop.activeLevelUpIcon) this.shop.activeLevelUpIcon = 'star';
         if (!this.shop.history) this.shop.history = [];
+        this.applyAccent(this.shop.activeAccent);
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
@@ -3967,13 +3973,12 @@ Object.assign(App, {
         if (p.streakFreezes === undefined) p.streakFreezes = 0;
         const newlyEarned = [];
         let freezesAwarded = 0;
-        const FREEZE_CAP = 3;
         PROGRESS_BADGES.forEach(b => {
             if (!p.badges.includes(b.id) && b.check(p)) {
                 p.badges.push(b.id);
                 newlyEarned.push(b);
                 // Streak-Meilensteine belohnen zusätzlich mit einem Streak-Freeze (bis zum Cap)
-                if (b.category === 'Streak' && p.streakFreezes < FREEZE_CAP) {
+                if (b.category === 'Streak' && p.streakFreezes < this.MAX_STREAK_FREEZES) {
                     p.streakFreezes += 1;
                     freezesAwarded += 1;
                 }
@@ -4094,10 +4099,13 @@ Object.assign(App, {
             confetti += `<span class="levelup-confetti" style="left:${left}%;background:${color};animation-delay:${delay}s;animation-duration:${duration}s;"></span>`;
         }
 
+        const activeIconId = this.shop?.activeLevelUpIcon || 'star';
+        const activeIcon = this.levelUpCatalog.find(i => i.id === activeIconId)?.icon || 'fa-star';
+
         overlay.innerHTML = `
             <div class="levelup-confetti-layer">${confetti}</div>
             <div class="levelup-card">
-                <div class="levelup-star"><i class="fas fa-star"></i></div>
+                <div class="levelup-star"><i class="fas ${activeIcon}"></i></div>
                 <div class="levelup-title">Level ${level} erreicht!</div>
                 <div class="levelup-sub">Weiter so – dein Fleiß zahlt sich aus 🎉</div>
             </div>
@@ -4112,12 +4120,43 @@ Object.assign(App, {
     },
 
     // ===== Punkte-Shop =====
-    // Eigene Belohnungen, die sich der Nutzer mit den zusammen mit XP
-    // gesammelten Punkten (progress.coins) "kaufen" kann. Items und der
-    // Einlöseverlauf werden unter dem Datenschlüssel 'shop' gespeichert.
-    shopIcons: ['fa-gamepad', 'fa-mobile-screen', 'fa-tv', 'fa-cookie-bite', 'fa-pizza-slice',
-        'fa-film', 'fa-couch', 'fa-bicycle', 'fa-basketball', 'fa-music',
-        'fa-shirt', 'fa-gift', 'fa-star', 'fa-mug-hot', 'fa-bed'],
+    // Fester Katalog statt frei erstellbarer Belohnungen: kosmetische
+    // App-Anpassungen (Akzentfarben, Level-Up-Icon) und Streak-Freezes.
+    // Beides wird mit den zusammen mit XP gesammelten Punkten (progress.coins)
+    // gekauft. Freigeschaltete Items, aktive Auswahl und der Kaufverlauf
+    // werden unter dem Datenschlüssel 'shop' gespeichert.
+    MAX_STREAK_FREEZES: 5,
+    FREEZE_BASE_COST: 120,
+    FREEZE_COST_STEP: 60,
+
+    accentCatalog: [
+        { id: 'default', name: 'Waldgrün', desc: 'Der klassische OnePlan-Look', cost: 0, colors: { color: '#15803d' } },
+        { id: 'mint', name: 'Minze', desc: 'Frisches, helles Grün', cost: 70, colors: { color: '#0d9488' } },
+        { id: 'ocean', name: 'Ozeanblau', desc: 'Frisches, kühles Blau', cost: 90, colors: { color: '#0284c7' } },
+        { id: 'indigo', name: 'Indigo', desc: 'Tiefes Blau-Violett', cost: 110, colors: { color: '#4f46e5' } },
+        { id: 'berry', name: 'Beerenlila', desc: 'Kräftiges Violett', cost: 120, colors: { color: '#7c3aed' } },
+        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warmes Orange', cost: 130, colors: { color: '#ea580c' } },
+        { id: 'cherry', name: 'Kirschrot', desc: 'Ausdrucksstarkes Rot', cost: 150, colors: { color: '#dc2626' } },
+        { id: 'slate', name: 'Anthrazit', desc: 'Edles, gedecktes Grau-Blau', cost: 170, colors: { color: '#475569' } },
+        { id: 'gold', name: 'Gold', desc: 'Edles, warmes Gelb', cost: 200, colors: { color: '#ca8a04' } },
+        { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink', cost: 220, colors: { color: '#db2777' } }
+    ],
+
+    levelUpCatalog: [
+        { id: 'star', name: 'Stern', desc: 'Der klassische Level-Up-Stern', cost: 0, icon: 'fa-star' },
+        { id: 'bolt', name: 'Blitz', desc: 'Schnell und energiegeladen', cost: 50, icon: 'fa-bolt' },
+        { id: 'fire', name: 'Flamme', desc: 'Für heiße Serien', cost: 70, icon: 'fa-fire' },
+        { id: 'trophy', name: 'Pokal', desc: 'Für echte Gewinner', cost: 90, icon: 'fa-trophy' },
+        { id: 'rocket', name: 'Rakete', desc: 'Durch die Decke', cost: 110, icon: 'fa-rocket' },
+        { id: 'crown', name: 'Krone', desc: 'Das Premium-Level-Up', cost: 150, icon: 'fa-crown' }
+    ],
+
+    // Streak-Freezes werden mit jedem bereits vorhandenen Freeze teurer –
+    // sie sollen ein wertvolles, bewusst eingesetztes Gut bleiben, kein
+    // Spontankauf.
+    freezeCost(owned) {
+        return this.FREEZE_BASE_COST + owned * this.FREEZE_COST_STEP;
+    },
 
     setupShop() {
         this.renderShopBalance();
@@ -4128,116 +4167,196 @@ Object.assign(App, {
         if (el) el.textContent = this.progress?.coins || 0;
     },
 
+    applyAccent(accentId) {
+        document.documentElement.setAttribute('data-accent', accentId || 'default');
+    },
+
     renderShop() {
         this.renderShopBalance();
         const grid = document.getElementById('shop-items-grid');
-        const empty = document.getElementById('shop-empty-state');
-        const items = this.shop?.items || [];
-
         if (!grid) return;
-        empty.style.display = items.length ? 'none' : 'flex';
 
         const coins = this.progress?.coins || 0;
-        grid.innerHTML = items.map(item => {
+
+        // Kosmetik: Akzentfarben
+        const unlockedAccents = this.shop?.unlockedAccents || ['default'];
+        const activeAccent = this.shop?.activeAccent || 'default';
+        const accentCards = this.accentCatalog.map(item => {
+            const isUnlocked = unlockedAccents.includes(item.id);
+            const isActive = activeAccent === item.id;
             const affordable = coins >= item.cost;
+            let btn;
+            if (isActive) {
+                btn = `<button class="btn-secondary btn-small shop-item-redeem-btn" disabled><i class="fas fa-check"></i> Aktiv</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" onclick="App.equipAccent('${item.id}')"><i class="fas fa-paintbrush"></i> Anwenden</button>`;
+            } else {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyAccent('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
+            }
             return `
-                <div class="shop-item-card ${affordable ? '' : 'unaffordable'}">
-                    <div class="shop-item-actions">
-                        <button class="shop-item-icon-btn" title="Bearbeiten" onclick="App.openShopItemModal('${item.id}')"><i class="fas fa-pen"></i></button>
-                        <button class="shop-item-icon-btn danger" title="Löschen" onclick="App.deleteShopItem('${item.id}')"><i class="fas fa-trash"></i></button>
-                    </div>
-                    <div class="shop-item-icon"><i class="fas ${item.icon || 'fa-gift'}"></i></div>
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : '')}
+                    <div class="shop-item-icon accent-swatch" style="background:${item.colors.color};"><i class="fas fa-palette"></i></div>
                     <div class="shop-item-name">${item.name}</div>
-                    <div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>
-                    <button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.redeemShopItem('${item.id}')">
-                        <i class="fas fa-check"></i> Einlösen
-                    </button>
+                    <div class="shop-item-desc">${item.desc}</div>
+                    ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
+                    ${btn}
                 </div>
             `;
         }).join('');
+
+        // Kosmetik: Level-Up-Icon
+        const unlockedIcons = this.shop?.unlockedLevelUpIcons || ['star'];
+        const activeIcon = this.shop?.activeLevelUpIcon || 'star';
+        const levelUpCards = this.levelUpCatalog.map(item => {
+            const isUnlocked = unlockedIcons.includes(item.id);
+            const isActive = activeIcon === item.id;
+            const affordable = coins >= item.cost;
+            let btn;
+            if (isActive) {
+                btn = `<button class="btn-secondary btn-small shop-item-redeem-btn" disabled><i class="fas fa-check"></i> Aktiv</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" onclick="App.equipLevelUpIcon('${item.id}')"><i class="fas fa-paintbrush"></i> Anwenden</button>`;
+            } else {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyLevelUpIcon('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
+            }
+            return `
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : '')}
+                    <div class="shop-item-icon"><i class="fas ${item.icon}"></i></div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-desc">${item.desc}</div>
+                    ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
+                    ${btn}
+                </div>
+            `;
+        }).join('');
+
+        // Streak-Freeze (wird mit jedem Kauf teurer)
+        const freezes = this.progress?.streakFreezes || 0;
+        const capped = freezes >= this.MAX_STREAK_FREEZES;
+        const nextCost = this.freezeCost(freezes);
+        const freezeAffordable = coins >= nextCost && !capped;
+        const freezeCard = `
+            <div class="shop-item-card premium ${freezeAffordable ? '' : 'unaffordable'}">
+                <div class="shop-item-badge shop-item-badge-owned">Vorrat: ${freezes}/${this.MAX_STREAK_FREEZES}</div>
+                <div class="shop-item-icon"><i class="fas fa-snowflake"></i></div>
+                <div class="shop-item-name">Streak-Freeze</div>
+                <div class="shop-item-desc">Rettet deinen Streak automatisch, wenn du einen Tag verpasst – wird mit jedem Kauf teurer.</div>
+                ${!capped ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${nextCost}</div>` : ''}
+                <button class="btn-primary btn-small shop-item-redeem-btn" ${freezeAffordable ? '' : 'disabled'} onclick="App.buyStreakFreeze()">
+                    <i class="fas fa-cart-shopping"></i> ${capped ? 'Maximum erreicht' : 'Kaufen'}
+                </button>
+            </div>
+        `;
+
+        grid.innerHTML = `
+            <h3 class="badges-heading shop-category-heading"><i class="fas fa-snowflake" style="color:var(--primary-color);"></i> Streak-Schutz</h3>
+            <div class="shop-items-grid">${freezeCard}</div>
+            <h3 class="badges-heading shop-category-heading"><i class="fas fa-palette" style="color:var(--primary-color);"></i> Akzentfarbe</h3>
+            <div class="shop-items-grid">${accentCards}</div>
+            <h3 class="badges-heading shop-category-heading"><i class="fas fa-wand-magic-sparkles" style="color:var(--primary-color);"></i> Level-Up-Icon</h3>
+            <div class="shop-items-grid">${levelUpCards}</div>
+        `;
     },
 
-    openShopItemModal(itemId) {
-        const item = itemId ? (this.shop.items || []).find(i => i.id === itemId) : null;
-        const iconOptions = this.shopIcons.map(icon =>
-            `<label class="shop-icon-option">
-                <input type="radio" name="shop-item-icon" value="${icon}" ${(item?.icon || 'fa-gift') === icon ? 'checked' : ''}>
-                <span><i class="fas ${icon}"></i></span>
-            </label>`
-        ).join('');
-
-        this.showModal(`
-            <h3><i class="fas fa-gift"></i> ${item ? 'Belohnung bearbeiten' : 'Belohnung erstellen'}</h3>
-            <label>Name der Belohnung</label>
-            <input type="text" id="shop-item-name" placeholder="z. B. 30 Min. Gaming" value="${item?.name || ''}">
-            <label>Kosten in Punkten</label>
-            <input type="number" id="shop-item-cost" min="1" placeholder="z. B. 50" value="${item?.cost || ''}">
-            <label>Icon</label>
-            <div class="shop-icon-picker">${iconOptions}</div>
-            <button class="btn-primary btn-full" style="margin-top:16px;" onclick="App.saveShopItem('${item?.id || ''}')">
-                <i class="fas fa-save"></i> Speichern
-            </button>
-        `);
-    },
-
-    saveShopItem(itemId) {
-        const name = document.getElementById('shop-item-name').value.trim();
-        const cost = parseInt(document.getElementById('shop-item-cost').value, 10);
-        const iconInput = document.querySelector('input[name="shop-item-icon"]:checked');
-        const icon = iconInput ? iconInput.value : 'fa-gift';
-
-        if (!name || !cost || cost < 1) {
-            this.showNotification('Bitte Namen und gültige Punktzahl eingeben', 'error');
-            return;
-        }
-
-        if (!this.shop.items) this.shop.items = [];
-        if (itemId) {
-            const item = this.shop.items.find(i => i.id === itemId);
-            if (item) { item.name = name; item.cost = cost; item.icon = icon; }
-        } else {
-            this.shop.items.push({ id: 'shop_' + Date.now(), name, cost, icon });
-        }
-
-        this.saveData('shop', this.shop);
-        this.closeModal();
-        this.renderShop();
-        this.showNotification(itemId ? 'Belohnung aktualisiert' : 'Belohnung erstellt', 'success');
-    },
-
-    deleteShopItem(itemId) {
-        if (!confirm('Diese Belohnung wirklich löschen?')) return;
-        this.shop.items = (this.shop.items || []).filter(i => i.id !== itemId);
-        this.saveData('shop', this.shop);
-        this.renderShop();
-        this.showNotification('Belohnung gelöscht', 'success');
-    },
-
-    redeemShopItem(itemId) {
-        const item = (this.shop.items || []).find(i => i.id === itemId);
+    buyAccent(accentId) {
+        const item = this.accentCatalog.find(a => a.id === accentId);
         if (!item) return;
+        const unlocked = this.shop.unlockedAccents || (this.shop.unlockedAccents = ['default']);
+        if (unlocked.includes(accentId)) return;
+
         const coins = this.progress?.coins || 0;
         if (coins < item.cost) {
-            this.showNotification('Nicht genug Punkte für diese Belohnung', 'error');
+            this.showNotification('Nicht genug Punkte für diese Farbe', 'error');
             return;
         }
 
         this.progress.coins = coins - item.cost;
-        if (!this.shop.history) this.shop.history = [];
-        this.shop.history.unshift({
-            id: 'redeem_' + Date.now(),
-            name: item.name,
-            icon: item.icon,
-            cost: item.cost,
-            date: new Date().toISOString()
-        });
-        // Verlauf auf die letzten 100 Einträge begrenzen
-        if (this.shop.history.length > 100) this.shop.history = this.shop.history.slice(0, 100);
+        unlocked.push(accentId);
+        this.recordShopPurchase(item.name, 'fa-palette', item.cost);
+        this.equipAccent(accentId, true);
+    },
+
+    equipAccent(accentId, skipSave) {
+        const unlocked = this.shop?.unlockedAccents || ['default'];
+        if (!unlocked.includes(accentId)) return;
+        this.shop.activeAccent = accentId;
+        this.applyAccent(accentId);
+        if (!skipSave) this.saveData('shop', this.shop);
+        else {
+            this.saveData('progress', this.progress);
+            this.saveData('shop', this.shop);
+        }
+        this.renderShop();
+        this.showNotification('🎨 Neue Farbe angewendet', 'success');
+    },
+
+    buyLevelUpIcon(iconId) {
+        const item = this.levelUpCatalog.find(i => i.id === iconId);
+        if (!item) return;
+        const unlocked = this.shop.unlockedLevelUpIcons || (this.shop.unlockedLevelUpIcons = ['star']);
+        if (unlocked.includes(iconId)) return;
+
+        const coins = this.progress?.coins || 0;
+        if (coins < item.cost) {
+            this.showNotification('Nicht genug Punkte für dieses Icon', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - item.cost;
+        unlocked.push(iconId);
+        this.recordShopPurchase(item.name, item.icon, item.cost);
+        this.equipLevelUpIcon(iconId, true);
+    },
+
+    equipLevelUpIcon(iconId, skipSave) {
+        const unlocked = this.shop?.unlockedLevelUpIcons || ['star'];
+        if (!unlocked.includes(iconId)) return;
+        this.shop.activeLevelUpIcon = iconId;
+        if (!skipSave) this.saveData('shop', this.shop);
+        else {
+            this.saveData('progress', this.progress);
+            this.saveData('shop', this.shop);
+        }
+        this.renderShop();
+        this.showNotification('✨ Neues Level-Up-Icon aktiv', 'success');
+    },
+
+    buyStreakFreeze() {
+        const coins = this.progress?.coins || 0;
+        const freezes = this.progress?.streakFreezes || 0;
+
+        if (freezes >= this.MAX_STREAK_FREEZES) {
+            this.showNotification('Maximale Anzahl an Streak-Freezes erreicht', 'error');
+            return;
+        }
+        const cost = this.freezeCost(freezes);
+        if (coins < cost) {
+            this.showNotification('Nicht genug Punkte für einen Streak-Freeze', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - cost;
+        this.progress.streakFreezes = freezes + 1;
+        this.recordShopPurchase('Streak-Freeze', 'fa-snowflake', cost);
 
         this.saveData('progress', this.progress);
         this.saveData('shop', this.shop);
         this.renderShop();
-        this.showNotification(`🎉 Eingelöst: ${item.name}`, 'success');
+        this.renderStreakBadge();
+        this.showNotification(`🧊 Streak-Freeze gekauft (jetzt: ${this.progress.streakFreezes})`, 'success');
+    },
+
+    recordShopPurchase(name, icon, cost) {
+        if (!this.shop.history) this.shop.history = [];
+        this.shop.history.unshift({
+            id: 'redeem_' + Date.now(),
+            name, icon, cost,
+            date: new Date().toISOString()
+        });
+        // Verlauf auf die letzten 100 Einträge begrenzen
+        if (this.shop.history.length > 100) this.shop.history = this.shop.history.slice(0, 100);
     },
 
     openShopHistoryModal() {
@@ -4253,7 +4372,7 @@ Object.assign(App, {
                     <div class="shop-history-cost"><i class="fas fa-coins"></i> ${h.cost}</div>
                 </div>
             `).join('')
-            : '<p style="color:var(--text-secondary);">Noch keine Belohnungen eingelöst.</p>';
+            : '<p style="color:var(--text-secondary);">Noch nichts im Shop gekauft.</p>';
 
         this.showModal(`
             <h3><i class="fas fa-clock-rotate-left"></i> Einlöse-Verlauf</h3>
