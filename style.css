@@ -48,6 +48,9 @@
 
     --ki-accent: #7c3aed;
     --ki-accent-dark: #6d28d9;
+
+    --flame-color: #f97316;
+    --flame-glow: rgba(249, 115, 22, 0.55);
 }
 
 /* ===== Shop-Akzentfarben (kosmetische Freischaltungen) ===== */
@@ -3561,13 +3564,13 @@ textarea {
 }
 
 .streak-flame-badge.streak-active {
-    border-color: #f97316;
-    color: #f97316;
+    border-color: var(--flame-color);
+    color: var(--flame-color);
 }
 
 .streak-flame-badge.streak-active i {
-    color: #f97316;
-    filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.5));
+    color: var(--flame-color);
+    filter: drop-shadow(0 0 4px var(--flame-glow));
 }
 
 .progress-top-row {
@@ -3593,8 +3596,8 @@ textarea {
 }
 
 .streak-hero-flame.streak-active {
-    color: #f97316;
-    filter: drop-shadow(0 0 12px rgba(249, 115, 22, 0.55));
+    color: var(--flame-color);
+    filter: drop-shadow(0 0 12px var(--flame-glow));
     animation: flame-flicker 1.8s ease-in-out infinite;
 }
 
@@ -3844,6 +3847,21 @@ textarea {
     cursor: default;
 }
 
+.levelup-preview-tag {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+}
+
 @keyframes levelupPop {
     0%   { transform: scale(0.4); opacity: 0; }
     60%  { transform: scale(1.08); opacity: 1; }
@@ -4070,6 +4088,42 @@ textarea {
     margin-top: 0;
 }
 
+.shop-category-hint {
+    margin: -8px 0 12px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.shop-preview-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(21, 128, 61, 0.1);
+    border: 1px solid var(--primary-color);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+}
+
+.shop-preview-banner i {
+    color: var(--primary-color);
+}
+
+.shop-preview-banner span {
+    flex: 1;
+}
+
+.shop-item-card.previewing {
+    box-shadow: 0 0 0 2px var(--primary-light), var(--shadow);
+}
+
+.shop-item-badge-preview {
+    background: var(--primary-color);
+    color: #fff;
+}
+
 .shop-item-badge {
     position: absolute;
     top: 8px;
@@ -4159,9 +4213,20 @@ textarea {
     margin-right: 3px;
 }
 
-.shop-item-redeem-btn {
+.shop-item-btn-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     width: 100%;
     margin-top: 4px;
+}
+
+.shop-item-redeem-btn {
+    width: 100%;
+}
+
+.shop-item-preview-btn {
+    width: 100%;
 }
 
 .shop-item-redeem-btn:disabled {
@@ -4254,5 +4319,5 @@ textarea {
 /* Dashboard streak card flame animation */
 .dashboard-streak-card .streak-active {
     animation: flame-flicker 1.8s ease-in-out infinite;
-    filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.5));
+    filter: drop-shadow(0 0 10px var(--flame-glow));
 }

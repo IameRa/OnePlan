@@ -738,7 +738,9 @@ const App = {
         currentSection: 'dashboard',
         currentMonth: new Date(),
         selectedRating: 0,
-        homeworkFilter: 'all'
+        homeworkFilter: 'all',
+        previewAccent: null,
+        previewFlame: null
     },
 
     // Initialize the application
@@ -828,15 +830,19 @@ const App = {
         if (this.progress.streakFreezes === undefined) this.progress.streakFreezes = 0;
         if (this.progress.coins === undefined) this.progress.coins = 0;
         this.checkStreakExpiry();
-        this.shop = map['shop'] || { unlockedAccents: ['default'], activeAccent: 'default', unlockedLevelUpIcons: ['star'], activeLevelUpIcon: 'star', history: [] };
+        this.shop = map['shop'] || { unlockedAccents: ['default'], activeAccent: 'default', unlockedLevelUpIcons: ['star'], activeLevelUpIcon: 'star', unlockedFlames: ['classic'], activeFlame: 'classic', history: [] };
         if (!this.shop.unlockedAccents || !this.shop.unlockedAccents.length) this.shop.unlockedAccents = ['default'];
         if (!this.shop.unlockedAccents.includes('default')) this.shop.unlockedAccents.push('default');
         if (!this.shop.activeAccent) this.shop.activeAccent = 'default';
         if (!this.shop.unlockedLevelUpIcons || !this.shop.unlockedLevelUpIcons.length) this.shop.unlockedLevelUpIcons = ['star'];
         if (!this.shop.unlockedLevelUpIcons.includes('star')) this.shop.unlockedLevelUpIcons.push('star');
         if (!this.shop.activeLevelUpIcon) this.shop.activeLevelUpIcon = 'star';
+        if (!this.shop.unlockedFlames || !this.shop.unlockedFlames.length) this.shop.unlockedFlames = ['classic'];
+        if (!this.shop.unlockedFlames.includes('classic')) this.shop.unlockedFlames.push('classic');
+        if (!this.shop.activeFlame) this.shop.activeFlame = 'classic';
         if (!this.shop.history) this.shop.history = [];
         this.applyAccent(this.shop.activeAccent);
+        this.applyFlame(this.shop.activeFlame);
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
     },
@@ -909,6 +915,12 @@ const App = {
     },
 
     navigateTo(section) {
+        // Vorschauen beenden, wenn der Shop verlassen wird
+        if (this.state.currentSection === 'shop' && section !== 'shop') {
+            if (this.state.previewAccent) this.stopAccentPreview(true);
+            if (this.state.previewFlame) this.stopFlamePreview(true);
+        }
+
         document.querySelectorAll('.nav-links li').forEach(item => {
             item.classList.toggle('active', item.dataset.section === section);
         });
@@ -2182,7 +2194,7 @@ const App = {
             const streakActive = streak > 0 && this.isActiveToday();
             streakEl.innerHTML = `
                 <div style="text-align: center;">
-                    <div class="${streakActive ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streakActive ? '#f97316' : 'var(--text-light)'};">
+                    <div class="${streakActive ? 'streak-active' : ''}" style="font-size: 2.2rem; color: ${streakActive ? 'var(--flame-color)' : 'var(--text-light)'};">
                         <i class="fas fa-fire"></i>
                     </div>
                     <div style="font-size: 2rem; font-weight: bold; color: var(--text-primary); margin-top: 4px;">${streak}</div>
@@ -4151,6 +4163,17 @@ Object.assign(App, {
         { id: 'crown', name: 'Krone', desc: 'Das Premium-Level-Up', cost: 150, icon: 'fa-crown' }
     ],
 
+    flameCatalog: [
+        { id: 'classic', name: 'Klassisch', desc: 'Die original OnePlan-Flamme', cost: 0, color: '#f97316', glow: 'rgba(249, 115, 22, 0.55)' },
+        { id: 'blue', name: 'Blaue Flamme', desc: 'Kühl und intensiv', cost: 70, color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.55)' },
+        { id: 'teal', name: 'Türkisflamme', desc: 'Frisch und klar', cost: 80, color: '#14b8a6', glow: 'rgba(20, 184, 166, 0.55)' },
+        { id: 'purple', name: 'Violette Flamme', desc: 'Mystisch und edel', cost: 90, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.55)' },
+        { id: 'red', name: 'Rote Flamme', desc: 'Pure Intensität', cost: 100, color: '#ef4444', glow: 'rgba(239, 68, 68, 0.55)' },
+        { id: 'pink', name: 'Pinke Flamme', desc: 'Auffällig und mutig', cost: 110, color: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' },
+        { id: 'ice', name: 'Eisflamme', desc: 'Kalt brennt sie am längsten', cost: 130, color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.6)' },
+        { id: 'gold', name: 'Goldflamme', desc: 'Die seltenste Farbe im Shop', cost: 160, color: '#eab308', glow: 'rgba(234, 179, 8, 0.6)' }
+    ],
+
     // Streak-Freezes werden mit jedem bereits vorhandenen Freeze teurer –
     // sie sollen ein wertvolles, bewusst eingesetztes Gut bleiben, kein
     // Spontankauf.
@@ -4171,12 +4194,86 @@ Object.assign(App, {
         document.documentElement.setAttribute('data-accent', accentId || 'default');
     },
 
+    // Wendet eine Akzentfarbe testweise an, ohne sie zu kaufen oder zu
+    // speichern. Ein Banner zeigt an, dass es sich um eine Vorschau handelt;
+    // beim Verlassen des Shops oder per Klick wird sie automatisch zurückgesetzt.
+    previewAccent(accentId) {
+        this.state.previewAccent = accentId;
+        this.applyAccent(accentId);
+        this.renderShop();
+    },
+
+    stopAccentPreview(skipRender) {
+        this.state.previewAccent = null;
+        this.applyAccent(this.shop?.activeAccent || 'default');
+        if (!skipRender) this.renderShop();
+    },
+
+    applyFlame(flameId) {
+        const item = this.flameCatalog.find(f => f.id === flameId) || this.flameCatalog[0];
+        document.documentElement.style.setProperty('--flame-color', item.color);
+        document.documentElement.style.setProperty('--flame-glow', item.glow);
+    },
+
+    // Wendet eine Flammenfarbe testweise an, ohne sie zu kaufen oder zu
+    // speichern. Wirkt sich auf Dashboard, Sidebar-Badge und Fortschritts-
+    // Seite aus, da diese alle dieselbe CSS-Variable nutzen.
+    previewFlame(flameId) {
+        this.state.previewFlame = flameId;
+        this.applyFlame(flameId);
+        this.renderShop();
+    },
+
+    stopFlamePreview(skipRender) {
+        this.state.previewFlame = null;
+        this.applyFlame(this.shop?.activeFlame || 'classic');
+        if (!skipRender) this.renderShop();
+    },
+
+    // Zeigt kurz das echte Level-Up-Overlay mit dem gewählten Icon, ohne
+    // dass wirklich ein Level-Up stattfindet – reine Vorschau.
+    previewLevelUpIcon(iconId) {
+        const item = this.levelUpCatalog.find(i => i.id === iconId);
+        if (!item) return;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'levelup-overlay';
+
+        const colors = ['#15803d', '#f97316', '#3b82f6', '#eab308', '#ec4899'];
+        let confetti = '';
+        for (let i = 0; i < 26; i++) {
+            const left = Math.random() * 100;
+            const delay = (Math.random() * 0.4).toFixed(2);
+            const duration = (1.5 + Math.random() * 1).toFixed(2);
+            const color = colors[i % colors.length];
+            confetti += `<span class="levelup-confetti" style="left:${left}%;background:${color};animation-delay:${delay}s;animation-duration:${duration}s;"></span>`;
+        }
+
+        overlay.innerHTML = `
+            <div class="levelup-confetti-layer">${confetti}</div>
+            <div class="levelup-card">
+                <div class="levelup-preview-tag">Vorschau</div>
+                <div class="levelup-star"><i class="fas ${item.icon}"></i></div>
+                <div class="levelup-title">Level 12 erreicht!</div>
+                <div class="levelup-sub">So sieht dein Level-Up mit „${item.name}“ aus 🎉</div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', () => overlay.remove());
+        setTimeout(() => {
+            overlay.classList.add('levelup-fade-out');
+            setTimeout(() => overlay.remove(), 400);
+        }, 2200);
+    },
+
     renderShop() {
         this.renderShopBalance();
         const grid = document.getElementById('shop-items-grid');
         if (!grid) return;
 
         const coins = this.progress?.coins || 0;
+        const previewingAccent = this.state.previewAccent;
 
         // Kosmetik: Akzentfarben
         const unlockedAccents = this.shop?.unlockedAccents || ['default'];
@@ -4184,6 +4281,7 @@ Object.assign(App, {
         const accentCards = this.accentCatalog.map(item => {
             const isUnlocked = unlockedAccents.includes(item.id);
             const isActive = activeAccent === item.id;
+            const isPreviewing = previewingAccent === item.id;
             const affordable = coins >= item.cost;
             let btn;
             if (isActive) {
@@ -4193,14 +4291,17 @@ Object.assign(App, {
             } else {
                 btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyAccent('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
             }
+            const previewBtn = isActive ? '' : (isPreviewing
+                ? `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.stopAccentPreview()"><i class="fas fa-eye-slash"></i> Vorschau beenden</button>`
+                : `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.previewAccent('${item.id}')"><i class="fas fa-eye"></i> Vorschau</button>`);
             return `
-                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''}">
-                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : '')}
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isPreviewing ? '<div class="shop-item-badge shop-item-badge-preview">Vorschau</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : ''))}
                     <div class="shop-item-icon accent-swatch" style="background:${item.colors.color};"><i class="fas fa-palette"></i></div>
                     <div class="shop-item-name">${item.name}</div>
                     <div class="shop-item-desc">${item.desc}</div>
                     ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
-                    ${btn}
+                    <div class="shop-item-btn-row">${previewBtn}${btn}</div>
                 </div>
             `;
         }).join('');
@@ -4220,6 +4321,7 @@ Object.assign(App, {
             } else {
                 btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyLevelUpIcon('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
             }
+            const previewBtn = isActive ? '' : `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.previewLevelUpIcon('${item.id}')"><i class="fas fa-eye"></i> Vorschau</button>`;
             return `
                 <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''}">
                     ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : '')}
@@ -4227,7 +4329,39 @@ Object.assign(App, {
                     <div class="shop-item-name">${item.name}</div>
                     <div class="shop-item-desc">${item.desc}</div>
                     ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
-                    ${btn}
+                    <div class="shop-item-btn-row">${previewBtn}${btn}</div>
+                </div>
+            `;
+        }).join('');
+
+        // Kosmetik: Streak-Flamme
+        const unlockedFlames = this.shop?.unlockedFlames || ['classic'];
+        const activeFlame = this.shop?.activeFlame || 'classic';
+        const previewingFlame = this.state.previewFlame;
+        const flameCards = this.flameCatalog.map(item => {
+            const isUnlocked = unlockedFlames.includes(item.id);
+            const isActive = activeFlame === item.id;
+            const isPreviewing = previewingFlame === item.id;
+            const affordable = coins >= item.cost;
+            let btn;
+            if (isActive) {
+                btn = `<button class="btn-secondary btn-small shop-item-redeem-btn" disabled><i class="fas fa-check"></i> Aktiv</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" onclick="App.equipFlame('${item.id}')"><i class="fas fa-paintbrush"></i> Anwenden</button>`;
+            } else {
+                btn = `<button class="btn-primary btn-small shop-item-redeem-btn" ${affordable ? '' : 'disabled'} onclick="App.buyFlame('${item.id}')"><i class="fas fa-coins"></i> ${item.cost === 0 ? 'Freischalten' : 'Kaufen'}</button>`;
+            }
+            const previewBtn = isActive ? '' : (isPreviewing
+                ? `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.stopFlamePreview()"><i class="fas fa-eye-slash"></i> Vorschau beenden</button>`
+                : `<button class="btn-secondary btn-small shop-item-preview-btn" onclick="App.previewFlame('${item.id}')"><i class="fas fa-eye"></i> Vorschau</button>`);
+            return `
+                <div class="shop-item-card ${!isUnlocked && !affordable ? 'unaffordable' : ''} ${isActive ? 'equipped' : ''} ${isPreviewing ? 'previewing' : ''}">
+                    ${isActive ? '<div class="shop-item-badge">Aktiv</div>' : (isPreviewing ? '<div class="shop-item-badge shop-item-badge-preview">Vorschau</div>' : (isUnlocked ? '<div class="shop-item-badge shop-item-badge-owned">Freigeschaltet</div>' : ''))}
+                    <div class="shop-item-icon" style="background:${item.color}22;color:${item.color};"><i class="fas fa-fire"></i></div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-desc">${item.desc}</div>
+                    ${!isUnlocked ? `<div class="shop-item-cost"><i class="fas fa-coins"></i> ${item.cost}</div>` : ''}
+                    <div class="shop-item-btn-row">${previewBtn}${btn}</div>
                 </div>
             `;
         }).join('');
@@ -4250,13 +4384,36 @@ Object.assign(App, {
             </div>
         `;
 
+        const previewBanners = [
+            previewingAccent ? `
+                <div class="shop-preview-banner">
+                    <i class="fas fa-eye"></i>
+                    <span>Vorschau aktiv: <strong>${this.accentCatalog.find(a => a.id === previewingAccent)?.name || ''}</strong> – so sieht die App gerade überall aus.</span>
+                    <button class="btn-secondary btn-small" onclick="App.stopAccentPreview()">Zurücksetzen</button>
+                </div>
+            ` : '',
+            previewingFlame ? `
+                <div class="shop-preview-banner">
+                    <i class="fas fa-fire"></i>
+                    <span>Vorschau aktiv: <strong>${this.flameCatalog.find(f => f.id === previewingFlame)?.name || ''}</strong> – so sieht deine Streak-Flamme gerade aus.</span>
+                    <button class="btn-secondary btn-small" onclick="App.stopFlamePreview()">Zurücksetzen</button>
+                </div>
+            ` : ''
+        ].join('');
+
         grid.innerHTML = `
+            ${previewBanners}
             <h3 class="badges-heading shop-category-heading"><i class="fas fa-snowflake" style="color:var(--primary-color);"></i> Streak-Schutz</h3>
             <div class="shop-items-grid">${freezeCard}</div>
             <h3 class="badges-heading shop-category-heading"><i class="fas fa-palette" style="color:var(--primary-color);"></i> Akzentfarbe</h3>
+            <p class="shop-category-hint">Mit „Vorschau“ siehst du die Farbe live in der ganzen App, ohne sie zu kaufen.</p>
             <div class="shop-items-grid">${accentCards}</div>
             <h3 class="badges-heading shop-category-heading"><i class="fas fa-wand-magic-sparkles" style="color:var(--primary-color);"></i> Level-Up-Icon</h3>
+            <p class="shop-category-hint">Mit „Vorschau“ siehst du kurz, wie dein nächstes Level-Up aussehen würde.</p>
             <div class="shop-items-grid">${levelUpCards}</div>
+            <h3 class="badges-heading shop-category-heading"><i class="fas fa-fire" style="color:var(--primary-color);"></i> Streak-Flamme</h3>
+            <p class="shop-category-hint">Mit „Vorschau“ siehst du die Flammenfarbe live im Dashboard, in der Kopfleiste und im Fortschritt.</p>
+            <div class="shop-items-grid">${flameCards}</div>
         `;
     },
 
@@ -4282,6 +4439,7 @@ Object.assign(App, {
         const unlocked = this.shop?.unlockedAccents || ['default'];
         if (!unlocked.includes(accentId)) return;
         this.shop.activeAccent = accentId;
+        this.state.previewAccent = null;
         this.applyAccent(accentId);
         if (!skipSave) this.saveData('shop', this.shop);
         else {
@@ -4321,6 +4479,39 @@ Object.assign(App, {
         }
         this.renderShop();
         this.showNotification('✨ Neues Level-Up-Icon aktiv', 'success');
+    },
+
+    buyFlame(flameId) {
+        const item = this.flameCatalog.find(f => f.id === flameId);
+        if (!item) return;
+        const unlocked = this.shop.unlockedFlames || (this.shop.unlockedFlames = ['classic']);
+        if (unlocked.includes(flameId)) return;
+
+        const coins = this.progress?.coins || 0;
+        if (coins < item.cost) {
+            this.showNotification('Nicht genug Punkte für diese Flammenfarbe', 'error');
+            return;
+        }
+
+        this.progress.coins = coins - item.cost;
+        unlocked.push(flameId);
+        this.recordShopPurchase(item.name, 'fa-fire', item.cost);
+        this.equipFlame(flameId, true);
+    },
+
+    equipFlame(flameId, skipSave) {
+        const unlocked = this.shop?.unlockedFlames || ['classic'];
+        if (!unlocked.includes(flameId)) return;
+        this.shop.activeFlame = flameId;
+        this.state.previewFlame = null;
+        this.applyFlame(flameId);
+        if (!skipSave) this.saveData('shop', this.shop);
+        else {
+            this.saveData('progress', this.progress);
+            this.saveData('shop', this.shop);
+        }
+        this.renderShop();
+        this.showNotification('🔥 Neue Flammenfarbe angewendet', 'success');
     },
 
     buyStreakFreeze() {
