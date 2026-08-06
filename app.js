@@ -3776,6 +3776,19 @@ Object.assign(App, {
         return { images, totalPages, processedPages };
     },
 
+    // Schätzt anhand des erkannten Textumfangs, wie viele Karteikarten sinnvoll sind.
+    // Faustregel: ca. 1 Karte pro ~55 Wörtern eigentlichem Lerninhalt (grobe Bereinigung
+    // um Seitenzahlen/Kopf-Fußzeilen-Artefakte), geklammert auf den erlaubten Bereich 3–20.
+    estimateFlashcardCount(text) {
+        const cleaned = text
+            .replace(/---\s*Seite\s*\d+\s*---/gi, ' ')
+            .replace(/\b\d{1,4}\b/g, ' '); // einzelne Zahlen (oft Seitenzahlen) grob rausfiltern
+
+        const words = (cleaned.match(/[\p{L}][\p{L}'-]*/gu) || []).length;
+        const raw = Math.round(words / 55);
+        return Math.min(Math.max(raw, 3), 20);
+    },
+
     async runBookScanOCR() {
         const hasPdf = this.scanPdfPages && this.scanPdfPages.length > 0;
         if (!this.scanImageFile && !hasPdf) return;
@@ -3828,7 +3841,12 @@ Object.assign(App, {
                 topicField.value = text;
                 topicField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 topicField.focus();
-                this.showNotification('Text erkannt! Bitte kurz prüfen/korrigieren und dann Karten generieren.', 'success');
+
+                const suggestedCount = this.estimateFlashcardCount(text);
+                const countField = document.getElementById('ki-fc-count');
+                if (countField) countField.value = suggestedCount;
+
+                this.showNotification(`Text erkannt! Anzahl automatisch auf ${suggestedCount} Karten eingestellt – passe sie bei Bedarf an und generiere dann die Karten.`, 'success');
             }
         } catch (err) {
             this.showNotification('Fehler bei der Texterkennung: ' + err.message, 'error');
