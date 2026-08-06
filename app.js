@@ -3681,6 +3681,76 @@ Object.assign(App, {
         return text;
     },
 
+    // ===== Buchseite scannen (OCR) =====
+    handleScanImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        this.scanImageFile = file;
+        document.getElementById('ki-scan-filename').textContent = file.name;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('ki-scan-preview').src = e.target.result;
+            document.getElementById('ki-scan-preview-wrap').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        const btn = document.getElementById('ki-scan-ocr-btn');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-text-height"></i> Text erkennen';
+    },
+
+    async runBookScanOCR() {
+        if (!this.scanImageFile) return;
+        if (typeof Tesseract === 'undefined') {
+            this.showNotification('Texterkennung ist offline nicht verfügbar. Bitte einmal mit Internet öffnen.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('ki-scan-ocr-btn');
+        const progressWrap = document.getElementById('ki-scan-progress');
+        const progressFill = document.getElementById('ki-scan-progress-fill');
+        const progressLabel = document.getElementById('ki-scan-progress-label');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Erkenne Text...';
+        progressWrap.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressLabel.textContent = 'Texterkennung wird vorbereitet...';
+
+        try {
+            const { data } = await Tesseract.recognize(this.scanImageFile, 'deu', {
+                logger: (m) => {
+                    if (m.status === 'recognizing text') {
+                        const pct = Math.round((m.progress || 0) * 100);
+                        progressFill.style.width = pct + '%';
+                        progressLabel.textContent = `Erkenne Text... ${pct}%`;
+                    } else if (m.status) {
+                        progressLabel.textContent = m.status;
+                    }
+                }
+            });
+
+            const text = (data.text || '').replace(/[ \t]+\n/g, '\n').trim();
+            if (!text) {
+                this.showNotification('Kein Text erkannt. Versuch ein schärferes, gerade ausgerichtetes Foto.', 'error');
+            } else {
+                const topicField = document.getElementById('ki-fc-topic');
+                topicField.value = text;
+                topicField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                topicField.focus();
+                this.showNotification('Text erkannt! Bitte kurz prüfen/korrigieren und dann Karten generieren.', 'success');
+            }
+        } catch (err) {
+            this.showNotification('Fehler bei der Texterkennung: ' + err.message, 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-redo"></i> Text erneut erkennen';
+        progressWrap.style.display = 'none';
+    },
+
     // ===== Karteikarten generieren =====
     async generateFlashcards() {
         const subject = document.getElementById('ki-fc-subject').value.trim();
@@ -3700,6 +3770,8 @@ Object.assign(App, {
             const prompt = `Erstelle genau ${count} Karteikarten für das Fach "${subject}" zum folgenden Thema/Text:
 
 "${topic}"
+
+Hinweis: Der Text kann aus einem eingescannten Foto einer Schulbuchseite stammen und daher Erkennungsfehler, Seitenzahlen, Kopf-/Fußzeilen oder abgeschnittene Wörter enthalten. Ignoriere solche Artefakte, korrigiere offensichtliche Tippfehler im Kopf und konzentriere dich nur auf den eigentlichen Lerninhalt.
 
 Antworte NUR mit einem JSON-Array in diesem Format (kein Text davor oder danach, keine Markdown-Backticks):
 [{"front":"Frage hier","back":"Antwort hier"},...]
@@ -3765,6 +3837,11 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
         document.getElementById('ki-fc-topic').value = '';
         document.getElementById('ki-fc-result').style.display = 'none';
         this.kiGeneratedCards = null;
+
+        this.scanImageFile = null;
+        document.getElementById('ki-scan-filename').textContent = '';
+        document.getElementById('ki-scan-preview-wrap').style.display = 'none';
+        document.getElementById('ki-scan-input').value = '';
     },
 
     formatKIResult(text) {

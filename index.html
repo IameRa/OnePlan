@@ -36,6 +36,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
     <script>
         window.MathJax = {
             tex: {
@@ -709,6 +710,30 @@
                         <div class="ki-card-gen-form">
                             <h3><i class="fas fa-magic" style="color:var(--ki-accent);"></i> Karteikarten automatisch erstellen</h3>
                             <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem;">Gib ein Thema oder einen Text ein – die KI erstellt automatisch Karteikarten für dich.</p>
+
+                            <div class="ki-scan-box">
+                                <h4><i class="fas fa-camera"></i> Buchseite scannen</h4>
+                                <p>Fotografiere eine Seite aus deinem Schulbuch – der Text wird direkt auf deinem Gerät erkannt und unten eingefügt.</p>
+                                <input type="file" id="ki-scan-input" accept="image/*" capture="environment" style="display:none;" onchange="App.handleScanImage(event)">
+                                <div class="ki-scan-actions">
+                                    <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('ki-scan-input').click()">
+                                        <i class="fas fa-camera"></i> Foto aufnehmen / auswählen
+                                    </button>
+                                    <span id="ki-scan-filename"></span>
+                                </div>
+                                <div id="ki-scan-preview-wrap" style="display:none;">
+                                    <img id="ki-scan-preview" alt="Vorschau der gescannten Seite">
+                                    <button type="button" class="btn-primary btn-small" id="ki-scan-ocr-btn" onclick="App.runBookScanOCR()">
+                                        <i class="fas fa-text-height"></i> Text erkennen
+                                    </button>
+                                </div>
+                                <div id="ki-scan-progress" style="display:none;">
+                                    <div class="ki-scan-progress-bar"><div id="ki-scan-progress-fill" class="ki-scan-progress-fill"></div></div>
+                                    <span id="ki-scan-progress-label"></span>
+                                </div>
+                            </div>
+                            <div class="ki-scan-divider"><span>oder Thema/Text direkt eingeben</span></div>
+
                             <input type="text" id="ki-fc-subject" placeholder="Fach (z.B. Biologie, Geschichte...)">
                             <textarea id="ki-fc-topic" placeholder="Thema oder Text zum Erstellen von Karteikarten (z.B. 'Photosynthese' oder ein ganzer Absatz aus deinem Lehrbuch)..." style="min-height:120px;"></textarea>
                             <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
