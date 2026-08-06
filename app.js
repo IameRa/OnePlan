@@ -3696,12 +3696,50 @@ Object.assign(App, {
     },
 
     // ===== Buchseite scannen (OCR) =====
-    handleScanImage(event) {
+    async handleScanImage(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        this.scanImageFile = file;
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        this.scanImageFile = null;
+        this.scanPdfPages = null;
+
         document.getElementById('ki-scan-filename').textContent = file.name;
+        const pdfInfo = document.getElementById('ki-scan-pdf-info');
+        const btn = document.getElementById('ki-scan-ocr-btn');
+
+        if (isPdf) {
+            if (typeof pdfjsLib === 'undefined') {
+                this.showNotification('PDF-Unterstützung ist offline nicht verfügbar. Bitte einmal mit Internet öffnen.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PDF wird geladen...';
+            document.getElementById('ki-scan-preview-wrap').style.display = 'block';
+
+            try {
+                const { images, totalPages, processedPages } = await this.renderPdfToImages(file);
+                this.scanPdfPages = images;
+
+                document.getElementById('ki-scan-preview').src = images[0];
+                pdfInfo.style.display = 'block';
+                pdfInfo.textContent = totalPages > processedPages
+                    ? `PDF mit ${totalPages} Seiten erkannt – die ersten ${processedPages} Seiten werden gescannt.`
+                    : `PDF mit ${totalPages} Seite${totalPages > 1 ? 'n' : ''} erkannt.`;
+
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-text-height"></i> Text erkennen';
+            } catch (err) {
+                this.showNotification('PDF konnte nicht gelesen werden: ' + err.message, 'error');
+                document.getElementById('ki-scan-preview-wrap').style.display = 'none';
+            }
+            return;
+        }
+
+        // Normaler Bild-Upload
+        pdfInfo.style.display = 'none';
+        this.scanImageFile = file;
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -3710,13 +3748,35 @@ Object.assign(App, {
         };
         reader.readAsDataURL(file);
 
-        const btn = document.getElementById('ki-scan-ocr-btn');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-text-height"></i> Text erkennen';
     },
 
+    // Rendert die Seiten einer PDF-Datei als Bilder (dataURLs) für die Texterkennung.
+    // Aus Performancegründen werden maximal `maxPages` Seiten verarbeitet.
+    async renderPdfToImages(file, maxPages = 15) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdf.numPages;
+        const processedPages = Math.min(totalPages, maxPages);
+        const images = [];
+
+        for (let i = 1; i <= processedPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            images.push(canvas.toDataURL('image/png'));
+        }
+
+        return { images, totalPages, processedPages };
+    },
+
     async runBookScanOCR() {
-        if (!this.scanImageFile) return;
+        const hasPdf = this.scanPdfPages && this.scanPdfPages.length > 0;
+        if (!this.scanImageFile && !hasPdf) return;
         if (typeof Tesseract === 'undefined') {
             this.showNotification('Texterkennung ist offline nicht verfügbar. Bitte einmal mit Internet öffnen.', 'error');
             return;
@@ -3734,21 +3794,33 @@ Object.assign(App, {
         progressLabel.textContent = 'Texterkennung wird vorbereitet...';
 
         try {
-            const { data } = await Tesseract.recognize(this.scanImageFile, 'deu', {
-                logger: (m) => {
-                    if (m.status === 'recognizing text') {
-                        const pct = Math.round((m.progress || 0) * 100);
-                        progressFill.style.width = pct + '%';
-                        progressLabel.textContent = `Erkenne Text... ${pct}%`;
-                    } else if (m.status) {
-                        progressLabel.textContent = m.status;
-                    }
-                }
-            });
+            const sources = hasPdf ? this.scanPdfPages : [this.scanImageFile];
+            const pageTexts = [];
 
-            const text = (data.text || '').replace(/[ \t]+\n/g, '\n').trim();
+            for (let i = 0; i < sources.length; i++) {
+                const pagePrefix = sources.length > 1 ? `Seite ${i + 1}/${sources.length}: ` : '';
+
+                const { data } = await Tesseract.recognize(sources[i], 'deu', {
+                    logger: (m) => {
+                        if (m.status === 'recognizing text') {
+                            const pct = Math.round((m.progress || 0) * 100);
+                            // Fortschritt über alle Seiten hinweg anteilig berechnen
+                            const overallPct = Math.round(((i + (m.progress || 0)) / sources.length) * 100);
+                            progressFill.style.width = overallPct + '%';
+                            progressLabel.textContent = `${pagePrefix}Erkenne Text... ${pct}%`;
+                        } else if (m.status) {
+                            progressLabel.textContent = pagePrefix + m.status;
+                        }
+                    }
+                });
+
+                const pageText = (data.text || '').replace(/[ \t]+\n/g, '\n').trim();
+                if (pageText) pageTexts.push(sources.length > 1 ? `--- Seite ${i + 1} ---\n${pageText}` : pageText);
+            }
+
+            const text = pageTexts.join('\n\n').trim();
             if (!text) {
-                this.showNotification('Kein Text erkannt. Versuch ein schärferes, gerade ausgerichtetes Foto.', 'error');
+                this.showNotification('Kein Text erkannt. Versuch ein schärferes, gerade ausgerichtetes Foto oder ein besser lesbares PDF.', 'error');
             } else {
                 const topicField = document.getElementById('ki-fc-topic');
                 topicField.value = text;
@@ -3853,8 +3925,10 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
         this.kiGeneratedCards = null;
 
         this.scanImageFile = null;
+        this.scanPdfPages = null;
         document.getElementById('ki-scan-filename').textContent = '';
         document.getElementById('ki-scan-preview-wrap').style.display = 'none';
+        document.getElementById('ki-scan-pdf-info').style.display = 'none';
         document.getElementById('ki-scan-input').value = '';
     },
 

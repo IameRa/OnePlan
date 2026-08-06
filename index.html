@@ -37,6 +37,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
     <script>
         window.MathJax = {
             tex: {
@@ -713,16 +719,17 @@
 
                             <div class="ki-scan-box">
                                 <h4><i class="fas fa-camera"></i> Buchseite scannen</h4>
-                                <p>Fotografiere eine Seite aus deinem Schulbuch – der Text wird direkt auf deinem Gerät erkannt und unten eingefügt.</p>
-                                <input type="file" id="ki-scan-input" accept="image/*" capture="environment" style="display:none;" onchange="App.handleScanImage(event)">
+                                <p>Fotografiere eine Seite aus deinem Schulbuch oder lade ein PDF hoch – der Text wird direkt auf deinem Gerät erkannt und unten eingefügt.</p>
+                                <input type="file" id="ki-scan-input" accept="image/*,application/pdf" capture="environment" style="display:none;" onchange="App.handleScanImage(event)">
                                 <div class="ki-scan-actions">
                                     <button type="button" class="btn-secondary btn-small" onclick="document.getElementById('ki-scan-input').click()">
-                                        <i class="fas fa-camera"></i> Foto aufnehmen / auswählen
+                                        <i class="fas fa-camera"></i> Foto / PDF aufnehmen / auswählen
                                     </button>
                                     <span id="ki-scan-filename"></span>
                                 </div>
                                 <div id="ki-scan-preview-wrap" style="display:none;">
                                     <img id="ki-scan-preview" alt="Vorschau der gescannten Seite">
+                                    <div id="ki-scan-pdf-info" style="display:none;font-size:0.85rem;color:var(--text-secondary);margin:4px 0 8px;"></div>
                                     <button type="button" class="btn-primary btn-small" id="ki-scan-ocr-btn" onclick="App.runBookScanOCR()">
                                         <i class="fas fa-text-height"></i> Text erkennen
                                     </button>
