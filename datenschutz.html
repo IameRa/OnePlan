@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Datenschutzerklärung – OnePlan</title>
+<style>
+  :root {
+    --primary-color: #15803d;
+    --primary-light: #4ade80;
+    --bg-color: #0f172a;
+    --card-bg: #1a2436;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #2d3a52;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.65;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--primary-light);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: 32px;
+  }
+  .back-link:hover { text-decoration: underline; }
+  h1 { font-size: 1.9rem; margin: 0 0 8px; }
+  .subtitle { color: var(--text-secondary); margin-bottom: 40px; font-size: 0.95rem; }
+  h2 {
+    font-size: 1.2rem;
+    color: var(--primary-light);
+    margin-top: 40px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
+  }
+  h3 { font-size: 1rem; color: var(--text-primary); margin-top: 22px; margin-bottom: 8px; }
+  p, li { color: #e2e8f0; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 14px 0;
+  }
+  code {
+    background: #111827;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.88em;
+  }
+  a { color: var(--primary-light); }
+  footer { margin-top: 60px; font-size: 0.8rem; color: var(--text-secondary); }
+  nav.toc { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px 22px; margin: 24px 0; }
+  nav.toc a { display: block; padding: 3px 0; font-size: 0.92rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back-link" href="index.html">&larr; Zurück zu OnePlan</a>
+  <h1>Datenschutzerklärung</h1>
+  <p class="subtitle">Stand: 06.08.2026</p>
+
+  <nav class="toc">
+    <a href="#verantwortlicher">1. Verantwortlicher</a>
+    <a href="#allgemein">2. Allgemeines zur Datenverarbeitung</a>
+    <a href="#hosting">3. Hosting (GitHub Pages)</a>
+    <a href="#konto">4. Registrierung &amp; Login (Supabase)</a>
+    <a href="#nutzerdaten">5. Deine Inhalte in OnePlan</a>
+    <a href="#push">6. Push-Benachrichtigungen</a>
+    <a href="#ki">7. KI-Assistent (Groq)</a>
+    <a href="#sharing">8. Sharing-Funktion</a>
+    <a href="#local">9. Lokale Speicherung im Browser</a>
+    <a href="#dritte">10. Eingebundene externe Dienste</a>
+    <a href="#rechte">11. Deine Rechte</a>
+    <a href="#dauer">12. Speicherdauer</a>
+    <a href="#sicherheit">13. Datensicherheit</a>
+    <a href="#aenderungen">14. Änderungen dieser Erklärung</a>
+  </nav>
+
+  <h2 id="verantwortlicher">1. Verantwortlicher</h2>
+  <div class="card">
+    <p>
+      Verantwortlich im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:<br>
+      OnePlan<br>
+      E-Mail: support.oneplan@gmail.com
+    </p>
+    <p>
+      OnePlan ist ein privates, nicht-kommerzielles Hobbyprojekt. Trotzdem gelten
+      für die Verarbeitung personenbezogener Daten (z. B. bei einer Registrierung)
+      die vollen Anforderungen der DSGVO.
+    </p>
+  </div>
+
+  <h2 id="allgemein">2. Allgemeines zur Datenverarbeitung</h2>
+  <p>
+    OnePlan verarbeitet personenbezogene Daten nur, soweit dies für die Bereitstellung
+    der App notwendig ist oder du ausdrücklich eingewilligt hast. Rechtsgrundlagen
+    sind je nach Funktion:
+  </p>
+  <ul>
+    <li><strong>Art. 6 Abs. 1 lit. b DSGVO</strong> – zur Erfüllung eines Nutzungsverhältnisses (z. B. Login, Speicherung deiner Daten)</li>
+    <li><strong>Art. 6 Abs. 1 lit. a DSGVO</strong> – Einwilligung (z. B. Aktivierung von Push-Benachrichtigungen, Nutzung des KI-Assistenten)</li>
+    <li><strong>Art. 6 Abs. 1 lit. f DSGVO</strong> – berechtigtes Interesse (z. B. technisch notwendige Verarbeitung durch Hosting)</li>
+  </ul>
+
+  <h2 id="hosting">3. Hosting (GitHub Pages)</h2>
+  <p>
+    OnePlan wird über <strong>GitHub Pages</strong> ausgeliefert, einen Dienst der
+    GitHub, Inc. / Microsoft Corporation (USA). Beim Aufruf der App verarbeitet
+    GitHub automatisch technische Daten (u. a. IP-Adresse, Datum/Uhrzeit des
+    Zugriffs, aufgerufene Datei, verwendeter Browser) in sogenannten Server-Logfiles.
+    Dies ist technisch notwendig, um die App ausliefern zu können (Art. 6 Abs. 1
+    lit. f DSGVO). Es findet dabei ggf. eine Datenübermittlung in die USA statt;
+    GitHub/Microsoft verweist hierfür auf die EU-Standardvertragsklauseln. Details:
+    <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.
+  </p>
+
+  <h2 id="konto">4. Registrierung &amp; Login</h2>
+  <p>
+    Für die Nutzung von OnePlan über mehrere Geräte hinweg kannst du ein Konto
+    anlegen. Die Authentifizierung läuft über <strong>Supabase</strong> (Supabase Inc.).
+    Dabei werden verarbeitet:
+  </p>
+  <ul>
+    <li>E-Mail-Adresse</li>
+    <li>Passwort (verschlüsselt gespeichert, für Supabase selbst nicht einsehbar)</li>
+    <li>technische Metadaten der Sitzung (Session-Token, Zeitpunkt der An-/Abmeldung)</li>
+  </ul>
+  <p>
+    Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Erfüllung des Nutzungsverhältnisses).
+    Wo dein konkretes Supabase-Projekt gehostet wird (EU oder USA), hängt von der
+    Serverregion ab, die für dieses Projekt gewählt wurde:
+    EU-West (Irland).
+    Weitere Infos: <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Supabase Privacy Policy</a>.
+  </p>
+
+  <h2 id="nutzerdaten">5. Deine Inhalte in OnePlan</h2>
+  <p>
+    Sobald du eingeloggt bist, speichert OnePlan die Inhalte, die du selbst
+    einträgst, in der Supabase-Datenbank, damit sie geräteübergreifend verfügbar
+    sind. Dazu gehören je nach Nutzung:
+  </p>
+  <ul>
+    <li>Kalender- und Termindaten</li>
+    <li>Stundenplan</li>
+    <li>Hausaufgaben</li>
+    <li>Noten (Notenrechner)</li>
+    <li>Karteikarten/Lerninhalte</li>
+    <li>Pomodoro-/Einstellungsdaten</li>
+    <li>ggf. freiwilliges Feedback, das du über die App sendest</li>
+  </ul>
+  <p>
+    Diese Daten werden ausschließlich zur Bereitstellung der jeweiligen Funktion
+    verwendet und nicht an Dritte weitergegeben, außer im Rahmen der unten
+    beschriebenen Sharing-Funktion oder wenn du sie selbst teilst.
+  </p>
+
+  <h2 id="push">6. Push-Benachrichtigungen</h2>
+  <p>
+    Wenn du Push-Benachrichtigungen aktivierst, wird dafür über deinen Browser
+    ein eindeutiger Push-Endpunkt (Subscription) erzeugt und in der Datenbank
+    gespeichert, damit dir Erinnerungen zugestellt werden können. Diese Funktion
+    ist freiwillig und basiert auf deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).
+    Du kannst sie jederzeit in den Browser- bzw. Geräteeinstellungen oder in
+    OnePlan wieder deaktivieren.
+  </p>
+
+  <h2 id="ki">7. KI-Assistent</h2>
+  <div class="card">
+    <p>
+      Der KI-Assistent in OnePlan nutzt die API des Anbieters <strong>Groq</strong>
+      (Groq, Inc., USA). Der dafür nötige Zugang wird zentral vom Betreiber
+      bereitgestellt – du musst dich also nicht selbst bei Groq registrieren
+      oder einen eigenen API-Key hinterlegen.
+    </p>
+    <p>
+      Wenn du den KI-Assistenten nutzt, werden deine Eingaben (z. B. Fragen,
+      Lerninhalte) direkt von deinem Browser an die Server von Groq übertragen
+      und dort verarbeitet, um eine Antwort zu erzeugen. Rechtsgrundlage ist
+      deine Einwilligung durch aktive Nutzung dieser Funktion (Art. 6 Abs. 1
+      lit. a DSGVO). Es gelten zusätzlich die Datenschutzbestimmungen von Groq:
+      <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq Privacy Policy</a>.
+    </p>
+    <p>
+      Gib daher im KI-Assistenten möglichst keine sensiblen personenbezogenen
+      Daten (z. B. über andere Personen) ein.
+    </p>
+  </div>
+
+  <h2 id="sharing">8. Sharing-Funktion</h2>
+  <p>
+    Wenn du Inhalte (z. B. einen Karteikarten-Stapel) über die Teilen-Funktion
+    freigibst, wird für diesen Inhalt ein Zugriffscode bzw. QR-Code erzeugt und
+    der geteilte Inhalt in der Datenbank gespeichert. Jede Person mit diesem
+    Code kann den geteilten Inhalt einsehen. Teile daher nur Inhalte, bei denen
+    du damit einverstanden bist, dass sie von Dritten mit dem Code eingesehen
+    werden können.
+  </p>
+
+  <h2 id="local">9. Lokale Speicherung im Browser</h2>
+  <p>
+    OnePlan speichert bestimmte Einstellungen (z. B. dein gewähltes Farbschema)
+    im <code>localStorage</code> deines Browsers. Diese Daten verlassen dein
+    Gerät nicht und werden nicht an einen Server übertragen. Es werden keine
+    Tracking- oder Werbe-Cookies eingesetzt.
+  </p>
+
+  <h2 id="dritte">10. Eingebundene externe Dienste</h2>
+  <p>
+    Für Darstellung und Funktionsumfang bindet OnePlan folgende externe Dienste
+    per CDN ein. Beim Laden dieser Ressourcen wird deine IP-Adresse technisch
+    bedingt an den jeweiligen Anbieter übermittelt:
+  </p>
+  <ul>
+    <li><strong>Google Fonts</strong> (Google Ireland Ltd.) – zur Anzeige der Schriftarten</li>
+    <li><strong>Font Awesome</strong> (cdnjs/Cloudflare) – für Icons</li>
+    <li><strong>jsDelivr CDN</strong> – zur Auslieferung der Supabase-JS-Bibliothek</li>
+    <li><strong>QR-Code-Bibliotheken</strong> (cdnjs) – zur Erzeugung/zum Scannen von QR-Codes für die Sharing-Funktion</li>
+  </ul>
+  <p>
+    Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
+    einer funktionierenden, performanten Darstellung der App).
+  </p>
+
+  <h2 id="rechte">11. Deine Rechte</h2>
+  <p>Du hast gegenüber deinen personenbezogenen Daten folgende Rechte:</p>
+  <ul>
+    <li>Auskunft über die zu dir gespeicherten Daten (Art. 15 DSGVO)</li>
+    <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
+    <li>Löschung deiner Daten (Art. 17 DSGVO)</li>
+    <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+    <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+    <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
+    <li>Widerruf einer erteilten Einwilligung mit Wirkung für die Zukunft</li>
+    <li>Beschwerde bei einer Datenschutz-Aufsichtsbehörde</li>
+  </ul>
+  <p>
+    Zur Ausübung dieser Rechte genügt eine formlose Nachricht an
+    support.oneplan@gmail.com. Konto und
+    zugehörige Daten kannst du zudem direkt in der App löschen, sofern eine
+    entsprechende Funktion vorhanden ist.
+  </p>
+
+  <h2 id="dauer">12. Speicherdauer</h2>
+  <p>
+    Deine Kontodaten und Inhalte werden gespeichert, solange dein Konto besteht.
+    Nach Löschung deines Kontos werden die zugehörigen Daten gelöscht, soweit
+    keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Server-Logfiles
+    des Hostings werden nach kurzer Zeit automatisch gelöscht bzw. anonymisiert.
+  </p>
+
+  <h2 id="sicherheit">13. Datensicherheit</h2>
+  <p>
+    OnePlan wird ausschließlich über eine verschlüsselte HTTPS-Verbindung
+    ausgeliefert. Für Login und Datenbankzugriffe wird die Infrastruktur von
+    Supabase verwendet, die entsprechende technische und organisatorische
+    Sicherheitsmaßnahmen vorsieht.
+  </p>
+
+  <h2 id="aenderungen">14. Änderungen dieser Datenschutzerklärung</h2>
+  <p>
+    Diese Datenschutzerklärung kann angepasst werden, z. B. wenn neue Funktionen
+    in OnePlan hinzukommen. Es gilt jeweils die aktuell auf dieser Seite
+    veröffentlichte Fassung.
+  </p>
+
+  <footer>
+    Siehe auch: <a href="impressum.html">Impressum</a>
+  </footer>
+</div>
+</body>
+</html>

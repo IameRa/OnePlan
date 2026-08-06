@@ -690,6 +690,20 @@ const Auth = {
                 </div>
             </div>
 
+            <div class="settings-group">
+                <div class="settings-group-title">Rechtliches</div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-file-lines"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Impressum</div></div>
+                    <a class="settings-row-action" href="impressum.html" target="_blank" rel="noopener"><i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-row-icon"><i class="fas fa-shield-halved"></i></div>
+                    <div class="settings-row-text"><div class="settings-row-label">Datenschutzerklärung</div></div>
+                    <a class="settings-row-action" href="datenschutz.html" target="_blank" rel="noopener"><i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+
             <p class="settings-app-version">OnePlan</p>
         `);
 
