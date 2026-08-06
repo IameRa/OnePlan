@@ -3725,8 +3725,8 @@ Object.assign(App, {
                 document.getElementById('ki-scan-preview').src = images[0];
                 pdfInfo.style.display = 'block';
                 pdfInfo.textContent = totalPages > processedPages
-                    ? `PDF mit ${totalPages} Seiten erkannt – die ersten ${processedPages} Seiten werden gescannt.`
-                    : `PDF mit ${totalPages} Seite${totalPages > 1 ? 'n' : ''} erkannt.`;
+                    ? `PDF mit ${totalPages} Seiten erkannt – aus Performancegründen werden die ersten ${processedPages} Seiten gescannt.`
+                    : `PDF mit ${totalPages} Seite${totalPages > 1 ? 'n' : ''} erkannt – der gesamte Inhalt wird gescannt.`;
 
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-text-height"></i> Text erkennen';
@@ -3753,8 +3753,10 @@ Object.assign(App, {
     },
 
     // Rendert die Seiten einer PDF-Datei als Bilder (dataURLs) für die Texterkennung.
-    // Aus Performancegründen werden maximal `maxPages` Seiten verarbeitet.
-    async renderPdfToImages(file, maxPages = 15) {
+    // Das Limit ist bewusst hoch angesetzt, damit bei normalen eingescannten
+    // Kapiteln nichts vom Inhalt fehlt; nur bei sehr langen PDFs greift es als Schutz
+    // gegen ein versehentlich hochgeladenes riesiges Dokument.
+    async renderPdfToImages(file, maxPages = 100) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const totalPages = pdf.numPages;
@@ -3841,7 +3843,10 @@ Object.assign(App, {
     async generateFlashcards() {
         const subject = document.getElementById('ki-fc-subject').value.trim();
         const topic = document.getElementById('ki-fc-topic').value.trim();
-        const count = document.getElementById('ki-fc-count').value;
+        let count = parseInt(document.getElementById('ki-fc-count').value, 10);
+        if (!Number.isFinite(count) || count < 1) count = 8;
+        count = Math.min(Math.max(count, 3), 20);
+        document.getElementById('ki-fc-count').value = count;
 
         if (!subject || !topic) {
             this.showNotification('Bitte Fach und Thema eingeben', 'error');
@@ -3857,16 +3862,22 @@ Object.assign(App, {
 
 "${topic}"
 
-Hinweis: Der Text kann aus einem eingescannten Foto einer Schulbuchseite stammen und daher Erkennungsfehler, Seitenzahlen, Kopf-/Fußzeilen oder abgeschnittene Wörter enthalten. Ignoriere solche Artefakte, korrigiere offensichtliche Tippfehler im Kopf und konzentriere dich nur auf den eigentlichen Lerninhalt.
+Hinweis: Der Text kann aus einem eingescannten Foto oder PDF einer Schulbuchseite stammen und daher Erkennungsfehler, Seitenzahlen, Kopf-/Fußzeilen oder abgeschnittene Wörter enthalten. Ignoriere solche Artefakte, korrigiere offensichtliche Tippfehler im Kopf und konzentriere dich nur auf den eigentlichen Lerninhalt.
 
-Antworte NUR mit einem JSON-Array in diesem Format (kein Text davor oder danach, keine Markdown-Backticks):
+Wichtig: Wenn der Text mehrere Abschnitte, Unterthemen oder mehrere gescannte Seiten enthält, decke den Inhalt vollständig ab und verteile die ${count} Karten über den GESAMTEN Text – lass keinen Abschnitt aus, auch nicht bei längeren Texten.
+
+Antworte NUR mit einem vollständigen JSON-Array mit genau ${count} Einträgen in diesem Format (kein Text davor oder danach, keine Markdown-Backticks, nicht abschneiden):
 [{"front":"Frage hier","back":"Antwort hier"},...]
 
 Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und klar sein.`;
 
+            // Token-Budget mit der gewünschten Kartenzahl skalieren, damit die
+            // Antwort bei vielen Karten nicht mitten im JSON abgeschnitten wird.
+            const maxTokens = Math.min(8000, 400 + count * 140);
+
             const data = await this.kiApiFetch({
                 model: 'claude-sonnet-4-6',
-                max_tokens: 1000,
+                max_tokens: maxTokens,
                 messages: [{ role: 'user', content: prompt }]
             });
 
@@ -3874,11 +3885,19 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
             const clean = raw.replace(/```json|```/g, '').trim();
             const cards = JSON.parse(clean);
 
+            if (cards.length < count) {
+                this.showNotification(`Hinweis: Es konnten nur ${cards.length} von ${count} Karten erzeugt werden. Du kannst erneut generieren oder die Anzahl reduzieren.`, 'error');
+            }
+
             this.kiGeneratedCards = { subject, cards };
             this.renderGeneratedFlashcards(subject, cards);
         } catch (err) {
             if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
-                this.showNotification('Fehler: ' + err.message, 'error');
+                if (err instanceof SyntaxError) {
+                    this.showNotification('Die Antwort war unvollständig oder ungültig. Versuch es mit weniger Karten oder kürzerem Text erneut.', 'error');
+                } else {
+                    this.showNotification('Fehler: ' + err.message, 'error');
+                }
             }
         }
 

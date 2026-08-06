@@ -745,12 +745,8 @@
                             <textarea id="ki-fc-topic" placeholder="Thema oder Text zum Erstellen von Karteikarten (z.B. 'Photosynthese' oder ein ganzer Absatz aus deinem Lehrbuch)..." style="min-height:120px;"></textarea>
                             <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
                                 <label style="color:var(--text-secondary);font-size:0.9rem;">Anzahl Karten:</label>
-                                <select id="ki-fc-count" style="width:auto;margin:0;">
-                                    <option value="5">5 Karten</option>
-                                    <option value="8" selected>8 Karten</option>
-                                    <option value="12">12 Karten</option>
-                                    <option value="15">15 Karten</option>
-                                </select>
+                                <input type="number" id="ki-fc-count" min="3" max="20" step="1" value="8" style="width:80px;margin:0;">
+                                <span style="color:var(--text-secondary);font-size:0.82rem;">(3–20 Karten)</span>
                             </div>
                             <button class="btn-primary" id="ki-fc-generate-btn" onclick="App.generateFlashcards()">
                                 <i class="fas fa-magic"></i> Karteikarten generieren
