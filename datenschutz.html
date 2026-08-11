@@ -133,15 +133,22 @@
 
   <h2 id="konto">4. Registrierung &amp; Login</h2>
   <p>
-    Für die Nutzung von OnePlan über mehrere Geräte hinweg kannst du ein Konto
-    anlegen. Die Authentifizierung läuft über <strong>Supabase</strong> (Supabase Inc.).
-    Dabei werden verarbeitet:
+    Es gibt keine offene Selbstregistrierung. Konten werden vom Betreiber
+    angelegt; dabei werden dein <strong>Name</strong> und ein <strong>Benutzername</strong>
+    erfasst und ein Passwort vergeben, das du danach ändern kannst. Die
+    Authentifizierung läuft über <strong>Supabase</strong> (Supabase Inc.). Beim Login
+    mit Benutzername/Passwort werden verarbeitet:
   </p>
   <ul>
-    <li>E-Mail-Adresse</li>
+    <li>Name und Benutzername</li>
+    <li>eine dem Konto zugeordnete, technische E-Mail-Adresse (für die Anmeldung über Supabase Auth, unabhängig von einer echten privaten E-Mail-Adresse)</li>
     <li>Passwort (verschlüsselt gespeichert, für Supabase selbst nicht einsehbar)</li>
     <li>technische Metadaten der Sitzung (Session-Token, Zeitpunkt der An-/Abmeldung)</li>
   </ul>
+  <p>
+    Optional kannst du in den Konto-Einstellungen zusätzlich eine eigene
+    E-Mail-Adresse hinterlegen, z. B. für die Passwort-Wiederherstellung.
+  </p>
   <p>
     Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Erfüllung des Nutzungsverhältnisses).
     Wo dein konkretes Supabase-Projekt gehostet wird (EU oder USA), hängt von der
@@ -186,15 +193,20 @@
     <p>
       Der KI-Assistent in OnePlan nutzt die API des Anbieters <strong>Groq</strong>
       (Groq, Inc., USA). Der dafür nötige Zugang wird zentral vom Betreiber
-      bereitgestellt – du musst dich also nicht selbst bei Groq registrieren
-      oder einen eigenen API-Key hinterlegen.
+      bereitgestellt und läuft über eine serverseitige Funktion (Supabase Edge
+      Function) – du musst dich also nicht selbst bei Groq registrieren, einen
+      eigenen API-Key hinterlegen, und dein Browser erhält diesen Key auch nie
+      zu Gesicht.
     </p>
     <p>
       Wenn du den KI-Assistenten nutzt, werden deine Eingaben (z. B. Fragen,
-      Lerninhalte) direkt von deinem Browser an die Server von Groq übertragen
-      und dort verarbeitet, um eine Antwort zu erzeugen. Rechtsgrundlage ist
-      deine Einwilligung durch aktive Nutzung dieser Funktion (Art. 6 Abs. 1
-      lit. a DSGVO). Es gelten zusätzlich die Datenschutzbestimmungen von Groq:
+      Lerninhalte) von deinem Browser an diese serverseitige Funktion und von
+      dort an die Server von Groq übertragen und dort verarbeitet, um eine
+      Antwort zu erzeugen. Dabei wird bei jeder Anfrage außerdem automatisch
+      dein hinterlegter Name (bzw. Benutzername) mitgesendet, damit dich der
+      Assistent persönlich ansprechen kann. Rechtsgrundlage ist deine
+      Einwilligung durch aktive Nutzung dieser Funktion (Art. 6 Abs. 1 lit. a
+      DSGVO). Es gelten zusätzlich die Datenschutzbestimmungen von Groq:
       <a href="https://groq.com/privacy-policy/" target="_blank" rel="noopener">Groq Privacy Policy</a>.
     </p>
     <p>
@@ -215,10 +227,24 @@
 
   <h2 id="local">9. Lokale Speicherung im Browser</h2>
   <p>
-    OnePlan speichert bestimmte Einstellungen (z. B. dein gewähltes Farbschema)
-    im <code>localStorage</code> deines Browsers. Diese Daten verlassen dein
-    Gerät nicht und werden nicht an einen Server übertragen. Es werden keine
-    Tracking- oder Werbe-Cookies eingesetzt.
+    OnePlan speichert im <code>localStorage</code> deines Browsers zum einen
+    reine Komfort-Einstellungen (z. B. dein gewähltes Farbschema, ein- bzw.
+    ausgeklappte Kategorien, zuletzt genutzte Fächer bei Pomodoro), zum anderen
+    – technisch bedingt durch die verwendete Supabase-Bibliothek – auch deine
+    aktuelle Anmelde-Sitzung (Zugriffs-Token, das u. a. deine E-Mail-Adresse
+    enthalten kann), damit du nach einem Neuladen der Seite eingeloggt
+    bleibst. Diese Daten verlassen dein Gerät nicht von sich aus und werden
+    nicht an Dritte übertragen; sie werden gelöscht, wenn du dich abmeldest
+    oder die Browserdaten für diese Seite löschst. Es werden keine Tracking-
+    oder Werbe-Cookies eingesetzt.
+  </p>
+  <p>
+    Für die QR-Code-Scan-Funktion der Sharing-Funktion fragt OnePlan zudem
+    Zugriff auf deine Gerätekamera an. Der Kamerazugriff wird nur aktiv
+    genutzt, während der Scanner geöffnet ist, die Bilder werden ausschließlich
+    lokal in deinem Browser zur Erkennung des QR-Codes ausgewertet und nicht
+    gespeichert oder übertragen. Rechtsgrundlage ist deine Einwilligung durch
+    Erteilen der Kamera-Berechtigung (Art. 6 Abs. 1 lit. a DSGVO).
   </p>
 
   <h2 id="dritte">10. Eingebundene externe Dienste</h2>
@@ -230,8 +256,10 @@
   <ul>
     <li><strong>Google Fonts</strong> (Google Ireland Ltd.) – zur Anzeige der Schriftarten</li>
     <li><strong>Font Awesome</strong> (cdnjs/Cloudflare) – für Icons</li>
-    <li><strong>jsDelivr CDN</strong> – zur Auslieferung der Supabase-JS-Bibliothek</li>
+    <li><strong>jsDelivr CDN</strong> – zur Auslieferung der Supabase-JS-Bibliothek, von MathJax (Formeldarstellung) und von Tesseract.js (Texterkennung/OCR bei Karteikarten aus Fotos/PDFs, läuft vollständig lokal im Browser)</li>
     <li><strong>QR-Code-Bibliotheken</strong> (cdnjs) – zur Erzeugung/zum Scannen von QR-Codes für die Sharing-Funktion</li>
+    <li><strong>Sortable.js</strong> (cdnjs) – zum Verschieben/Sortieren von Listenelementen per Drag &amp; Drop</li>
+    <li><strong>pdf.js</strong> (cdnjs) – zum lokalen Anzeigen/Auslesen von PDF-Dateien im Browser</li>
   </ul>
   <p>
     Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
@@ -252,9 +280,11 @@
   </ul>
   <p>
     Zur Ausübung dieser Rechte genügt eine formlose Nachricht an
-    support.oneplan@gmail.com. Konto und
-    zugehörige Daten kannst du zudem direkt in der App löschen, sofern eine
-    entsprechende Funktion vorhanden ist.
+    support.oneplan@gmail.com. Du kannst dein Konto zudem direkt in der App
+    löschen; dabei werden dein Profil, deine Inhalte (Kalender, Stundenplan,
+    Hausaufgaben, Noten, Karteikarten u. Ä.), deine Push-Anmeldungen, von dir
+    erzeugte geteilte Inhalte, dein nicht-anonymes Feedback sowie dein
+    Anmelde-Konto selbst gelöscht.
   </p>
 
   <h2 id="dauer">12. Speicherdauer</h2>

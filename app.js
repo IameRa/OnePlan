@@ -442,8 +442,22 @@ const Auth = {
         if (!confirm('Konto und alle Daten wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
         const user = this.currentUser;
         if (user) {
+            // Alle mit dem Konto verknüpften Daten entfernen, nicht nur user_data/profiles.
+            await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
+            await supabase.from('shared_content').delete().eq('owner_id', user.id);
+            await supabase.from('feedback_global').delete().eq('sender_id', user.id);
             await supabase.from('user_data').delete().eq('user_id', user.id);
             await supabase.from('profiles').delete().eq('id', user.id);
+
+            // Den eigentlichen Auth-Account (E-Mail/Benutzername, Passwort-Hash) kann
+            // ein Client nicht selbst löschen - das erfordert den Service-Role-Key.
+            // Dafür ruft dies eine Edge Function auf (siehe supabase-functions/delete-account).
+            try {
+                await supabase.functions.invoke('delete-account', {});
+            } catch (e) {
+                console.error('[deleteAccount] Auth-Account konnte nicht serverseitig gelöscht werden:', e);
+                this.showNotification('Deine Inhalte wurden gelöscht, das Konto selbst konnte aber nicht vollständig entfernt werden. Bitte kontaktiere den Support.', 'warning');
+            }
         }
         await supabase.auth.signOut();
     },
@@ -3409,77 +3423,39 @@ Antworte immer auf Deutsch.`;
 // Extend App with KI features
 Object.assign(App, {
 
-    // ===== API Key Management (persistent via Supabase) =====
-    _cachedGroqKey: '',
-
-    getApiKey() {
-        return this._cachedGroqKey || '';
-    },
-
-    async loadApiKey() {
-        try {
-            const { data, error } = await supabase
-                .from('app_settings')
-                .select('value')
-                .eq('key', 'groq_api_key')
-                .maybeSingle();
-            console.log('loadApiKey result:', data, 'error:', error);
-            if (!error && data?.value) this._cachedGroqKey = data.value;
-        } catch (e) { console.log('loadApiKey exception:', e); }
-    },
-
-    async saveApiKey(key) {
-        this._cachedGroqKey = key.trim();
-        const { data, error } = await supabase.from('app_settings').upsert({
-            key: 'groq_api_key',
-            value: key.trim(),
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
-        console.log('saveApiKey result:', data, 'error:', error);
-    },
-
-    // Groq API – kostenlos bis 14.400 Anfragen/Tag
+    // ===== KI-Anfragen laufen ausschließlich über die Edge Function 'ki-chat' =====
+    // WICHTIG (Sicherheits-/Datenschutzfix): Der Groq-API-Key liegt NICHT mehr im
+    // Browser und NICHT mehr in einer per SELECT auslesbaren DB-Tabelle. Er wird
+    // ausschließlich serverseitig als Supabase-Secret (GROQ_API_KEY) in der Edge
+    // Function 'ki-chat' verwendet (siehe supabase-functions/ki-chat/index.ts).
+    // Nutzer:innen müssen und können keinen eigenen Key mehr eintragen – der Zugang
+    // ist zentral vom Betreiber bereitgestellt, wie es die Datenschutzerklärung
+    // ohnehin schon versprochen hat.
     async kiApiFetch(body) {
-        const key = this.getApiKey();
-        if (!key) {
-            this.showKiKeyBanner();
-            throw new Error('Kein API-Key');
-        }
-
-        // Konvertiere Anthropic-Format → OpenAI-kompatibles Groq-Format
-        const messages = [];
-        if (body.system) messages.push({ role: 'system', content: body.system });
-        messages.push(...(body.messages || []));
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + key
-            },
-            body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                max_tokens: body.max_tokens || 1000,
-                messages
-            })
+        const { data, error } = await supabase.functions.invoke('ki-chat', {
+            body: {
+                system: body.system,
+                messages: body.messages || [],
+                max_tokens: body.max_tokens || 1000
+            }
         });
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            if (response.status === 401) {
-                this.showKiKeyBanner('API-Key ungültig. Bitte prüfe deinen Groq-Key.');
-                throw new Error('Ungültiger API-Key');
-            }
-            throw new Error(err.error?.message || 'API-Fehler');
+        if (error) {
+            this.showKiUnavailableBanner();
+            throw new Error(error.message || 'KI-Dienst momentan nicht erreichbar');
+        }
+        if (data?.error) {
+            this.showKiUnavailableBanner();
+            throw new Error(data.error);
         }
 
-        const data = await response.json();
-        // Übersetze Groq-Antwort zurück ins Anthropic-Format
-        const text = data.choices?.[0]?.message?.content || '';
+        const text = data?.content?.[0]?.text || '';
         return { content: [{ type: 'text', text }] };
     },
 
-    showKiKeyBanner(errorMsg) {
+    // Zeigt nur noch einen Hinweis, dass der KI-Dienst gerade nicht verfügbar ist.
+    // Es wird KEIN eigener API-Key mehr abgefragt.
+    showKiUnavailableBanner() {
         let banner = document.getElementById('ki-key-banner');
         if (!banner) {
             banner = document.createElement('div');
@@ -3487,22 +3463,11 @@ Object.assign(App, {
             banner.className = 'ki-key-banner';
             banner.innerHTML = `
                 <div class="ki-key-banner-inner">
-                    <div style="font-size:1.6rem;">⚡</div>
+                    <div style="font-size:1.6rem;">⚠️</div>
                     <div style="flex:1;">
-                        <strong>Gratis Groq API-Key einrichten</strong>
-                        <p>Groq ist <strong>kostenlos</strong> nutzbar! Erstelle deinen Key in 1 Minute auf 
-                        <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a> 
-                        (kostenloser Account, kein Kreditkarte nötig). Der Key wird nur für diese Sitzung gespeichert.</p>
-                        <div style="background:rgba(21,128,61,0.07);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:0.82rem;color:var(--text-secondary);">
-                            ✅ Kostenlos &nbsp;·&nbsp; ✅ Kein Kreditkarte &nbsp;·&nbsp; ✅ 14.400 Anfragen/Tag &nbsp;·&nbsp; ✅ Sehr schnell
-                        </div>
-                        <div id="ki-key-error" class="ki-key-error" style="display:none;"></div>
-                        <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
-                            <input type="password" id="ki-key-input" placeholder="gsk_..." style="flex:1;margin:0;font-size:0.88rem;padding:9px 12px;">
-                            <button class="btn-primary btn-small" onclick="App.submitApiKey()">
-                                <i class="fas fa-check"></i> Aktivieren
-                            </button>
-                        </div>
+                        <strong>KI-Assistent gerade nicht verfügbar</strong>
+                        <p>Der KI-Dienst antwortet momentan nicht. Bitte versuch es gleich noch einmal.
+                        Falls das Problem bestehen bleibt, melde dich bitte beim Support.</p>
                     </div>
                     <button onclick="document.getElementById('ki-key-banner').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:1.1rem;padding:4px;align-self:flex-start;">
                         <i class="fas fa-times"></i>
@@ -3513,26 +3478,6 @@ Object.assign(App, {
             section.insertBefore(banner, section.querySelector('.ki-tabs'));
         }
         banner.style.display = 'block';
-        if (errorMsg) {
-            const errEl = document.getElementById('ki-key-error');
-            if (errEl) { errEl.textContent = errorMsg; errEl.style.display = 'block'; }
-        }
-        const input = document.getElementById('ki-key-input');
-        if (input && this.getApiKey()) input.value = this.getApiKey();
-        setTimeout(() => { if (input) input.focus(); }, 100);
-    },
-
-    async submitApiKey() {
-        const input = document.getElementById('ki-key-input');
-        const key = input?.value.trim();
-        if (!key || !key.startsWith('gsk_')) {
-            const errEl = document.getElementById('ki-key-error');
-            if (errEl) { errEl.textContent = 'Bitte einen gültigen Groq-Key eingeben (beginnt mit gsk_).'; errEl.style.display = 'block'; }
-            return;
-        }
-        await this.saveApiKey(key);
-        document.getElementById('ki-key-banner').style.display = 'none';
-        this.showNotification('Groq-Key gespeichert – KI-Features sind jetzt aktiv! ⚡', 'success');
     },
 
     // ===== KI Tab Navigation =====
@@ -3558,12 +3503,6 @@ Object.assign(App, {
             });
         }
 
-        // Show key banner if no key saved yet when entering KI section
-        document.querySelectorAll('.nav-links li[data-section="ki-assistent"], .mobile-more-menu li[data-section="ki-assistent"]').forEach(el => {
-            el.addEventListener('click', () => {
-                if (!this.getApiKey()) setTimeout(() => this.showKiKeyBanner(), 200);
-            });
-        });
 
         this.kiChatHistory = [];
     },
@@ -3974,11 +3913,10 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
     }
 });
 
-// Patch App.init to also call setupKI and load saved Groq key
+// Patch App.init to also call setupKI (Groq-Key läuft jetzt serverseitig über die Edge Function)
 const _origInit = App.init.bind(App);
 App.init = async function() {
     await _origInit();
-    await this.loadApiKey();
     this.setupKI();
 };
 
