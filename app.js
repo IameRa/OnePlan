@@ -564,7 +564,7 @@ const Auth = {
         App.showModal(`
             <h3><i class="fas fa-envelope"></i> E-Mail hinterlegen</h3>
             <p class="field-hint">Wird nur für „Passwort vergessen" genutzt, nicht für den Login. Ohne hinterlegte E-Mail kannst du dein Passwort nur über deinen Admin zurücksetzen lassen.</p>
-            <input type="email" id="se-email" placeholder="Deine echte E-Mail-Adresse" value="${currentEmail}" autocomplete="email">
+            <input type="email" id="se-email" placeholder="Deine echte E-Mail-Adresse" value="${this.escapeHtml(currentEmail)}" autocomplete="email">
             <div id="se-error" class="auth-error"></div>
             <button class="btn-primary btn-full" id="btn-save-email" style="margin-top:10px;">
                 <i class="fas fa-check"></i> Speichern
@@ -678,8 +678,8 @@ const Auth = {
                 <div class="settings-row">
                     <div class="settings-row-icon"><i class="fas fa-user"></i></div>
                     <div class="settings-row-text">
-                        <div class="settings-row-label">${displayName}</div>
-                        ${subtitle ? `<div class="settings-row-hint">${subtitle}</div>` : ''}
+                        <div class="settings-row-label">${this.escapeHtml(displayName)}</div>
+                        ${subtitle ? `<div class="settings-row-hint">${this.escapeHtml(subtitle)}</div>` : ''}
                     </div>
                 </div>
                 <div class="settings-row">
@@ -1350,9 +1350,9 @@ const App = {
                     <div class="event-date-month">${monthShort[d.getMonth()]}</div>
                 </div>
                 <div class="event-info">
-                    <h4>${event.title}</h4>
+                    <h4>${this.escapeHtml(event.title)}</h4>
                     <span>${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
-                    ${event.description ? `<p>${event.description}</p>` : ''}
+                    ${event.description ? `<p>${this.escapeHtml(event.description)}</p>` : ''}
                 </div>
                 <button class="btn-small btn-danger" onclick="App.deleteEvent(${event.id})">
                     <i class="fas fa-trash"></i>
@@ -1537,9 +1537,9 @@ const App = {
                     <td onclick="App.editTimetableCell(${d}, ${p})" ${rowspanAttr} ${cellStyle}>
                         <div class="timetable-cell ${cellClass}">
                             ${cell.subject ? `
-                                <div class="subject" ${color ? `style="color:${color};"` : ''}>${cell.subject}</div>
-                                <div class="teacher">${cell.teacher}</div>
-                                <div class="room">${cell.room}</div>
+                                <div class="subject" ${color ? `style="color:${color};"` : ''}>${this.escapeHtml(cell.subject)}</div>
+                                <div class="teacher">${this.escapeHtml(cell.teacher)}</div>
+                                <div class="room">${this.escapeHtml(cell.room)}</div>
                             ` : '<span class="empty-slot">–</span>'}
                         </div>
                     </td>
@@ -1682,13 +1682,13 @@ const App = {
         container.innerHTML = filtered.map(hw => `
             <div class="homework-item ${hw.done ? 'done' : ''} priority-${hw.priority}">
                 <div class="homework-item-main">
-                    <div class="homework-avatar">${hw.subject.charAt(0).toUpperCase()}</div>
+                    <div class="homework-avatar">${this.escapeHtml(hw.subject.charAt(0).toUpperCase())}</div>
                     <div class="homework-info">
                         <div class="homework-info-top">
-                            <h4>${hw.subject}</h4>
+                            <h4>${this.escapeHtml(hw.subject)}</h4>
                             <span class="priority-badge priority-badge-${hw.priority}">${priorityLabels[hw.priority]}</span>
                         </div>
-                        <p>${hw.task}</p>
+                        <p>${this.escapeHtml(hw.task)}</p>
                         <span class="due-date">
                             <i class="fas fa-clock"></i> Fällig: ${this.formatDate(hw.due)}
                         </span>
@@ -1961,7 +1961,7 @@ const App = {
             overviewHTML += `
                 <div class="grade-subject-card">
                     <h4>
-                        <span>${subject}</span>
+                        <span>${this.escapeHtml(subject)}</span>
                         <span class="average" style="color:${avgColor}">${avg.toFixed(2)} <span style="font-size:0.8rem;font-weight:400;color:var(--text-light)">/ ${avgPoints.toFixed(2)} Pkt.</span></span>
                     </h4>
                     <div class="grade-bar">
@@ -2008,10 +2008,10 @@ const App = {
                     <div class="grade-item">
                         <div class="grade-value ${gradeClass}">${displayVal}</div>
                         <div class="grade-info">
-                            <h4>${g.subject} ${badge}</h4>
+                            <h4>${this.escapeHtml(g.subject)} ${badge}</h4>
                             <span>${typeLabels[g.type]} · ${g.weight}% Gewichtung</span>
                             ${is15 ? `<span style="font-size:0.8rem;color:var(--text-light)">≈ Note ${normalized.toFixed(1)}</span>` : ''}
-                            ${g.description ? `<p>${g.description}</p>` : ''}
+                            ${g.description ? `<p>${this.escapeHtml(g.description)}</p>` : ''}
                         </div>
                         <button class="btn-small btn-danger" onclick="App.deleteGrade(${g.id})">
                             <i class="fas fa-trash"></i>
@@ -2231,7 +2231,7 @@ const App = {
                 <div class="feedback-admin-item-header">
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <span class="fb-type-badge" style="background:${typeColors[fb.type]}20;color:${typeColors[fb.type]};">${typeLabels[fb.type] || fb.type}</span>
-                        <span class="fb-sender"><i class="fas fa-user"></i> ${fb.anonymous ? '<em>Anonym</em>' : (fb.sender_name || 'Unbekannt')}</span>
+                        <span class="fb-sender"><i class="fas fa-user"></i> ${fb.anonymous ? '<em>Anonym</em>' : this.escapeHtml(fb.sender_name || 'Unbekannt')}</span>
                         ${fb.rating ? `<span class="fb-stars">${'★'.repeat(fb.rating)}${'☆'.repeat(5-fb.rating)}</span>` : ''}
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
@@ -2239,7 +2239,7 @@ const App = {
                         <button class="btn-small btn-danger" onclick="App.deleteAdminFeedback('${fb.id}')"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-                <p class="fb-message">${fb.message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                <p class="fb-message">${this.escapeHtml(fb.message)}</p>
             </div>
         `).join('');
     },
@@ -2337,7 +2337,7 @@ const App = {
             upcomingEventsEl.innerHTML = upcomingEvents.length
                 ? upcomingEvents.map(e => `
                     <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                        <strong>${e.title}</strong><br>
+                        <strong>${this.escapeHtml(e.title)}</strong><br>
                         <small>${this.formatDate(e.date)}${e.time ? ' · ' + e.time : ''}</small>
                     </div>
                 `).join('')
@@ -2355,8 +2355,8 @@ const App = {
             pendingHomeworkEl.innerHTML = pendingHomework.length
                 ? pendingHomework.map(h => `
                     <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                        <strong>${h.subject}</strong><br>
-                        <small>${h.task.substring(0, 50)}${h.task.length > 50 ? '...' : ''}</small><br>
+                        <strong>${this.escapeHtml(h.subject)}</strong><br>
+                        <small>${this.escapeHtml(h.task.substring(0, 50))}${h.task.length > 50 ? '...' : ''}</small><br>
                         <small style="color: var(--warning-color);">Fällig: ${this.formatDate(h.due)}</small>
                     </div>
                 `).join('')
@@ -2500,7 +2500,7 @@ const App = {
             trendEl.innerHTML = rows.length
                 ? rows.map(r => `
                     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-color);">
-                        <span>${r.subject}</span>
+                        <span>${this.escapeHtml(r.subject)}</span>
                         <span class="${r.cls}"><i class="fas ${r.icon}"></i> ${r.last.value}${r.last.system === '1-15' ? ' P.' : ''}</span>
                     </div>
                 `).join('')
@@ -2518,7 +2518,7 @@ const App = {
             topHwEl.innerHTML = entries.length
                 ? `<div style="text-align: center; cursor: pointer;" onclick="App.navigateTo('hausaufgaben')" title="Zu den Hausaufgaben">
                         <div style="font-size: 2rem; font-weight: bold; color: var(--warning-color);">${entries[0][1]}</div>
-                        <p>offene ${entries[0][1] === 1 ? 'Aufgabe' : 'Aufgaben'} in <strong>${entries[0][0]}</strong></p>
+                        <p>offene ${entries[0][1] === 1 ? 'Aufgabe' : 'Aufgaben'} in <strong>${this.escapeHtml(entries[0][0])}</strong></p>
                    </div>`
                 : '<p style="color: var(--text-secondary);">Keine offenen Hausaufgaben 🎉</p>';
         }
@@ -2602,8 +2602,8 @@ const App = {
                         const isNow = l.period.start <= nowHM && nowHM < l.period.end;
                         return `
                             <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border-color); ${isPast ? 'opacity: 0.45;' : ''} ${isNow ? 'font-weight: 700;' : ''}">
-                                <span>${l.period.label} ${l.cell.subject}</span>
-                                <small style="color: var(--text-secondary);">${l.period.start}${l.cell.room ? ' · ' + l.cell.room : ''}</small>
+                                <span>${l.period.label} ${this.escapeHtml(l.cell.subject)}</span>
+                                <small style="color: var(--text-secondary);">${l.period.start}${l.cell.room ? ' · ' + this.escapeHtml(l.cell.room) : ''}</small>
                             </div>
                         `;
                     }).join('');
@@ -2700,9 +2700,9 @@ const App = {
 
         el.innerHTML = `
             <div style="text-align: center;">
-                <div style="font-size: 1.6rem; font-weight: bold; color: var(--text-primary);">${cell.subject}</div>
+                <div style="font-size: 1.6rem; font-weight: bold; color: var(--text-primary);">${this.escapeHtml(cell.subject)}</div>
                 <small style="color: var(--text-secondary);">${dayLabel} · ${period.label} Stunde (${period.start}-${period.end})</small>
-                ${(cell.room || cell.teacher) ? `<div style="margin-top: 8px;"><small>${[cell.room, cell.teacher].filter(Boolean).join(' · ')}</small></div>` : ''}
+                ${(cell.room || cell.teacher) ? `<div style="margin-top: 8px;"><small>${[cell.room, cell.teacher].filter(Boolean).map(v => this.escapeHtml(v)).join(' · ')}</small></div>` : ''}
             </div>
         `;
     },
@@ -2853,7 +2853,7 @@ const App = {
             const maxBox = Math.max(1, ...boxCounts);
             return `
                 <div class="fc-deck-card">
-                    <h4><i class="fas fa-layer-group" style="color:var(--primary-color);margin-right:8px;"></i>${subject}</h4>
+                    <h4><i class="fas fa-layer-group" style="color:var(--primary-color);margin-right:8px;"></i>${this.escapeHtml(subject)}</h4>
                     <div class="fc-count">${cards.length} Karte${cards.length !== 1 ? 'n' : ''}</div>
                     <div class="fc-deck-stats">
                         <span class="${dueCount > 0 ? 'fc-stat-due' : 'fc-stat-known'}"><i class="fas fa-clock"></i> ${dueCount} fällig</span>
@@ -2870,16 +2870,16 @@ const App = {
                         ${boxCounts.map((count, i) => `<span>B${i + 1}: ${count}</span>`).join('')}
                     </div>
                     <div class="fc-deck-actions">
-                        <button class="btn-primary btn-small" onclick="App.startLearn('${subject}', true)">
+                        <button class="btn-primary btn-small" onclick="App.startLearn('${this.escapeJsAttr(subject)}', true)">
                             <i class="fas fa-graduation-cap"></i> Lernen${dueCount > 0 ? ` (${dueCount})` : ''}
                         </button>
-                        <button class="btn-secondary btn-small" onclick="App.startLearn('${subject}', false)">
+                        <button class="btn-secondary btn-small" onclick="App.startLearn('${this.escapeJsAttr(subject)}', false)">
                             <i class="fas fa-redo"></i> Alle üben
                         </button>
-                        <button class="btn-secondary btn-small" onclick="App.shareDeck('${subject}')" title="Diesen Stapel teilen">
+                        <button class="btn-secondary btn-small" onclick="App.shareDeck('${this.escapeJsAttr(subject)}')" title="Diesen Stapel teilen">
                             <i class="fas fa-share-alt"></i>
                         </button>
-                        <button class="btn-small btn-danger" onclick="App.deleteDeck('${subject}')">
+                        <button class="btn-small btn-danger" onclick="App.deleteDeck('${this.escapeJsAttr(subject)}')">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -3089,7 +3089,7 @@ const App = {
     showShareResult(code, title) {
         const link = `${location.origin}${location.pathname}?import=${code}`;
         this.showModal(`
-            <h3><i class="fas fa-share-alt"></i> „${title}“ geteilt</h3>
+            <h3><i class="fas fa-share-alt"></i> „${this.escapeHtml(title)}“ geteilt</h3>
             <p class="field-hint">Gib diesen Code weiter, teile den Link oder lass den QR-Code scannen. Die andere Person erhält beim Einlösen eine eigene Kopie – Änderungen wirken sich nicht gegenseitig aus.</p>
             <div class="share-code-box">${code}</div>
             <div style="display:flex;gap:10px;margin-top:12px;">
@@ -3153,7 +3153,7 @@ const App = {
                 ${open.map(hw => `
                     <label class="hw-share-item">
                         <input type="checkbox" class="hw-share-check" value="${hw.id}" checked>
-                        <span><strong>${hw.subject}</strong> – ${hw.task} <span class="due-date">(${this.formatDate(hw.due)})</span></span>
+                        <span><strong>${this.escapeHtml(hw.subject)}</strong> – ${this.escapeHtml(hw.task)} <span class="due-date">(${this.formatDate(hw.due)})</span></span>
                     </label>
                 `).join('')}
             </div>
@@ -3189,7 +3189,7 @@ const App = {
                 ${upcoming.map(event => `
                     <label class="hw-share-item">
                         <input type="checkbox" class="event-share-check" value="${event.id}" checked>
-                        <span><strong>${event.title}</strong> – ${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
+                        <span><strong>${this.escapeHtml(event.title)}</strong> – ${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
                     </label>
                 `).join('')}
             </div>
@@ -3214,7 +3214,7 @@ const App = {
         this.showModal(`
             <h3><i class="fas fa-download"></i> Code einlösen</h3>
             <p class="field-hint">Gib den Code ein, den du von jemandem bekommen hast, oder scanne seinen QR-Code. Du erhältst eine eigene Kopie der Inhalte.</p>
-            <input type="text" id="import-code-input" placeholder="z.B. AB3XQ9" value="${prefillCode}" style="text-transform:uppercase;" maxlength="8">
+            <input type="text" id="import-code-input" placeholder="z.B. AB3XQ9" value="${this.escapeHtml(prefillCode)}" style="text-transform:uppercase;" maxlength="8">
             <div style="display:flex;gap:10px;margin-top:10px;">
                 <button class="btn-primary" style="flex:1;" onclick="App.fetchSharedContent()"><i class="fas fa-search"></i> Abrufen</button>
                 <button class="btn-secondary" style="flex:1;" id="btn-scan-qr" onclick="App.startQrScan()"><i class="fas fa-qrcode"></i> QR-Code scannen</button>
@@ -3313,7 +3313,7 @@ const App = {
 
         preview.innerHTML = `
             <div class="import-preview-box">
-                <p><i class="fas fa-layer-group"></i> <strong>${typeLabel}</strong>: „${row.title || ''}“${count !== null ? ` · ${count} Einträge` : ''}</p>
+                <p><i class="fas fa-layer-group"></i> <strong>${typeLabel}</strong>: „${this.escapeHtml(row.title || '')}“${count !== null ? ` · ${count} Einträge` : ''}</p>
                 ${warning}
                 <button class="btn-primary btn-full" onclick="App.applyImport()">
                     <i class="fas fa-check"></i> Übernehmen
@@ -3384,13 +3384,35 @@ const App = {
         return new Date(dateStr).toLocaleDateString('de-DE', options);
     },
 
+    // Escaped Nutzereingaben, bevor sie per innerHTML in die Seite eingefügt werden
+    // (verhindert XSS z. B. über geteilte Inhalte, Feedback oder eigene Texteingaben).
+    escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[c]));
+    },
+
+    // Für Werte, die in onclick="...('${wert}')" eingesetzt werden: escaped erst als
+    // JS-String-Literal (Backslash/Anführungszeichen), dann als HTML-Attribut,
+    // damit Nutzertext dort nicht aus dem String bzw. Attribut ausbrechen kann.
+    escapeJsAttr(str) {
+        if (str === null || str === undefined) return '';
+        const jsEscaped = String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return this.escapeHtml(jsEscaped);
+    },
+
     showNotification(message, type = 'info') {
         const container = document.getElementById('notification-container');
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.innerHTML = `
             <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <span>${message}</span>
+            <span>${this.escapeHtml(message)}</span>
         `;
         container.appendChild(notification);
 
@@ -3558,7 +3580,7 @@ Object.assign(App, {
         const icon = role === 'ai' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
         el.innerHTML = `
             <div class="ki-message-avatar">${icon}</div>
-            <div class="ki-message-bubble">${role === "user" ? this.escapeHTML(text) : this.renderMarkdown(text)}</div>
+            <div class="ki-message-bubble">${role === "user" ? this.escapeHtml(text) : this.renderMarkdown(text)}</div>
         `;
         container.appendChild(el);
         container.scrollTop = container.scrollHeight;
@@ -3587,13 +3609,6 @@ Object.assign(App, {
     removeChatLoading(id) {
         const el = document.getElementById(id);
         if (el) el.remove();
-    },
-
-    escapeHTML(str) {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
     },
 
     renderMarkdown(text) {
@@ -3867,8 +3882,8 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
 
         preview.innerHTML = cards.map((c) => `
             <div class="ki-fc-preview-card">
-                <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.escapeHTML(c.front)}</div>
-                <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.escapeHTML(c.back)}</div>
+                <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.escapeHtml(c.front)}</div>
+                <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.escapeHtml(c.back)}</div>
             </div>
         `).join('');
 
