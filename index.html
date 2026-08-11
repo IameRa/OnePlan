@@ -690,10 +690,11 @@
                             </div>
                             <div class="ki-chat-topbar-actions">
                                 <button class="ki-chat-topbar-btn" onclick="App.newKiChat()" title="Neuer Chat">
-                                    <i class="fas fa-plus"></i>
+                                    <i class="fas fa-plus"></i> <span>Neu</span>
                                 </button>
-                                <button class="ki-chat-topbar-btn" onclick="App.openKiHistory()" title="Chatverlauf">
-                                    <i class="fas fa-clock-rotate-left"></i>
+                                <button class="ki-chat-topbar-btn ki-chat-topbar-btn-accent" onclick="App.openKiHistory()" title="Chatverlauf">
+                                    <i class="fas fa-clock-rotate-left"></i> <span>Verlauf</span>
+                                    <span class="ki-history-badge" id="ki-history-badge" style="display:none;">0</span>
                                 </button>
                             </div>
                         </div>

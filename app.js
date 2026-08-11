@@ -3527,6 +3527,7 @@ Object.assign(App, {
 
         this.kiChatHistory = [];
         this.currentKiConversationId = null;
+        this.updateKiHistoryBadge();
     },
 
     // ===== Chat =====
@@ -3607,6 +3608,19 @@ Object.assign(App, {
         }
 
         await this.saveData('kiConversations', this.kiConversations);
+        this.updateKiHistoryBadge();
+    },
+
+    updateKiHistoryBadge() {
+        const badge = document.getElementById('ki-history-badge');
+        if (!badge) return;
+        const count = (this.kiConversations || []).length;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
     },
 
     newKiChat() {
@@ -3687,6 +3701,7 @@ Object.assign(App, {
     async deleteKiConversation(id) {
         this.kiConversations = (this.kiConversations || []).filter(c => c.id !== id);
         await this.saveData('kiConversations', this.kiConversations);
+        this.updateKiHistoryBadge();
 
         if (this.currentKiConversationId === id) {
             this.newKiChat();

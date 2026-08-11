@@ -3053,21 +3053,54 @@ textarea {
 .ki-chat-topbar-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
     border-radius: 8px;
     border: 1px solid var(--border-color);
     background: var(--card-bg);
     color: var(--text-secondary);
     cursor: pointer;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
     transition: all 0.15s ease;
 }
 
 .ki-chat-topbar-btn:hover {
-    color: var(--primary-color);
-    border-color: var(--primary-color);
+    color: var(--ki-accent);
+    border-color: var(--ki-accent);
+}
+
+.ki-chat-topbar-btn-accent {
+    position: relative;
+    color: var(--ki-accent);
+    border-color: var(--ki-accent);
+    background: rgba(124, 58, 237, 0.12);
+    background: color-mix(in srgb, var(--ki-accent) 12%, var(--card-bg));
+}
+
+.ki-chat-topbar-btn-accent:hover {
+    background: rgba(124, 58, 237, 0.22);
+    background: color-mix(in srgb, var(--ki-accent) 22%, var(--card-bg));
+    color: var(--ki-accent-dark);
+    border-color: var(--ki-accent-dark);
+}
+
+.ki-history-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    margin-left: 2px;
+    border-radius: 9px;
+    background: var(--ki-accent-dark);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .ki-history-list {
@@ -3491,6 +3524,12 @@ textarea {
     .ki-tab {
         padding: 8px 12px;
         font-size: 0.8rem;
+    }
+    .ki-chat-topbar-status {
+        display: none;
+    }
+    .ki-chat-topbar {
+        justify-content: flex-end;
     }
     .ki-chat-messages {
         min-height: 260px;
