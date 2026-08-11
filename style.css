@@ -2490,6 +2490,64 @@ textarea {
     height: fit-content;
 }
 
+.fc-form-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: -6px 0 14px;
+    line-height: 1.5;
+}
+
+.fc-form-hint code {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.fc-form-preview {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.fc-form-preview-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.fc-form-preview-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 6px 0;
+}
+
+.fc-form-preview-row + .fc-form-preview-row {
+    border-top: 1px dashed var(--border-color);
+}
+
+.fc-form-preview-tag {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--ki-accent);
+    background: rgba(124, 58, 237, 0.1);
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 2px;
+}
+
+.fc-form-preview-row div p {
+    margin: 0;
+}
+
 .flashcard-decks {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -2824,11 +2882,16 @@ textarea {
     align-self: flex-start;
 }
 
-.fc-card-front p, .fc-card-back p {
+.fc-card-front .fc-text, .fc-card-back .fc-text {
     font-size: 1.2rem;
     font-weight: 500;
     text-align: center;
     line-height: 1.6;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.fc-card-front .fc-text p, .fc-card-back .fc-text p {
     margin: 0;
     white-space: pre-wrap;
 }
@@ -3502,6 +3565,23 @@ textarea {
 .ki-fc-preview-card .fc-a {
     font-size: 0.85rem;
     color: var(--text-secondary);
+}
+
+.ki-fc-preview-card .fc-q p, .ki-fc-preview-card .fc-a p {
+    display: inline;
+    margin: 0;
+}
+
+.ki-card-gen-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.ki-card-gen-header h3 {
+    margin: 0;
 }
 
 /* KI Loading spinner in buttons */

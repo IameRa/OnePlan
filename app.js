@@ -1065,6 +1065,7 @@ const App = {
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
         this.kiConversations = map['kiConversations'] || [];
+        this.kiFcHistory = map['kiFcGenerations'] || [];
     },
 
     async saveData(key, data) {
@@ -2799,7 +2800,40 @@ const App = {
                 this.exitLearnMode();
             }
         });
+
+        const frontInput = document.getElementById('fc-front');
+        const backInput = document.getElementById('fc-back');
+        if (frontInput && backInput) {
+            frontInput.addEventListener('input', () => this.updateFlashcardFormPreview());
+            backInput.addEventListener('input', () => this.updateFlashcardFormPreview());
+        }
+
         this.renderFlashcardDecks();
+    },
+
+    // Zeigt Frage/Antwort live gerendert (inkl. Formeln) unter dem Formular an,
+    // damit man vor dem Speichern prüfen kann, ob z.B. LaTeX-Formeln korrekt aussehen.
+    updateFlashcardFormPreview() {
+        clearTimeout(this._fcPreviewTimer);
+        this._fcPreviewTimer = setTimeout(() => {
+            const front = document.getElementById('fc-front').value.trim();
+            const back = document.getElementById('fc-back').value.trim();
+            const wrap = document.getElementById('fc-form-preview');
+            if (!wrap) return;
+
+            if (!front && !back) {
+                wrap.style.display = 'none';
+                return;
+            }
+            wrap.style.display = 'block';
+
+            const frontEl = document.getElementById('fc-form-preview-front');
+            const backEl = document.getElementById('fc-form-preview-back');
+            frontEl.innerHTML = front ? this.renderMarkdown(front) : '<span style="opacity:0.5;">–</span>';
+            backEl.innerHTML = back ? this.renderMarkdown(back) : '<span style="opacity:0.5;">–</span>';
+
+            if (window.MathJax) MathJax.typesetPromise([wrap]).catch(() => {});
+        }, 350);
     },
 
     addFlashcard() {
@@ -2819,6 +2853,8 @@ const App = {
         document.getElementById('fc-subject').value = '';
         document.getElementById('fc-front').value = '';
         document.getElementById('fc-back').value = '';
+        const previewWrap = document.getElementById('fc-form-preview');
+        if (previewWrap) previewWrap.style.display = 'none';
 
         this.renderFlashcardDecks();
         this.showNotification('Karteikarte hinzugefügt', 'success');
@@ -2940,8 +2976,9 @@ const App = {
         inner.classList.remove('flipped');
         void inner.offsetHeight; // force reflow so the removal takes effect instantly
 
-        document.getElementById('fc-front-text').textContent = card.front;
-        document.getElementById('fc-back-text').textContent = card.back;
+        document.getElementById('fc-front-text').innerHTML = this.renderMarkdown(card.front);
+        document.getElementById('fc-back-text').innerHTML = this.renderMarkdown(card.back);
+        if (window.MathJax) MathJax.typesetPromise([inner]).catch(() => {});
 
         inner.style.transition = '';
         document.getElementById('fc-flip-hint').style.display = 'block';
@@ -3528,6 +3565,7 @@ Object.assign(App, {
         this.kiChatHistory = [];
         this.currentKiConversationId = null;
         this.updateKiHistoryBadge();
+        this.updateKiFcHistoryBadge();
     },
 
     // ===== Chat =====
@@ -3973,6 +4011,8 @@ Hinweis: Der Text kann aus einem eingescannten Foto oder PDF einer Schulbuchseit
 
 Wichtig: Wenn der Text mehrere Abschnitte, Unterthemen oder mehrere gescannte Seiten enthält, decke den Inhalt vollständig ab und verteile die ${count} Karten über den GESAMTEN Text – lass keinen Abschnitt aus, auch nicht bei längeren Texten.
 
+Formeln: Falls das Thema Formeln, Gleichungen oder mathematische Ausdrücke enthält, schreibe diese sauber in LaTeX – Inline mit $...$ (z.B. $E = mc^2$), eigenständige Formeln mit $$...$$. Verwende dafür KEINE \\( \\) oder \\[ \\], da Backslashes in JSON escaped werden müssten. Normalen Fließtext schreibst du ganz normal ohne $-Zeichen.
+
 Antworte NUR mit einem vollständigen JSON-Array mit genau ${count} Einträgen in diesem Format (kein Text davor oder danach, keine Markdown-Backticks, nicht abschneiden):
 [{"front":"Frage hier","back":"Antwort hier"},...]
 
@@ -3998,6 +4038,7 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
 
             this.kiGeneratedCards = { subject, cards };
             this.renderGeneratedFlashcards(subject, cards);
+            this.persistKiFcGeneration(subject, topic, cards);
         } catch (err) {
             if (err.message !== 'Kein API-Key' && err.message !== 'Ungültiger API-Key') {
                 if (err instanceof SyntaxError) {
@@ -4019,12 +4060,90 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
 
         preview.innerHTML = cards.map((c) => `
             <div class="ki-fc-preview-card">
-                <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.escapeHtml(c.front)}</div>
-                <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.escapeHtml(c.back)}</div>
+                <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.renderMarkdown(c.front)}</div>
+                <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.renderMarkdown(c.back)}</div>
             </div>
         `).join('');
 
         result.style.display = 'block';
+        if (window.MathJax) MathJax.typesetPromise([preview]).catch(() => {});
+    },
+
+    // ===== Verlauf: generierte Karten-Sets =====
+    // Wird nach jeder erfolgreichen Generierung gespeichert (wie der Chatverlauf,
+    // ebenfalls unter 'kiFcGenerations' in der Supabase-Datenbank), damit du auch
+    // nicht gespeicherte oder frühere Generierungen später wiederfinden kannst.
+    async persistKiFcGeneration(subject, topic, cards) {
+        const now = Date.now();
+        this.kiFcHistory = this.kiFcHistory || [];
+
+        this.kiFcHistory.unshift({
+            id: 'kifc_' + now + '_' + Math.random().toString(36).slice(2, 8),
+            subject,
+            topic,
+            cards: cards.map(c => ({ front: c.front, back: c.back })),
+            createdAt: now
+        });
+        // Verlauf begrenzen, damit die Datenmenge nicht unbegrenzt wächst
+        if (this.kiFcHistory.length > 30) this.kiFcHistory = this.kiFcHistory.slice(0, 30);
+
+        await this.saveData('kiFcGenerations', this.kiFcHistory);
+        this.updateKiFcHistoryBadge();
+    },
+
+    updateKiFcHistoryBadge() {
+        const badge = document.getElementById('ki-fc-history-badge');
+        if (!badge) return;
+        const count = (this.kiFcHistory || []).length;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    },
+
+    openKiFcHistory() {
+        const items = [...(this.kiFcHistory || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        const listHtml = items.length ? items.map(g => `
+            <div class="ki-history-item" onclick="App.restoreKiFcGeneration('${g.id}')">
+                <div class="ki-history-item-icon"><i class="fas fa-layer-group"></i></div>
+                <div class="ki-history-item-text">
+                    <div class="ki-history-item-title">${this.escapeHtml(g.subject || 'Karteikarten')}</div>
+                    <div class="ki-history-item-hint">${this.formatKiHistoryDate(g.createdAt)} &middot; ${(g.cards || []).length} Karten</div>
+                </div>
+                <button class="ki-history-item-delete" onclick="event.stopPropagation(); App.deleteKiFcGeneration('${g.id}')" title="Eintrag löschen">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('') : `<p style="color:var(--text-secondary); text-align:center; padding: 24px 0;">Noch keine generierten Karten-Sets gespeichert.<br>Erstelle Karteikarten – sie erscheinen danach automatisch hier.</p>`;
+
+        this.showModal(`
+            <h2 style="margin-bottom: 16px;"><i class="fas fa-clock-rotate-left"></i> Verlauf: Generierte Karten</h2>
+            <div class="ki-history-list">${listHtml}</div>
+        `);
+    },
+
+    restoreKiFcGeneration(id) {
+        const g = (this.kiFcHistory || []).find(x => x.id === id);
+        if (!g) return;
+
+        document.getElementById('ki-fc-subject').value = g.subject || '';
+        document.getElementById('ki-fc-topic').value = g.topic || '';
+        this.kiGeneratedCards = { subject: g.subject, cards: g.cards };
+        this.renderGeneratedFlashcards(g.subject, g.cards);
+
+        this.closeModal();
+        const result = document.getElementById('ki-fc-result');
+        if (result) result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    async deleteKiFcGeneration(id) {
+        this.kiFcHistory = (this.kiFcHistory || []).filter(g => g.id !== id);
+        await this.saveData('kiFcGenerations', this.kiFcHistory);
+        this.updateKiFcHistoryBadge();
+        this.openKiFcHistory();
     },
 
     saveGeneratedFlashcards() {
