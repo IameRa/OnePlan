@@ -3028,12 +3028,120 @@ textarea {
 .ki-chat-topbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
-    padding: 10px 24px;
+    padding: 10px 16px 10px 24px;
     font-size: 0.8rem;
     color: var(--text-secondary);
     background: linear-gradient(90deg, rgba(124, 58, 237, 0.08), transparent 60%);
     border-bottom: 1px solid var(--border-color);
+}
+
+.ki-chat-topbar-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ki-chat-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.ki-chat-topbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.15s ease;
+}
+
+.ki-chat-topbar-btn:hover {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.ki-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ki-history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ki-history-item:hover {
+    border-color: var(--primary-color);
+}
+
+.ki-history-item.active {
+    border-color: var(--primary-color);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.ki-history-item-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+.ki-history-item-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.ki-history-item-title {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ki-history-item-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.ki-history-item-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+}
+
+.ki-history-item-delete:hover {
+    color: var(--danger-color);
 }
 
 .ki-chat-status-dot {

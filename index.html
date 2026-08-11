@@ -685,7 +685,17 @@
                 <div class="ki-tab-content active" id="ki-tab-chat">
                     <div class="ki-chat-container">
                         <div class="ki-chat-topbar">
-                            <span class="ki-chat-status-dot"></span> Online &middot; antwortet in der Regel sofort
+                            <div class="ki-chat-topbar-status">
+                                <span class="ki-chat-status-dot"></span> Online &middot; antwortet in der Regel sofort
+                            </div>
+                            <div class="ki-chat-topbar-actions">
+                                <button class="ki-chat-topbar-btn" onclick="App.newKiChat()" title="Neuer Chat">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="ki-chat-topbar-btn" onclick="App.openKiHistory()" title="Chatverlauf">
+                                    <i class="fas fa-clock-rotate-left"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="ki-chat-messages" id="ki-chat-messages">
                             <div class="ki-message ki-message-ai">

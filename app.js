@@ -1064,6 +1064,7 @@ const App = {
         this.applyTitleFont(this.shop.activeTitleFont);
         this.settings = map['settings'] || { hideGradeAverage: false };
         if (!this.settings.dashboardWidgets) this.settings.dashboardWidgets = this.getDashboardWidgetOrder();
+        this.kiConversations = map['kiConversations'] || [];
     },
 
     async saveData(key, data) {
@@ -3525,6 +3526,7 @@ Object.assign(App, {
 
 
         this.kiChatHistory = [];
+        this.currentKiConversationId = null;
     },
 
     // ===== Chat =====
@@ -3555,6 +3557,7 @@ Object.assign(App, {
             this.removeChatLoading(loadingId);
             this.appendChatMessage(reply, 'ai');
             this.awardXP(2, 'KI-Assistent genutzt', 'ki');
+            this.persistKiConversation();
 
             const qp = document.getElementById('ki-quick-prompts');
             if (qp && this.kiChatHistory.length > 2) qp.style.display = 'none';
@@ -3571,6 +3574,125 @@ Object.assign(App, {
     sendQuickPrompt(text) {
         document.getElementById('ki-chat-input').value = text;
         this.sendChatMessage();
+    },
+
+    // ===== Chatverlauf =====
+    // Konversationen werden – wie deine anderen Inhalte auch – unter dem
+    // Schlüssel 'kiConversations' in der Supabase-Datenbank gespeichert
+    // (siehe App.saveData), damit du geräteübergreifend wieder auf sie
+    // zugreifen kannst.
+    async persistKiConversation() {
+        if (!this.kiChatHistory.length) return;
+        const now = Date.now();
+        this.kiConversations = this.kiConversations || [];
+
+        if (!this.currentKiConversationId) {
+            const firstUserMsg = this.kiChatHistory.find(m => m.role === 'user');
+            let title = firstUserMsg ? firstUserMsg.content.trim().replace(/\s+/g, ' ') : 'Unterhaltung';
+            if (title.length > 60) title = title.slice(0, 60).trim() + '…';
+            this.currentKiConversationId = 'kic_' + now + '_' + Math.random().toString(36).slice(2, 8);
+            this.kiConversations.unshift({
+                id: this.currentKiConversationId,
+                title: title || 'Unterhaltung',
+                messages: [...this.kiChatHistory],
+                createdAt: now,
+                updatedAt: now
+            });
+        } else {
+            const convo = this.kiConversations.find(c => c.id === this.currentKiConversationId);
+            if (convo) {
+                convo.messages = [...this.kiChatHistory];
+                convo.updatedAt = now;
+            }
+        }
+
+        await this.saveData('kiConversations', this.kiConversations);
+    },
+
+    newKiChat() {
+        this.kiChatHistory = [];
+        this.currentKiConversationId = null;
+
+        const container = document.getElementById('ki-chat-messages');
+        if (container) {
+            container.innerHTML = `
+                <div class="ki-message ki-message-ai">
+                    <div class="ki-message-avatar"><i class="fas fa-robot"></i></div>
+                    <div class="ki-message-bubble">
+                        Hallo! Ich bin dein KI-Lernassistent. Ich kann dir bei Hausaufgaben helfen, Themen erklären, Lernstrategien vorschlagen und vieles mehr. Was möchtest du wissen?
+                    </div>
+                </div>
+            `;
+        }
+        const qp = document.getElementById('ki-quick-prompts');
+        if (qp) qp.style.display = '';
+
+        this.closeModal();
+    },
+
+    openKiHistory() {
+        const conversations = [...(this.kiConversations || [])].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+        const listHtml = conversations.length ? conversations.map(c => `
+            <div class="ki-history-item ${c.id === this.currentKiConversationId ? 'active' : ''}" onclick="App.loadKiConversation('${c.id}')">
+                <div class="ki-history-item-icon"><i class="fas fa-comment-dots"></i></div>
+                <div class="ki-history-item-text">
+                    <div class="ki-history-item-title">${this.escapeHtml(c.title || 'Unterhaltung')}</div>
+                    <div class="ki-history-item-hint">${this.formatKiHistoryDate(c.updatedAt)} &middot; ${(c.messages || []).length} Nachrichten</div>
+                </div>
+                <button class="ki-history-item-delete" onclick="event.stopPropagation(); App.deleteKiConversation('${c.id}')" title="Chat löschen">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('') : `<p style="color:var(--text-secondary); text-align:center; padding: 24px 0;">Noch keine gespeicherten Chats.<br>Starte eine Unterhaltung – sie erscheint danach automatisch hier.</p>`;
+
+        this.showModal(`
+            <h2 style="margin-bottom: 16px;"><i class="fas fa-clock-rotate-left"></i> Chatverlauf</h2>
+            <button class="btn-primary btn-full" style="margin-bottom: 16px;" onclick="App.newKiChat()">
+                <i class="fas fa-plus"></i> Neuer Chat
+            </button>
+            <div class="ki-history-list">${listHtml}</div>
+        `);
+    },
+
+    formatKiHistoryDate(ts) {
+        if (!ts) return '';
+        const d = new Date(ts);
+        const today = new Date();
+        const isToday = d.toDateString() === today.toDateString();
+        const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        if (isToday) return 'Heute, ' + time;
+        return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + time;
+    },
+
+    loadKiConversation(id) {
+        const convo = (this.kiConversations || []).find(c => c.id === id);
+        if (!convo) return;
+
+        this.currentKiConversationId = id;
+        this.kiChatHistory = (convo.messages || []).map(m => ({ role: m.role, content: m.content }));
+
+        const container = document.getElementById('ki-chat-messages');
+        if (container) {
+            container.innerHTML = '';
+            this.kiChatHistory.forEach(m => this.appendChatMessage(m.content, m.role === 'assistant' ? 'ai' : 'user'));
+        }
+
+        const qp = document.getElementById('ki-quick-prompts');
+        if (qp) qp.style.display = 'none';
+
+        this.closeModal();
+    },
+
+    async deleteKiConversation(id) {
+        this.kiConversations = (this.kiConversations || []).filter(c => c.id !== id);
+        await this.saveData('kiConversations', this.kiConversations);
+
+        if (this.currentKiConversationId === id) {
+            this.newKiChat();
+        } else {
+            this.openKiHistory();
+        }
     },
 
     appendChatMessage(text, role) {
