@@ -49,7 +49,7 @@
                 inlineMath: [['\\(', '\\)'], ['$', '$']],
                 displayMath: [['\\[', '\\]'], ['$$', '$$']]
             },
-            options: { skipHtmlTags: ['script','noscript','style','textarea'] }
+            options: { skipHtmlTags: ['script','noscript','style','textarea','code'] }
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
@@ -772,7 +772,6 @@
 
                             <input type="text" id="ki-fc-subject" placeholder="Fach (z.B. Biologie, Geschichte...)">
                             <textarea id="ki-fc-topic" placeholder="Thema oder Text zum Erstellen von Karteikarten (z.B. 'Photosynthese' oder ein ganzer Absatz aus deinem Lehrbuch)..." style="min-height:120px;"></textarea>
-                            <p class="fc-form-hint"><i class="fas fa-square-root-variable"></i> Formeln in Karten werden automatisch sauber dargestellt (LaTeX, z.B. <code>E=mc^2</code>).</p>
                             <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
                                 <label style="color:var(--text-secondary);font-size:0.9rem;">Anzahl Karten:</label>
                                 <input type="number" id="ki-fc-count" min="3" max="20" step="1" value="8" style="width:80px;margin:0;">
