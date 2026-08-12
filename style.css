@@ -1008,6 +1008,137 @@ textarea {
     flex-shrink: 0;
 }
 
+/* ===== Fach-Farben, Wiederholung & Prüfungs-Markierung ===== */
+.subject-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.event-recurring-icon {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-left: 6px;
+}
+
+/* ===== Dashboard: Heute fällig ===== */
+.today-focus-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 4px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.today-focus-item:last-child {
+    border-bottom: none;
+}
+
+.today-focus-item:hover {
+    transform: translateX(2px);
+}
+
+.today-focus-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+.today-focus-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.today-focus-check {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+/* ===== Dashboard: Prüfungs-Countdown ===== */
+.exam-countdown-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.exam-countdown-item:last-child {
+    border-bottom: none;
+}
+
+.exam-countdown-days {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.exam-countdown-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.exam-countdown-info span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.exam-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.exam-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.exam-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: var(--transition);
+}
+
+.exam-progress-pct {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
 .homework-info {
     min-width: 0;
 }

@@ -202,9 +202,23 @@
                                 </div>
                             </div>
                             <input type="text" id="event-title" placeholder="Titel">
+                            <input type="text" id="event-subject" placeholder="Fach (optional)" list="event-subject-list">
+                            <datalist id="event-subject-list"></datalist>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="event-exam"> <i class="fas fa-graduation-cap"></i> Prüfung/Klausur
+                            </label>
                             <div class="grade-form-row">
                                 <input type="date" id="event-date">
                                 <input type="time" id="event-time">
+                            </div>
+                            <div class="grade-form-row">
+                                <select id="event-repeat">
+                                    <option value="none">Keine Wiederholung</option>
+                                    <option value="daily">Täglich</option>
+                                    <option value="weekly">Wöchentlich</option>
+                                    <option value="monthly">Monatlich</option>
+                                </select>
+                                <input type="date" id="event-repeat-until" title="Wiederholen bis (optional)">
                             </div>
                             <select id="event-reminder">
                                 <option value="0">Keine Erinnerung</option>
@@ -310,6 +324,13 @@
                                 <option value="medium">Mittel</option>
                                 <option value="high">Hoch</option>
                             </select>
+                        </div>
+                        <div class="grade-form-row">
+                            <select id="hw-repeat">
+                                <option value="none">Keine Wiederholung</option>
+                                <option value="weekly">Wöchentlich</option>
+                            </select>
+                            <input type="date" id="hw-repeat-until" title="Wiederholen bis (optional)">
                         </div>
                         <button id="add-homework" class="btn-primary"><i class="fas fa-plus"></i> Hinzufügen</button>
                     </div>

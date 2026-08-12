@@ -1125,6 +1125,62 @@ const App = {
         '#0369a1', '#1d4ed8', '#525252', '#78716c'
     ],
 
+    // Liefert die Fach-Farbe: zuerst die im Stundenplan hinterlegte Farbe,
+    // sonst eine deterministische Farbe aus der Presets-Palette (Hash über
+    // den Fachnamen), damit auch Fächer ohne Stundenplan-Eintrag überall
+    // (Hausaufgaben, Noten, Kalender, Dashboard) konsistent eingefärbt sind.
+    getSubjectColor(subject) {
+        if (!subject) return '#64748b';
+        const existing = this.findExistingColorForSubject(subject);
+        if (existing) return existing;
+
+        const key = subject.trim().toLowerCase();
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+        const palette = this.subjectColorPresets;
+        return palette[hash % palette.length];
+    },
+
+    // Alle bekannten Fächer (Stundenplan, Hausaufgaben, Noten) für Vorschläge,
+    // z.B. im "Fach"-Feld bei Terminen.
+    getKnownSubjects() {
+        const set = new Set();
+        (this.timetable || []).forEach(row => (row || []).forEach(cell => {
+            if (cell && cell.subject) set.add(cell.subject);
+        }));
+        (this.homework || []).forEach(h => h.subject && set.add(h.subject));
+        (this.grades || []).forEach(g => g.subject && set.add(g.subject));
+        return [...set].sort((a, b) => a.localeCompare(b, 'de'));
+    },
+
+    // Erzeugt die Liste der Termindaten für eine Wiederholungsregel.
+    // Ohne Enddatum wird auf max. 12 Monate im Voraus begrenzt, zusätzlich
+    // pro Rhythmus auf eine sinnvolle Höchstanzahl (Sicherheitsgrenze).
+    buildRecurrenceDates(startDate, repeat, untilDate) {
+        if (!repeat || repeat === 'none') return [startDate];
+
+        const maxOccurrences = { daily: 60, weekly: 52, monthly: 24 }[repeat] || 1;
+        const cap = new Date(startDate + 'T00:00:00');
+        cap.setMonth(cap.getMonth() + 12);
+        const capStr = cap.toISOString().split('T')[0];
+        const limitStr = (untilDate && untilDate < capStr) ? untilDate : capStr;
+
+        const dates = [];
+        let d = new Date(startDate + 'T00:00:00');
+        let count = 0;
+        while (count < maxOccurrences) {
+            const dStr = d.toISOString().split('T')[0];
+            if (dStr > limitStr) break;
+            dates.push(dStr);
+            count++;
+            if (repeat === 'daily') d.setDate(d.getDate() + 1);
+            else if (repeat === 'weekly') d.setDate(d.getDate() + 7);
+            else if (repeat === 'monthly') d.setMonth(d.getMonth() + 1);
+            else break;
+        }
+        return dates;
+    },
+
     // ===== Navigation =====
     setupNavigation() {
         document.querySelectorAll('.nav-links li').forEach(item => {
@@ -1180,8 +1236,15 @@ const App = {
 
         document.getElementById('add-event').addEventListener('click', () => this.addEvent());
 
+        this.populateEventSubjectList();
         this.renderCalendar();
         this.renderEventList();
+    },
+
+    populateEventSubjectList() {
+        const dl = document.getElementById('event-subject-list');
+        if (!dl) return;
+        dl.innerHTML = this.getKnownSubjects().map(s => `<option value="${this.escapeHtml(s)}"></option>`).join('');
     },
 
     // Gibt den Ferieneintrag zurück, in den das übergebene Datum (YYYY-MM-DD) fällt, sonst null.
@@ -1293,23 +1356,36 @@ const App = {
         const time = document.getElementById('event-time').value;
         const reminder = parseInt(document.getElementById('event-reminder').value);
         const description = document.getElementById('event-description').value.trim();
+        const subject = document.getElementById('event-subject').value.trim();
+        const exam = document.getElementById('event-exam').checked;
+        const repeat = document.getElementById('event-repeat').value;
+        const repeatUntil = document.getElementById('event-repeat-until').value;
 
         if (!title || !date) {
             this.showNotification('Bitte Titel und Datum eingeben', 'error');
             return;
         }
 
-        const event = {
-            id: Date.now(),
-            title,
-            date,
-            time,
-            reminder,
-            description,
-            reminded: false
-        };
+        const dates = this.buildRecurrenceDates(date, repeat, repeatUntil);
+        const recurrenceId = dates.length > 1 ? 'rec_' + Date.now() : null;
+        const baseId = Date.now();
 
-        this.events.push(event);
+        dates.forEach((d, i) => {
+            this.events.push({
+                id: baseId + i,
+                title,
+                date: d,
+                time,
+                reminder,
+                description,
+                subject: subject || null,
+                exam,
+                reminded: false,
+                recurrenceId,
+                recurrenceRule: recurrenceId ? repeat : null
+            });
+        });
+
         this.saveData('events', this.events);
         
         // Clear form
@@ -1318,11 +1394,16 @@ const App = {
         document.getElementById('event-time').value = '';
         document.getElementById('event-reminder').value = '0';
         document.getElementById('event-description').value = '';
+        document.getElementById('event-subject').value = '';
+        document.getElementById('event-exam').checked = false;
+        document.getElementById('event-repeat').value = 'none';
+        document.getElementById('event-repeat-until').value = '';
 
         this.renderCalendar();
         this.renderEventList();
+        this.populateEventSubjectList();
         this.awardXP(5, 'Termin hinzugefügt', 'events');
-        this.showNotification('Termin hinzugefügt', 'success');
+        this.showNotification(dates.length > 1 ? `${dates.length} Termine hinzugefügt` : 'Termin hinzugefügt', 'success');
     },
 
     renderEventList() {
@@ -1345,15 +1426,18 @@ const App = {
 
         container.innerHTML = '<h3>Anstehende Termine</h3>' + upcoming.map(event => {
             const d = new Date(event.date);
+            const color = event.subject ? this.getSubjectColor(event.subject) : null;
             return `
             <div class="event-item">
-                <div class="event-date-badge">
+                <div class="event-date-badge" ${color ? `style="border-left:3px solid ${color};"` : ''}>
                     <div class="event-date-day">${d.getDate()}</div>
                     <div class="event-date-month">${monthShort[d.getMonth()]}</div>
                 </div>
                 <div class="event-info">
-                    <h4>${this.escapeHtml(event.title)}</h4>
-                    <span>${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
+                    <h4>
+                        ${event.exam ? '<i class="fas fa-graduation-cap" style="color:var(--danger-color);" title="Prüfung/Klausur"></i> ' : ''}${this.escapeHtml(event.title)}${event.recurrenceId ? ' <i class="fas fa-repeat event-recurring-icon" title="Wiederkehrender Termin"></i>' : ''}
+                    </h4>
+                    <span>${event.subject ? `<span class="subject-dot" style="background:${color};"></span>${this.escapeHtml(event.subject)} · ` : ''}${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
                     ${event.description ? `<p>${this.escapeHtml(event.description)}</p>` : ''}
                 </div>
                 <button class="btn-small btn-danger" onclick="App.deleteEvent(${event.id})">
@@ -1364,12 +1448,31 @@ const App = {
         }).join('');
     },
 
-    deleteEvent(id) {
-        this.events = this.events.filter(e => e.id !== id);
+    deleteEvent(id, deleteSeries) {
+        const event = this.events.find(e => e.id === id);
+        if (!event) return;
+
+        if (event.recurrenceId && deleteSeries === undefined) {
+            this.showModal(`
+                <h2 style="margin-bottom:12px;"><i class="fas fa-repeat"></i> Wiederkehrender Termin</h2>
+                <p style="color:var(--text-secondary);margin-bottom:20px;">„${this.escapeHtml(event.title)}" ist Teil einer Serie. Was möchtest du löschen?</p>
+                <button class="btn-primary btn-full" style="margin-bottom:10px;" onclick="App.deleteEvent(${id}, false)">Nur diesen Termin</button>
+                <button class="btn-secondary btn-full" onclick="App.deleteEvent(${id}, true)">Alle Termine der Serie</button>
+            `);
+            return;
+        }
+
+        if (deleteSeries && event.recurrenceId) {
+            this.events = this.events.filter(e => e.recurrenceId !== event.recurrenceId);
+        } else {
+            this.events = this.events.filter(e => e.id !== id);
+        }
+
         this.saveData('events', this.events);
         this.renderCalendar();
         this.renderEventList();
-        this.showNotification('Termin gelöscht', 'success');
+        this.closeModal();
+        this.showNotification(deleteSeries ? 'Terminserie gelöscht' : 'Termin gelöscht', 'success');
     },
 
     checkReminders() {
@@ -1628,23 +1731,32 @@ const App = {
         const task = document.getElementById('hw-task').value.trim();
         const due = document.getElementById('hw-due').value;
         const priority = document.getElementById('hw-priority').value;
+        const repeat = document.getElementById('hw-repeat').value;
+        const repeatUntil = document.getElementById('hw-repeat-until').value;
 
         if (!subject || !task || !due) {
             this.showNotification('Bitte alle Felder ausfüllen', 'error');
             return;
         }
 
-        const homework = {
-            id: Date.now(),
-            subject,
-            task,
-            due,
-            priority,
-            done: false,
-            createdAt: new Date().toISOString()
-        };
+        const dates = this.buildRecurrenceDates(due, repeat, repeatUntil);
+        const recurrenceId = dates.length > 1 ? 'rec_' + Date.now() : null;
+        const baseId = Date.now();
 
-        this.homework.push(homework);
+        dates.forEach((d, i) => {
+            this.homework.push({
+                id: baseId + i,
+                subject,
+                task,
+                due: d,
+                priority,
+                done: false,
+                createdAt: new Date().toISOString(),
+                recurrenceId,
+                recurrenceRule: recurrenceId ? repeat : null
+            });
+        });
+
         this.saveData('homework', this.homework);
 
         // Clear form
@@ -1652,9 +1764,11 @@ const App = {
         document.getElementById('hw-task').value = '';
         document.getElementById('hw-due').value = '';
         document.getElementById('hw-priority').value = 'low';
+        document.getElementById('hw-repeat').value = 'none';
+        document.getElementById('hw-repeat-until').value = '';
 
         this.renderHomework();
-        this.showNotification('Hausaufgabe hinzugefügt', 'success');
+        this.showNotification(dates.length > 1 ? `${dates.length} Hausaufgaben hinzugefügt` : 'Hausaufgabe hinzugefügt', 'success');
     },
 
     renderHomework() {
@@ -1681,14 +1795,17 @@ const App = {
 
         const priorityLabels = { low: 'Niedrig', medium: 'Mittel', high: 'Hoch' };
 
-        container.innerHTML = filtered.map(hw => `
+        container.innerHTML = filtered.map(hw => {
+            const color = this.getSubjectColor(hw.subject);
+            return `
             <div class="homework-item ${hw.done ? 'done' : ''} priority-${hw.priority}">
                 <div class="homework-item-main">
-                    <div class="homework-avatar">${this.escapeHtml(hw.subject.charAt(0).toUpperCase())}</div>
+                    <div class="homework-avatar" style="background:${color}22;color:${color};">${this.escapeHtml(hw.subject.charAt(0).toUpperCase())}</div>
                     <div class="homework-info">
                         <div class="homework-info-top">
                             <h4>${this.escapeHtml(hw.subject)}</h4>
                             <span class="priority-badge priority-badge-${hw.priority}">${priorityLabels[hw.priority]}</span>
+                            ${hw.recurrenceId ? '<i class="fas fa-repeat event-recurring-icon" title="Wiederkehrende Hausaufgabe"></i>' : ''}
                         </div>
                         <p>${this.escapeHtml(hw.task)}</p>
                         <span class="due-date">
@@ -1705,7 +1822,8 @@ const App = {
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     },
 
     toggleHomework(id) {
@@ -1715,14 +1833,34 @@ const App = {
             this.saveData('homework', this.homework);
             this.renderHomework();
             if (hw.done) this.awardXP(10, 'Hausaufgabe erledigt', 'homework');
+            this.updateDashboard();
         }
     },
 
-    deleteHomework(id) {
-        this.homework = this.homework.filter(h => h.id !== id);
+    deleteHomework(id, deleteSeries) {
+        const hw = this.homework.find(h => h.id === id);
+        if (!hw) return;
+
+        if (hw.recurrenceId && deleteSeries === undefined) {
+            this.showModal(`
+                <h2 style="margin-bottom:12px;"><i class="fas fa-repeat"></i> Wiederkehrende Hausaufgabe</h2>
+                <p style="color:var(--text-secondary);margin-bottom:20px;">„${this.escapeHtml(hw.task)}" ist Teil einer Serie. Was möchtest du löschen?</p>
+                <button class="btn-primary btn-full" style="margin-bottom:10px;" onclick="App.deleteHomework(${id}, false)">Nur diese Aufgabe</button>
+                <button class="btn-secondary btn-full" onclick="App.deleteHomework(${id}, true)">Alle Aufgaben der Serie</button>
+            `);
+            return;
+        }
+
+        if (deleteSeries && hw.recurrenceId) {
+            this.homework = this.homework.filter(h => h.recurrenceId !== hw.recurrenceId);
+        } else {
+            this.homework = this.homework.filter(h => h.id !== id);
+        }
+
         this.saveData('homework', this.homework);
         this.renderHomework();
-        this.showNotification('Hausaufgabe gelöscht', 'success');
+        this.closeModal();
+        this.showNotification(deleteSeries ? 'Aufgabenserie gelöscht' : 'Hausaufgabe gelöscht', 'success');
     },
 
     // ===== Grades =====
@@ -1959,11 +2097,12 @@ const App = {
             const avgColor = avg <= 2 ? 'var(--success-color)' : avg <= 3.5 ? 'var(--warning-color)' : 'var(--danger-color)';
             const barColor = avg <= 2 ? 'var(--success-color)' : avg <= 3.5 ? 'var(--warning-color)' : 'var(--danger-color)';
             const avgPoints = Math.max(1, Math.min(15, 15 - ((avg - 1) / 5) * 14));
+            const subjColor = this.getSubjectColor(subject);
 
             overviewHTML += `
-                <div class="grade-subject-card">
+                <div class="grade-subject-card" style="border-left:4px solid ${subjColor};">
                     <h4>
-                        <span>${this.escapeHtml(subject)}</span>
+                        <span><span class="subject-dot" style="background:${subjColor};"></span>${this.escapeHtml(subject)}</span>
                         <span class="average" style="color:${avgColor}">${avg.toFixed(2)} <span style="font-size:0.8rem;font-weight:400;color:var(--text-light)">/ ${avgPoints.toFixed(2)} Pkt.</span></span>
                     </h4>
                     <div class="grade-bar">
@@ -2005,12 +2144,13 @@ const App = {
                 const badge = is15
                     ? `<span class="grade-system-badge points">Punkte</span>`
                     : `<span class="grade-system-badge noten">Note</span>`;
+                const subjColor = this.getSubjectColor(g.subject);
 
                 return `
-                    <div class="grade-item">
+                    <div class="grade-item" style="border-left:3px solid ${subjColor};padding-left:10px;">
                         <div class="grade-value ${gradeClass}">${displayVal}</div>
                         <div class="grade-info">
-                            <h4>${this.escapeHtml(g.subject)} ${badge}</h4>
+                            <h4><span class="subject-dot" style="background:${subjColor};"></span>${this.escapeHtml(g.subject)} ${badge}</h4>
                             <span>${typeLabels[g.type]} · ${g.weight}% Gewichtung</span>
                             ${is15 ? `<span style="font-size:0.8rem;color:var(--text-light)">≈ Note ${normalized.toFixed(1)}</span>` : ''}
                             ${g.description ? `<p>${this.escapeHtml(g.description)}</p>` : ''}
@@ -2260,6 +2400,7 @@ const App = {
     // Registry aller verfügbaren Dashboard-Widgets. `bodyId` ist die ID des
     // Inhalts-Containers, den updateDashboard()/renderNextLesson() befüllen.
     dashboardWidgetDefs: {
+        todayFocus: { label: 'Heute fällig', icon: 'fa-list-check', bodyId: 'dashboard-today-focus' },
         events: { label: 'Anstehende Termine', icon: 'fa-bell', bodyId: 'upcoming-events' },
         homework: { label: 'Offene Hausaufgaben', icon: 'fa-tasks', bodyId: 'pending-homework' },
         streak: { label: 'Streak', icon: 'fa-fire', bodyId: 'dashboard-streak', cardClass: 'dashboard-streak-card' },
@@ -2275,7 +2416,8 @@ const App = {
         weekPreview: { label: 'Wochenvorschau', icon: 'fa-calendar-week', bodyId: 'dashboard-week-preview' },
         activityStats: { label: 'Aktivität gesamt', icon: 'fa-chart-pie', bodyId: 'dashboard-activity-stats' },
         fcDue: { label: 'Fällige Karteikarten', icon: 'fa-layer-group', bodyId: 'dashboard-fc-due' },
-        todaySchedule: { label: 'Stundenplan heute', icon: 'fa-list-ol', bodyId: 'dashboard-today-schedule' }
+        todaySchedule: { label: 'Stundenplan heute', icon: 'fa-list-ol', bodyId: 'dashboard-today-schedule' },
+        examCountdown: { label: 'Prüfungs-Countdown', icon: 'fa-graduation-cap', bodyId: 'dashboard-exam-countdown' }
     },
 
     // Liefert die gespeicherte Reihenfolge/Sichtbarkeit, bereinigt um nicht mehr
@@ -2283,9 +2425,9 @@ const App = {
     // die noch nicht in den gespeicherten Einstellungen vorkommen.
     getDashboardWidgetOrder() {
         const allIds = Object.keys(this.dashboardWidgetDefs);
-        // Neu hinzukommende Widgets sind standardmäßig aus – nur diese drei Kern-Widgets
+        // Neu hinzukommende Widgets sind standardmäßig aus – nur diese Kern-Widgets
         // sind von Anfang an sichtbar. Alles andere muss der Nutzer bewusst einschalten.
-        const defaultOnIds = ['nextLesson', 'events', 'homework'];
+        const defaultOnIds = ['todayFocus', 'nextLesson', 'events', 'homework'];
         const stored = ((this.settings && this.settings.dashboardWidgets) || [])
             .filter(w => allIds.includes(w.id));
         const missing = allIds.filter(id => !stored.some(w => w.id === id));
@@ -2475,6 +2617,110 @@ const App = {
     // ===== Weitere Dashboard-Widgets =====
     renderMoreDashboardWidgets() {
         const today = this.todayStr();
+
+        // Heute fällig: kombinierte Übersicht aus Terminen, Hausaufgaben und
+        // fälligen Karteikarten – alles, was HEUTE ansteht, an einem Ort.
+        const focusEl = document.getElementById('dashboard-today-focus');
+        if (focusEl) {
+            const items = [];
+
+            this.events.filter(e => e.date === today).forEach(e => {
+                items.push({
+                    type: 'event',
+                    icon: e.exam ? 'fa-graduation-cap' : 'fa-calendar-day',
+                    color: e.subject ? this.getSubjectColor(e.subject) : '#64748b',
+                    label: e.title + (e.time ? ' · ' + e.time : '')
+                });
+            });
+
+            this.homework.filter(h => !h.done && h.due === today).forEach(h => {
+                items.push({
+                    type: 'homework',
+                    id: h.id,
+                    icon: 'fa-book',
+                    color: this.getSubjectColor(h.subject),
+                    label: `${h.subject}: ${h.task}`
+                });
+            });
+
+            const dueCardSubjects = {};
+            this.flashcards.filter(c => c.due <= today).forEach(c => {
+                dueCardSubjects[c.subject] = (dueCardSubjects[c.subject] || 0) + 1;
+            });
+            Object.entries(dueCardSubjects).forEach(([subject, count]) => {
+                items.push({
+                    type: 'flashcards',
+                    icon: 'fa-layer-group',
+                    color: this.getSubjectColor(subject),
+                    label: `${count} Karte${count !== 1 ? 'n' : ''} in ${subject}`
+                });
+            });
+
+            focusEl.innerHTML = items.length ? items.map(it => {
+                if (it.type === 'homework') {
+                    return `
+                        <div class="today-focus-item" onclick="App.toggleHomework(${it.id})" title="Als erledigt markieren">
+                            <span class="today-focus-icon" style="background:${it.color}22;color:${it.color};"><i class="fas ${it.icon}"></i></span>
+                            <span class="today-focus-label">${this.escapeHtml(it.label)}</span>
+                            <i class="fas fa-check today-focus-check"></i>
+                        </div>`;
+                }
+                const target = it.type === 'flashcards' ? 'karteikarten' : 'kalender';
+                return `
+                    <div class="today-focus-item" onclick="App.navigateTo('${target}')">
+                        <span class="today-focus-icon" style="background:${it.color}22;color:${it.color};"><i class="fas ${it.icon}"></i></span>
+                        <span class="today-focus-label">${this.escapeHtml(it.label)}</span>
+                        <i class="fas fa-chevron-right today-focus-check"></i>
+                    </div>`;
+            }).join('') : '<p style="color: var(--text-secondary); text-align:center; padding: 8px 0;">Nichts fällig heute 🎉</p>';
+        }
+
+        // Prüfungs-Countdown: als Prüfung/Klausur markierte Termine, mit
+        // Lernfortschritt aus den Karteikarten desselben Fachs (falls vorhanden).
+        const examEl = document.getElementById('dashboard-exam-countdown');
+        if (examEl) {
+            const exams = this.events
+                .filter(e => e.exam && e.date >= today)
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .slice(0, 3);
+
+            if (exams.length === 0) {
+                examEl.innerHTML = '<p style="color: var(--text-secondary);">Keine anstehenden Prüfungen eingetragen</p>';
+            } else {
+                examEl.innerHTML = exams.map(e => {
+                    const daysLeft = this.daysBetween(today, e.date);
+                    const color = e.subject ? this.getSubjectColor(e.subject) : '#64748b';
+
+                    let progressHtml = '';
+                    if (e.subject) {
+                        const key = e.subject.trim().toLowerCase();
+                        const deckCards = this.flashcards.filter(c => (c.subject || '').trim().toLowerCase() === key);
+                        if (deckCards.length > 0) {
+                            const mastered = deckCards.filter(c => c.box >= 5).length;
+                            const pct = Math.round((mastered / deckCards.length) * 100);
+                            progressHtml = `
+                                <div class="exam-progress-row" title="${mastered} von ${deckCards.length} Karten gemeistert">
+                                    <div class="exam-progress-bar"><div class="exam-progress-fill" style="width:${pct}%;background:${color};"></div></div>
+                                    <span class="exam-progress-pct">${pct}%</span>
+                                </div>`;
+                        } else {
+                            progressHtml = `<small style="color:var(--text-secondary);">Noch keine Karteikarten für „${this.escapeHtml(e.subject)}"</small>`;
+                        }
+                    }
+
+                    const dayLabel = daysLeft === 0 ? 'Heute' : daysLeft === 1 ? 'Morgen' : `in ${daysLeft} Tagen`;
+                    return `
+                        <div class="exam-countdown-item" onclick="App.navigateTo('kalender')">
+                            <div class="exam-countdown-days" style="color:${color};">${daysLeft}</div>
+                            <div class="exam-countdown-info">
+                                <strong>${this.escapeHtml(e.title)}</strong>
+                                <span>${dayLabel} · ${this.formatDate(e.date)}</span>
+                                ${progressHtml}
+                            </div>
+                        </div>`;
+                }).join('');
+            }
+        }
 
         // Notentrend: letzte vs. vorletzte Note je Fach (normalisiert, niedriger = besser)
         const trendEl = document.getElementById('dashboard-grade-trend');
