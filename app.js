@@ -1146,7 +1146,8 @@ const App = {
         '#dc2626', '#ea580c', '#d97706', '#f59e0b',
         '#7c3aed', '#9333ea', '#a21caf', '#c026d3',
         '#db2777', '#e11d48', '#4f46e5', '#6366f1',
-        '#0369a1', '#1d4ed8', '#525252', '#78716c'
+        '#0369a1', '#1d4ed8', '#525252', '#78716c',
+        '#000000', '#78350f', '#a16207', '#ffffff'
     ],
 
     // Liefert die Fach-Farbe: zuerst die im Stundenplan hinterlegte Farbe,
