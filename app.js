@@ -252,6 +252,19 @@ const Auth = {
         else console.warn(`[Auth] Element #${id} nicht gefunden — evtl. veralteter Cache?`);
     },
 
+    // Escaped Nutzereingaben, bevor sie per innerHTML eingefügt werden
+    // (z.B. E-Mail-Adresse/Name im Einstellungen-Modal).
+    escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[c]));
+    },
+
     setupListeners() {
         this.on('btn-login', 'click', () => this.login());
 
@@ -456,7 +469,7 @@ const Auth = {
                 await supabase.functions.invoke('delete-account', {});
             } catch (e) {
                 console.error('[deleteAccount] Auth-Account konnte nicht serverseitig gelöscht werden:', e);
-                this.showNotification('Deine Inhalte wurden gelöscht, das Konto selbst konnte aber nicht vollständig entfernt werden. Bitte kontaktiere den Support.', 'warning');
+                App.showNotification('Deine Inhalte wurden gelöscht, das Konto selbst konnte aber nicht vollständig entfernt werden. Bitte kontaktiere den Support.', 'warning');
             }
         }
         await supabase.auth.signOut();

@@ -1217,11 +1217,13 @@ textarea {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
+    min-width: 0;
 }
 
 .grade-form-row input,
 .grade-form-row select {
     width: 100%;
+    min-width: 0;
 }
 
 .grades-box-header {
@@ -2658,6 +2660,7 @@ textarea {
     gap: 10px;
     align-items: flex-start;
     padding: 6px 0;
+    min-width: 0;
 }
 
 .fc-form-preview-row + .fc-form-preview-row {
@@ -2677,6 +2680,12 @@ textarea {
 
 .fc-form-preview-row div p {
     margin: 0;
+}
+
+.fc-form-preview-row > div:not(.fc-form-preview-tag) {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .flashcard-decks {
