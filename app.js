@@ -1072,6 +1072,7 @@ const App = {
         if (!this.shop.activeTitleFont) this.shop.activeTitleFont = 'default';
         if (!this.shop.history) this.shop.history = [];
         this.applyAccent(this.shop.activeAccent);
+        this.cacheAccentForSplash(this.shop.activeAccent);
         this.applyFlame(this.shop.activeFlame);
         this.applyCardDesign(this.shop.activeCardDesign);
         this.applyTitleFont(this.shop.activeTitleFont);
@@ -5185,6 +5186,15 @@ Object.assign(App, {
         document.documentElement.setAttribute('data-accent', accentId || 'default');
     },
 
+    // Merkt sich die aktuell aktive (nicht: vorschau-) Akzentfarbe lokal,
+    // damit der Boot-Splash sie schon vor dem Laden der Nutzerdaten aus
+    // Supabase kennt (siehe Inline-Skript in index.html).
+    cacheAccentForSplash(accentId) {
+        try {
+            localStorage.setItem('oneplan-accent', accentId || 'default');
+        } catch (e) { /* z. B. Safari privater Modus */ }
+    },
+
     // Wendet eine Akzentfarbe testweise an, ohne sie zu kaufen oder zu
     // speichern. Ein Banner zeigt an, dass es sich um eine Vorschau handelt;
     // beim Verlassen des Shops oder per Klick wird sie automatisch zurückgesetzt.
@@ -5585,6 +5595,7 @@ Object.assign(App, {
         this.shop.activeAccent = accentId;
         this.state.previewAccent = null;
         this.applyAccent(accentId);
+        this.cacheAccentForSplash(accentId);
         if (!skipSave) this.saveData('shop', this.shop);
         else {
             this.saveData('progress', this.progress);

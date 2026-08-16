@@ -20,11 +20,16 @@
     <link rel="icon" type="image/png" sizes="32x32" href="Logo_Oneplan.png">
     <link rel="stylesheet" href="style.css">
     <script>
-        // Apply saved theme immediately, before the page paints
+        // Apply saved theme + accent color immediately, before the page paints
+        // (so the boot-splash screen already shows in the right color too).
         (function() {
             const saved = localStorage.getItem('oneplan-theme');
             if (saved === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            const savedAccent = localStorage.getItem('oneplan-accent');
+            if (savedAccent && savedAccent !== 'default') {
+                document.documentElement.setAttribute('data-accent', savedAccent);
             }
         })();
     </script>
