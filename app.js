@@ -904,14 +904,19 @@ const App = {
             textReplay: 'Hier nochmal ein kompakter Rundgang durch die wichtigsten Bereiche von OnePlan.'
         },
         {
+            icon: 'fa-home',
+            title: 'Dashboard',
+            text: 'Dein Dashboard zeigt dir auf einen Blick, was heute ansteht. Über „Anpassen“ oben rechts stellst du dir zusammen, welche Kacheln du sehen willst und in welcher Reihenfolge.'
+        },
+        {
             icon: 'fa-calendar-alt',
             title: 'Kalender',
-            text: 'Termine, Klassenarbeiten und Ereignisse landen alle im Kalender — auf einen Blick für die ganze Woche oder den ganzen Monat.'
+            text: 'Termine, Klassenarbeiten und Ereignisse landen alle im Kalender — auf einen Blick für die ganze Woche oder den ganzen Monat. Bei Bedarf erinnert dich OnePlan rechtzeitig per Push-Benachrichtigung daran.'
         },
         {
             icon: 'fa-clock',
             title: 'Stundenplan',
-            text: 'Trage deinen Stundenplan einmal ein und importiere ihn danach ganz einfach von Klassenkamerad:innen oder teile deinen eigenen.'
+            text: 'Trage deinen Stundenplan einmal ein und importiere ihn danach ganz einfach von Klassenkamerad:innen per Code oder QR-Code — oder teile deinen eigenen.'
         },
         {
             icon: 'fa-book',
@@ -926,7 +931,12 @@ const App = {
         {
             icon: 'fa-layer-group',
             title: 'Karteikarten',
-            text: 'Lerne mit dem Leitner-System: OnePlan merkt sich, welche Karten du kannst, und zeigt dir automatisch, was gerade fällig ist.'
+            text: 'Lerne mit dem Leitner-System: OnePlan merkt sich, welche Karten du kannst, und zeigt dir automatisch, was gerade fällig ist. Karten kannst du selbst anlegen, aus Fotos oder PDFs per Texterkennung erstellen lassen — oder dir vom KI-Assistenten passende Sets generieren lassen.'
+        },
+        {
+            icon: 'fa-qrcode',
+            title: 'Inhalte teilen',
+            text: 'Stundenplan, Karteikarten-Sets und mehr lassen sich jederzeit über einen Code oder QR-Code weitergeben. Wer den Code einlöst oder scannt, erhält eine eigene Kopie — ihr könnt danach unabhängig voneinander weiterbearbeiten.'
         },
         {
             icon: 'fa-stopwatch',
@@ -936,12 +946,12 @@ const App = {
         {
             icon: 'fa-robot',
             title: 'KI-Assistent',
-            text: 'Hängst du bei den Hausaufgaben fest? Der KI-Assistent hilft dir direkt in der App weiter.'
+            text: 'Hängst du bei den Hausaufgaben fest? Der KI-Assistent hilft dir direkt in der App weiter. Deine Unterhaltungen und automatisch erstellten Karteikarten-Sets speichert OnePlan im Verlauf, damit du später wieder darauf zugreifen kannst.'
         },
         {
             icon: 'fa-fire',
             title: 'Fortschritt & Punkte-Shop',
-            text: 'Für erledigte Aufgaben gibt es XP und Coins. Im Punkte-Shop tauschst du sie gegen neue Farben und Icons ein.'
+            text: 'Für erledigte Aufgaben gibt es XP, Coins und einen Lern-Streak — ein Streak-Freeze bewahrt ihn sogar, wenn du mal einen Tag aussetzt. Im Punkte-Shop tauschst du deine Coins gegen neue Akzentfarben, Karteikarten-Designs, App-Schriftarten und mehr ein.'
         },
         {
             icon: 'fa-comments',
