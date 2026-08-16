@@ -1533,6 +1533,14 @@ const App = {
             if (existingColor) {
                 document.getElementById('edit-color').value = existingColor;
             }
+
+            const teacherEl = document.getElementById('edit-teacher');
+            const roomEl = document.getElementById('edit-room');
+            const existing = this.findExistingTeacherRoomForSubject(e.target.value);
+            if (existing) {
+                if (!teacherEl.value.trim() && existing.teacher) teacherEl.value = existing.teacher;
+                if (!roomEl.value.trim() && existing.room) roomEl.value = existing.room;
+            }
         });
 
         document.getElementById('save-timetable').addEventListener('click', () => this.saveTimetableEntry());
@@ -1560,6 +1568,23 @@ const App = {
             for (const cell of row) {
                 if (cell && cell.subject && cell.subject.trim().toLowerCase() === key && cell.color) {
                     return cell.color;
+                }
+            }
+        }
+        return null;
+    },
+
+    // Sucht Lehrer/in und Raum, die im Stundenplan bereits für dieses Fach
+    // eingetragen wurden (für das automatische Ausfüllen beim Anlegen einer Stunde)
+    findExistingTeacherRoomForSubject(subject) {
+        const key = subject.trim().toLowerCase();
+        if (!key) return null;
+
+        for (const row of this.timetable) {
+            if (!row) continue;
+            for (const cell of row) {
+                if (cell && cell.subject && cell.subject.trim().toLowerCase() === key && (cell.teacher || cell.room)) {
+                    return { teacher: cell.teacher || '', room: cell.room || '' };
                 }
             }
         }
