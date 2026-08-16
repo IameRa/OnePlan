@@ -1668,6 +1668,29 @@ const App = {
         }
     },
 
+    confirmClearTimetable() {
+        const hasEntries = (this.timetable || []).some(row => (row || []).some(cell => cell && cell.subject));
+        if (!hasEntries) {
+            this.showNotification('Der Stundenplan ist bereits leer', 'warning');
+            return;
+        }
+
+        this.showModal(`
+            <h2 style="margin-bottom:12px;"><i class="fas fa-triangle-exclamation" style="color:var(--danger-color);"></i> Stundenplan löschen</h2>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">Möchtest du wirklich den gesamten Stundenplan löschen? Alle Fächer, Lehrer und Räume gehen dabei unwiderruflich verloren.</p>
+            <button class="btn-primary btn-full" style="margin-bottom:10px;background:var(--danger-color);" onclick="App.clearTimetable()">Ja, alles löschen</button>
+            <button class="btn-secondary btn-full" onclick="App.closeModal()">Abbrechen</button>
+        `);
+    },
+
+    clearTimetable() {
+        this.timetable = this.getEmptyTimetable();
+        this.saveData('timetable', this.timetable);
+        this.renderTimetable();
+        this.closeModal();
+        this.showNotification('Stundenplan gelöscht', 'success');
+    },
+
     editTimetableCell(day, period) {
         const range = this.getTimetableBlockRange(day, period);
 

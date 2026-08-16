@@ -459,6 +459,16 @@ h3 {
     border-width: 1.5px;
 }
 
+.btn-secondary.btn-danger-outline {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.btn-secondary.btn-danger-outline:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
 .btn-icon {
     background: none;
     border: 2px solid var(--border-color);
