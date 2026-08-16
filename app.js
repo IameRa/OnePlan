@@ -5121,7 +5121,7 @@ Object.assign(App, {
     ],
 
     cardDesignCatalog: [
-        { id: 'classic', name: 'Klassisch', desc: 'Das original OnePlan-Kartendesign', cost: 0, front: ['var(--primary-color)', 'var(--primary-dark)'], back: ['#1e293b', '#334155'] },
+        { id: 'classic', name: 'Klassisch', desc: 'Das original OnePlan-Kartendesign', cost: 0, front: ['#15803d', '#166534'], back: ['#1e293b', '#334155'] },
         { id: 'ocean', name: 'Ozean', desc: 'Kühle Blautöne für Vorder- und Rückseite', cost: 100, front: ['#0284c7', '#075985'], back: ['#0c4a6e', '#164e63'] },
         { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warme Orange-Rot-Verläufe', cost: 100, front: ['#f97316', '#dc2626'], back: ['#7c2d12', '#9d174d'] },
         { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink für Vorder- und Rückseite', cost: 100, front: ['#ec4899', '#be185d'], back: ['#831843', '#500724'] },
