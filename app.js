@@ -5121,59 +5121,59 @@ Object.assign(App, {
     // gekauft. Freigeschaltete Items, aktive Auswahl und der Kaufverlauf
     // werden unter dem Datenschlüssel 'shop' gespeichert.
     MAX_STREAK_FREEZES: 5,
-    FREEZE_BASE_COST: 120,
-    FREEZE_COST_STEP: 60,
+    FREEZE_BASE_COST: 600,
+    FREEZE_COST_STEP: 300,
 
     accentCatalog: [
         { id: 'default', name: 'Waldgrün', desc: 'Der klassische OnePlan-Look', cost: 0, colors: { color: '#15803d' } },
-        { id: 'mint', name: 'Minze', desc: 'Frisches, helles Grün', cost: 160, colors: { color: '#0d9488' } },
-        { id: 'ocean', name: 'Ozeanblau', desc: 'Frisches, kühles Blau', cost: 160, colors: { color: '#0284c7' } },
-        { id: 'indigo', name: 'Indigo', desc: 'Tiefes Blau-Violett', cost: 160, colors: { color: '#4f46e5' } },
-        { id: 'berry', name: 'Beerenlila', desc: 'Kräftiges Violett', cost: 160, colors: { color: '#7c3aed' } },
-        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warmes Orange', cost: 160, colors: { color: '#ea580c' } },
-        { id: 'cherry', name: 'Kirschrot', desc: 'Ausdrucksstarkes Rot', cost: 160, colors: { color: '#dc2626' } },
-        { id: 'slate', name: 'Anthrazit', desc: 'Edles, gedecktes Grau-Blau', cost: 160, colors: { color: '#475569' } },
-        { id: 'gold', name: 'Gold', desc: 'Edles, warmes Gelb', cost: 160, colors: { color: '#ca8a04' } },
-        { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink', cost: 160, colors: { color: '#db2777' } }
+        { id: 'mint', name: 'Minze', desc: 'Frisches, helles Grün', cost: 800, colors: { color: '#0d9488' } },
+        { id: 'ocean', name: 'Ozeanblau', desc: 'Frisches, kühles Blau', cost: 800, colors: { color: '#0284c7' } },
+        { id: 'indigo', name: 'Indigo', desc: 'Tiefes Blau-Violett', cost: 800, colors: { color: '#4f46e5' } },
+        { id: 'berry', name: 'Beerenlila', desc: 'Kräftiges Violett', cost: 800, colors: { color: '#7c3aed' } },
+        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warmes Orange', cost: 800, colors: { color: '#ea580c' } },
+        { id: 'cherry', name: 'Kirschrot', desc: 'Ausdrucksstarkes Rot', cost: 800, colors: { color: '#dc2626' } },
+        { id: 'slate', name: 'Anthrazit', desc: 'Edles, gedecktes Grau-Blau', cost: 800, colors: { color: '#475569' } },
+        { id: 'gold', name: 'Gold', desc: 'Edles, warmes Gelb', cost: 800, colors: { color: '#ca8a04' } },
+        { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink', cost: 800, colors: { color: '#db2777' } }
     ],
 
     levelUpCatalog: [
         { id: 'star', name: 'Stern', desc: 'Der klassische Level-Up-Stern', cost: 0, icon: 'fa-star' },
-        { id: 'bolt', name: 'Blitz', desc: 'Schnell und energiegeladen', cost: 100, icon: 'fa-bolt' },
-        { id: 'fire', name: 'Flamme', desc: 'Für heiße Serien', cost: 100, icon: 'fa-fire' },
-        { id: 'trophy', name: 'Pokal', desc: 'Für echte Gewinner', cost: 100, icon: 'fa-trophy' },
-        { id: 'rocket', name: 'Rakete', desc: 'Durch die Decke', cost: 100, icon: 'fa-rocket' },
-        { id: 'crown', name: 'Krone', desc: 'Das Premium-Level-Up', cost: 100, icon: 'fa-crown' }
+        { id: 'bolt', name: 'Blitz', desc: 'Schnell und energiegeladen', cost: 500, icon: 'fa-bolt' },
+        { id: 'fire', name: 'Flamme', desc: 'Für heiße Serien', cost: 500, icon: 'fa-fire' },
+        { id: 'trophy', name: 'Pokal', desc: 'Für echte Gewinner', cost: 500, icon: 'fa-trophy' },
+        { id: 'rocket', name: 'Rakete', desc: 'Durch die Decke', cost: 500, icon: 'fa-rocket' },
+        { id: 'crown', name: 'Krone', desc: 'Das Premium-Level-Up', cost: 500, icon: 'fa-crown' }
     ],
 
     flameCatalog: [
         { id: 'classic', name: 'Klassisch', desc: 'Die original OnePlan-Flamme', cost: 0, color: '#f97316', glow: 'rgba(249, 115, 22, 0.55)' },
-        { id: 'blue', name: 'Blaue Flamme', desc: 'Kühl und intensiv', cost: 120, color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.55)' },
-        { id: 'teal', name: 'Türkisflamme', desc: 'Frisch und klar', cost: 120, color: '#14b8a6', glow: 'rgba(20, 184, 166, 0.55)' },
-        { id: 'purple', name: 'Violette Flamme', desc: 'Mystisch und edel', cost: 120, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.55)' },
-        { id: 'red', name: 'Rote Flamme', desc: 'Pure Intensität', cost: 120, color: '#ef4444', glow: 'rgba(239, 68, 68, 0.55)' },
-        { id: 'pink', name: 'Pinke Flamme', desc: 'Auffällig und mutig', cost: 120, color: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' },
-        { id: 'ice', name: 'Eisflamme', desc: 'Kalt brennt sie am längsten', cost: 120, color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.6)' },
-        { id: 'gold', name: 'Goldflamme', desc: 'Die seltenste Farbe im Shop', cost: 120, color: '#eab308', glow: 'rgba(234, 179, 8, 0.6)' }
+        { id: 'blue', name: 'Blaue Flamme', desc: 'Kühl und intensiv', cost: 600, color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.55)' },
+        { id: 'teal', name: 'Türkisflamme', desc: 'Frisch und klar', cost: 600, color: '#14b8a6', glow: 'rgba(20, 184, 166, 0.55)' },
+        { id: 'purple', name: 'Violette Flamme', desc: 'Mystisch und edel', cost: 600, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.55)' },
+        { id: 'red', name: 'Rote Flamme', desc: 'Pure Intensität', cost: 600, color: '#ef4444', glow: 'rgba(239, 68, 68, 0.55)' },
+        { id: 'pink', name: 'Pinke Flamme', desc: 'Auffällig und mutig', cost: 600, color: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' },
+        { id: 'ice', name: 'Eisflamme', desc: 'Kalt brennt sie am längsten', cost: 600, color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.6)' },
+        { id: 'gold', name: 'Goldflamme', desc: 'Die seltenste Farbe im Shop', cost: 600, color: '#eab308', glow: 'rgba(234, 179, 8, 0.6)' }
     ],
 
     cardDesignCatalog: [
         { id: 'classic', name: 'Klassisch', desc: 'Das original OnePlan-Kartendesign', cost: 0, front: ['#15803d', '#166534'], back: ['#1e293b', '#334155'] },
-        { id: 'ocean', name: 'Ozean', desc: 'Kühle Blautöne für Vorder- und Rückseite', cost: 100, front: ['#0284c7', '#075985'], back: ['#0c4a6e', '#164e63'] },
-        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warme Orange-Rot-Verläufe', cost: 100, front: ['#f97316', '#dc2626'], back: ['#7c2d12', '#9d174d'] },
-        { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink für Vorder- und Rückseite', cost: 100, front: ['#ec4899', '#be185d'], back: ['#831843', '#500724'] },
-        { id: 'lavender', name: 'Lavendel', desc: 'Sanftes, edles Violett', cost: 100, front: ['#8b5cf6', '#6d28d9'], back: ['#4c1d95', '#312e81'] },
-        { id: 'mono', name: 'Mono', desc: 'Schlichtes Schwarz-Grau, sehr aufgeräumt', cost: 100, front: ['#111827', '#1f2937'], back: ['#374151', '#4b5563'] },
-        { id: 'gold', name: 'Gold', desc: 'Edles Design für Vielkarteikartenlerner', cost: 100, front: ['#ca8a04', '#92400e'], back: ['#78350f', '#451a03'] }
+        { id: 'ocean', name: 'Ozean', desc: 'Kühle Blautöne für Vorder- und Rückseite', cost: 500, front: ['#0284c7', '#075985'], back: ['#0c4a6e', '#164e63'] },
+        { id: 'sunset', name: 'Sonnenuntergang', desc: 'Warme Orange-Rot-Verläufe', cost: 500, front: ['#f97316', '#dc2626'], back: ['#7c2d12', '#9d174d'] },
+        { id: 'rose', name: 'Rosé', desc: 'Sanftes Pink für Vorder- und Rückseite', cost: 500, front: ['#ec4899', '#be185d'], back: ['#831843', '#500724'] },
+        { id: 'lavender', name: 'Lavendel', desc: 'Sanftes, edles Violett', cost: 500, front: ['#8b5cf6', '#6d28d9'], back: ['#4c1d95', '#312e81'] },
+        { id: 'mono', name: 'Mono', desc: 'Schlichtes Schwarz-Grau, sehr aufgeräumt', cost: 500, front: ['#111827', '#1f2937'], back: ['#374151', '#4b5563'] },
+        { id: 'gold', name: 'Gold', desc: 'Edles Design für Vielkarteikartenlerner', cost: 500, front: ['#ca8a04', '#92400e'], back: ['#78350f', '#451a03'] }
     ],
 
     titleFontCatalog: [
         { id: 'default', name: 'Standard', desc: 'Die normale OnePlan-Schrift', cost: 0, fontFamily: 'inherit', previewFont: 'inherit' },
-        { id: 'poppins', name: 'Poppins', desc: 'Rund, modern und freundlich', cost: 100, fontFamily: "'Poppins', sans-serif", previewFont: "'Poppins', sans-serif" },
-        { id: 'grotesk', name: 'Space Grotesk', desc: 'Klar, technisch, aufgeräumt', cost: 100, fontFamily: "'Space Grotesk', sans-serif", previewFont: "'Space Grotesk', sans-serif" },
-        { id: 'fraunces', name: 'Fraunces', desc: 'Elegante Serifenschrift', cost: 100, fontFamily: "'Fraunces', serif", previewFont: "'Fraunces', serif" },
-        { id: 'caveat', name: 'Caveat', desc: 'Verspielt und handschriftlich', cost: 100, fontFamily: "'Caveat', cursive", previewFont: "'Caveat', cursive" },
-        { id: 'bebas', name: 'Bebas Neue', desc: 'Kräftige Headline-Schrift', cost: 100, fontFamily: "'Bebas Neue', sans-serif", previewFont: "'Bebas Neue', sans-serif" }
+        { id: 'poppins', name: 'Poppins', desc: 'Rund, modern und freundlich', cost: 500, fontFamily: "'Poppins', sans-serif", previewFont: "'Poppins', sans-serif" },
+        { id: 'grotesk', name: 'Space Grotesk', desc: 'Klar, technisch, aufgeräumt', cost: 500, fontFamily: "'Space Grotesk', sans-serif", previewFont: "'Space Grotesk', sans-serif" },
+        { id: 'fraunces', name: 'Fraunces', desc: 'Elegante Serifenschrift', cost: 500, fontFamily: "'Fraunces', serif", previewFont: "'Fraunces', serif" },
+        { id: 'caveat', name: 'Caveat', desc: 'Verspielt und handschriftlich', cost: 500, fontFamily: "'Caveat', cursive", previewFont: "'Caveat', cursive" },
+        { id: 'bebas', name: 'Bebas Neue', desc: 'Kräftige Headline-Schrift', cost: 500, fontFamily: "'Bebas Neue', sans-serif", previewFont: "'Bebas Neue', sans-serif" }
     ],
 
 

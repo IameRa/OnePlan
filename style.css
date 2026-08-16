@@ -111,6 +111,16 @@
     box-sizing: border-box;
 }
 
+html {
+    /* Verhindert, dass Samsung Internet / Chrome auf Android Text und
+       Layout beim ersten Laden automatisch "aufblasen" (Text-Autosizing),
+       was besonders auf dem Dashboard-Grid zu einem überdimensionierten
+       Start-Rendering führt. */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--bg-color);
