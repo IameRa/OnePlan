@@ -28,22 +28,6 @@ const SUPABASE_URL = 'https://nothxzhzhjgpheqwquhy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdGh4emh6aGpncGhlcXdxdWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTIwNDcsImV4cCI6MjA5NjYyODA0N30.yDXDBzHXJxy_Re-dNejiXAZiZyzoyrTPlS7X7fP_YeI';
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Liest bei einem fehlgeschlagenen supabase.functions.invoke()-Aufruf die
-// echte Fehlermeldung aus dem Response-Body aus (statt der generischen
-// "Edge Function returned a non-2xx status code"-Meldung der Bibliothek).
-async function getFunctionErrorMessage(error) {
-    if (!error) return null;
-    try {
-        if (error.context && typeof error.context.json === 'function') {
-            const body = await error.context.json();
-            if (body?.error) return body.error;
-        }
-    } catch (e) {
-        // Body war kein JSON oder schon gelesen - Fallback unten greift dann.
-    }
-    return error.message || 'Unbekannter Fehler';
-}
-
 // ===== Push-Benachrichtigungen =====
 // Öffentlicher VAPID-Key aus `npx web-push generate-vapid-keys`. Der Private Key
 // gehört NUR als Supabase Edge-Function-Secret auf den Server, niemals hierhin.
@@ -1906,6 +1890,9 @@ const App = {
                     <button class="btn-small btn-success" onclick="App.toggleHomework(${hw.id})">
                         <i class="fas fa-${hw.done ? 'undo' : 'check'}"></i>
                     </button>
+                    <button class="btn-small" onclick="App.openEditHomeworkModal(${hw.id})">
+                        <i class="fas fa-pen"></i>
+                    </button>
                     <button class="btn-small btn-danger" onclick="App.deleteHomework(${hw.id})">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -1950,6 +1937,72 @@ const App = {
         this.renderHomework();
         this.closeModal();
         this.showNotification(deleteSeries ? 'Aufgabenserie gelöscht' : 'Hausaufgabe gelöscht', 'success');
+    },
+
+    // Öffnet ein Fenster, um eine bereits erstellte Hausaufgabe zu bearbeiten.
+    // Bei wiederkehrenden Hausaufgaben wird nur diese eine Instanz der Serie
+    // geändert (Fach/Aufgabe/Fälligkeit/Priorität), die Wiederholungsregel
+    // selbst bleibt unangetastet.
+    openEditHomeworkModal(id) {
+        const hw = this.homework.find(h => h.id === id);
+        if (!hw) return;
+
+        const priorityOptions = { low: 'Niedrig', medium: 'Mittel', high: 'Hoch' };
+
+        this.showModal(`
+            <h3><i class="fas fa-pen"></i> Hausaufgabe bearbeiten</h3>
+            ${hw.recurrenceId ? '<p class="field-hint"><i class="fas fa-repeat"></i> Diese Aufgabe ist Teil einer wiederkehrenden Serie. Die Änderung betrifft nur diesen Termin.</p>' : ''}
+
+            <label class="form-field-label" for="edit-hw-subject">Fach</label>
+            <input type="text" id="edit-hw-subject" placeholder="Fach" value="${this.escapeJsAttr(hw.subject)}">
+
+            <label class="form-field-label" for="edit-hw-task">Aufgabe</label>
+            <textarea id="edit-hw-task" placeholder="Aufgabe">${this.escapeHtml(hw.task)}</textarea>
+
+            <div class="grade-form-row">
+                <div>
+                    <label class="form-field-label" for="edit-hw-due">Fällig am</label>
+                    <input type="date" id="edit-hw-due" value="${this.escapeJsAttr(hw.due)}">
+                </div>
+                <div>
+                    <label class="form-field-label" for="edit-hw-priority">Priorität</label>
+                    <select id="edit-hw-priority">
+                        ${Object.entries(priorityOptions).map(([val, label]) =>
+                            `<option value="${val}" ${hw.priority === val ? 'selected' : ''}>${label}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-primary btn-full" style="margin-top:10px;" onclick="App.saveHomeworkEdit(${hw.id})">
+                <i class="fas fa-check"></i> Speichern
+            </button>
+        `);
+    },
+
+    saveHomeworkEdit(id) {
+        const hw = this.homework.find(h => h.id === id);
+        if (!hw) return;
+
+        const subject = document.getElementById('edit-hw-subject').value.trim();
+        const task = document.getElementById('edit-hw-task').value.trim();
+        const due = document.getElementById('edit-hw-due').value;
+        const priority = document.getElementById('edit-hw-priority').value;
+
+        if (!subject || !task || !due) {
+            this.showNotification('Bitte alle Felder ausfüllen', 'error');
+            return;
+        }
+
+        hw.subject = subject;
+        hw.task = task;
+        hw.due = due;
+        hw.priority = priority;
+
+        this.saveData('homework', this.homework);
+        this.renderHomework();
+        this.closeModal();
+        this.showNotification('Hausaufgabe aktualisiert', 'success');
     },
 
     // ===== Grades =====
@@ -2322,8 +2375,7 @@ const App = {
         this.setLoadingBtn('btn-admin-create-user', false);
 
         if (error || data?.error) {
-            const msg = data?.error || await getFunctionErrorMessage(error);
-            resultEl.innerHTML = `<div class="auth-error" style="display:block;">${msg}</div>`;
+            resultEl.innerHTML = `<div class="auth-error" style="display:block;">${data?.error || error.message}</div>`;
             return;
         }
 

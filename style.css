@@ -1335,6 +1335,23 @@ textarea {
     margin-bottom: 6px;
 }
 
+/* ----- Generisches Feld-Label (z.B. "Neue Hausaufgabe") ----- */
+.form-field-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin: 10px 0 6px;
+}
+.form-field-label:first-child {
+    margin-top: 0;
+}
+.grade-form-row .form-field-label {
+    margin-top: 0;
+}
+
 .goal-calc-btn {
     width: 100%;
     display: flex;

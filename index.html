@@ -321,22 +321,38 @@
                                 <p>Trag eine neue Aufgabe ein</p>
                             </div>
                         </div>
+                        <label class="form-field-label" for="hw-subject">Fach</label>
                         <input type="text" id="hw-subject" placeholder="Fach">
+
+                        <label class="form-field-label" for="hw-task">Aufgabe</label>
                         <textarea id="hw-task" placeholder="Aufgabe"></textarea>
+
                         <div class="grade-form-row">
-                            <input type="date" id="hw-due">
-                            <select id="hw-priority">
-                                <option value="low">Niedrig</option>
-                                <option value="medium">Mittel</option>
-                                <option value="high">Hoch</option>
-                            </select>
+                            <div>
+                                <label class="form-field-label" for="hw-due">Fällig am</label>
+                                <input type="date" id="hw-due">
+                            </div>
+                            <div>
+                                <label class="form-field-label" for="hw-priority">Priorität</label>
+                                <select id="hw-priority">
+                                    <option value="low">Niedrig</option>
+                                    <option value="medium">Mittel</option>
+                                    <option value="high">Hoch</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="grade-form-row">
-                            <select id="hw-repeat">
-                                <option value="none">Keine Wiederholung</option>
-                                <option value="weekly">Wöchentlich</option>
-                            </select>
-                            <input type="date" id="hw-repeat-until" title="Wiederholen bis (optional)">
+                            <div>
+                                <label class="form-field-label" for="hw-repeat">Wiederholung</label>
+                                <select id="hw-repeat">
+                                    <option value="none">Keine Wiederholung</option>
+                                    <option value="weekly">Wöchentlich</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-field-label" for="hw-repeat-until">Wiederholen bis (optional)</label>
+                                <input type="date" id="hw-repeat-until" title="Wiederholen bis (optional)">
+                            </div>
                         </div>
                         <button id="add-homework" class="btn-primary"><i class="fas fa-plus"></i> Hinzufügen</button>
                     </div>
