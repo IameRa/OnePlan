@@ -2315,11 +2315,42 @@ const App = {
                 <i class="fas fa-check-circle"></i> Konto erstellt für <strong>${username}</strong>.<br>
                 Gib der Person diese Zugangsdaten weiter: Benutzername <strong>${username}</strong>, Passwort <strong>${password}</strong>.
             </div>
+            <button type="button" class="btn-secondary btn-small" style="margin-top:10px;" onclick="App.copyAccountInviteText()">
+                <i class="fab fa-whatsapp"></i> Einladungstext für WhatsApp kopieren
+            </button>
         `;
+        this.lastCreatedAccount = { name, username, password };
         document.getElementById('admin-new-name').value = '';
         document.getElementById('admin-new-username').value = '';
         document.getElementById('admin-new-password').value = '';
         this.showNotification('Konto erstellt', 'success');
+    },
+
+    // Baut aus den zuletzt angelegten Zugangsdaten einen fertigen, freundlichen
+    // Einladungstext und kopiert ihn in die Zwischenablage, damit er sich
+    // 1:1 z.B. per WhatsApp an die jeweilige Person weiterschicken lässt.
+    async copyAccountInviteText() {
+        const acc = this.lastCreatedAccount;
+        if (!acc) return;
+
+        const url = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+        const firstName = acc.name ? acc.name.trim().split(/\s+/)[0] : '';
+        const text = `Hey${firstName ? ' ' + firstName : ''}! 👋
+
+Du hast jetzt einen Account bei *OnePlan* – der App für Kalender, Stundenplan, Hausaufgaben, Notenrechner, Karteikarten, Pomodoro-Timer und KI-Assistent in einer App.
+
+📱 Öffnen: ${url}
+👤 Benutzername: ${acc.username}
+🔑 Passwort: ${acc.password}
+
+Einfach damit anmelden – das Passwort kannst du danach in den Einstellungen jederzeit selbst ändern. Viel Spaß! 🎉`;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            this.showNotification('Einladungstext kopiert – einfach in WhatsApp einfügen', 'success');
+        } catch (e) {
+            this.showNotification('Kopieren nicht möglich – bitte Text manuell markieren', 'error');
+        }
     },
 
     // Kleiner generischer Loading-Helper für einzelne Buttons (analog zu Auth.setLoading)
