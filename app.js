@@ -28,6 +28,22 @@ const SUPABASE_URL = 'https://nothxzhzhjgpheqwquhy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdGh4emh6aGpncGhlcXdxdWh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNTIwNDcsImV4cCI6MjA5NjYyODA0N30.yDXDBzHXJxy_Re-dNejiXAZiZyzoyrTPlS7X7fP_YeI';
 var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Liest bei einem fehlgeschlagenen supabase.functions.invoke()-Aufruf die
+// echte Fehlermeldung aus dem Response-Body aus (statt der generischen
+// "Edge Function returned a non-2xx status code"-Meldung der Bibliothek).
+async function getFunctionErrorMessage(error) {
+    if (!error) return null;
+    try {
+        if (error.context && typeof error.context.json === 'function') {
+            const body = await error.context.json();
+            if (body?.error) return body.error;
+        }
+    } catch (e) {
+        // Body war kein JSON oder schon gelesen - Fallback unten greift dann.
+    }
+    return error.message || 'Unbekannter Fehler';
+}
+
 // ===== Push-Benachrichtigungen =====
 // Öffentlicher VAPID-Key aus `npx web-push generate-vapid-keys`. Der Private Key
 // gehört NUR als Supabase Edge-Function-Secret auf den Server, niemals hierhin.
@@ -2306,7 +2322,8 @@ const App = {
         this.setLoadingBtn('btn-admin-create-user', false);
 
         if (error || data?.error) {
-            resultEl.innerHTML = `<div class="auth-error" style="display:block;">${data?.error || error.message}</div>`;
+            const msg = data?.error || await getFunctionErrorMessage(error);
+            resultEl.innerHTML = `<div class="auth-error" style="display:block;">${msg}</div>`;
             return;
         }
 
