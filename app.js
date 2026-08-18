@@ -1789,7 +1789,24 @@ const App = {
 
         const nextLessonBtn = document.getElementById('hw-due-next-lesson');
         if (nextLessonBtn) {
-            nextLessonBtn.addEventListener('click', () => this.fillDueWithNextLesson('hw-subject', 'hw-due'));
+            nextLessonBtn.addEventListener('click', () => {
+                this.fillDueWithNextLesson('hw-subject', 'hw-due');
+                this.applyAutoPriority('hw-due', 'hw-priority');
+            });
+        }
+
+        // Priorität automatisch vorschlagen, sobald ein Fälligkeitsdatum gewählt
+        // wird – abhängig davon, wie dringend es ist und wie viele andere offene
+        // Hausaufgaben bereits in diesem Zeitraum eingetragen sind. Ändert man die
+        // Priorität danach selbst, wird sie nicht mehr automatisch überschrieben.
+        this.hwPriorityManuallySet = false;
+        const hwDueInput = document.getElementById('hw-due');
+        if (hwDueInput) {
+            hwDueInput.addEventListener('change', () => this.applyAutoPriority('hw-due', 'hw-priority'));
+        }
+        const hwPrioritySelect = document.getElementById('hw-priority');
+        if (hwPrioritySelect) {
+            hwPrioritySelect.addEventListener('change', () => { this.hwPriorityManuallySet = true; });
         }
 
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -1880,6 +1897,48 @@ const App = {
         this.showNotification(`Fällig am ${this.formatDate(dateStr)} gesetzt`, 'success');
     },
 
+    // Ermittelt automatisch eine sinnvolle Priorität für ein Fälligkeitsdatum:
+    // Je näher der Termin, desto höher die Grund-Priorität. Zusätzlich wird sie
+    // eine Stufe angehoben, wenn an diesem Tag bereits eine andere offene
+    // Hausaufgabe fällig ist, bzw. wenn in den nächsten 3 Tagen schon mehrere
+    // offene Hausaufgaben anstehen (viel gleichzeitig zu tun = dringender).
+    calculateAutoPriority(due, excludeId = null) {
+        if (!due) return 'medium';
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(due + 'T00:00:00');
+        const diffDays = Math.round((dueDate - today) / 86400000);
+
+        let level = diffDays <= 2 ? 2 : (diffDays <= 5 ? 1 : 0); // 0=niedrig, 1=mittel, 2=hoch
+
+        const pending = this.homework.filter(h => !h.done && h.id !== excludeId);
+        const sameDayCount = pending.filter(h => h.due === due).length;
+        const upcomingCount = pending.filter(h => {
+            if (!h.due) return false;
+            const diff = Math.round((new Date(h.due + 'T00:00:00') - today) / 86400000);
+            return diff >= 0 && diff <= 3;
+        }).length;
+
+        if (sameDayCount >= 1) level = Math.min(2, level + 1);
+        if (upcomingCount >= 3) level = Math.min(2, level + 1);
+
+        return ['low', 'medium', 'high'][level];
+    },
+
+    // Wendet calculateAutoPriority auf das Prioritäts-Select an – aber nur,
+    // solange der/die Nutzer:in die Priorität für diese Hausaufgabe noch nicht
+    // manuell selbst geändert hat.
+    applyAutoPriority(dueFieldId, priorityFieldId, excludeId = null) {
+        if (dueFieldId === 'hw-due' && this.hwPriorityManuallySet) return;
+
+        const dueEl = document.getElementById(dueFieldId);
+        const priorityEl = document.getElementById(priorityFieldId);
+        if (!dueEl || !priorityEl || !dueEl.value) return;
+
+        priorityEl.value = this.calculateAutoPriority(dueEl.value, excludeId);
+    },
+
     addHomework() {
         const subject = document.getElementById('hw-subject').value.trim();
         const task = document.getElementById('hw-task').value.trim();
@@ -1920,6 +1979,7 @@ const App = {
         document.getElementById('hw-priority').value = 'low';
         document.getElementById('hw-repeat').value = 'none';
         document.getElementById('hw-repeat-until').value = '';
+        this.hwPriorityManuallySet = false;
 
         this.renderHomework();
         this.showNotification(dates.length > 1 ? `${dates.length} Hausaufgaben hinzugefügt` : 'Hausaufgabe hinzugefügt', 'success');
@@ -2047,6 +2107,7 @@ const App = {
                         <input type="date" id="edit-hw-due" value="${this.escapeJsAttr(hw.due)}">
                         <button type="button" class="btn-small btn-secondary" title="Auf nächste Stunde des Fachs setzen" onclick="App.fillDueWithNextLesson('edit-hw-subject','edit-hw-due')">
                             <i class="fas fa-calendar-check"></i>
+                            <span class="btn-due-next-label">Nächste Stunde</span>
                         </button>
                     </div>
                 </div>
