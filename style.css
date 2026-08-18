@@ -1246,6 +1246,24 @@ textarea {
     min-width: 0;
 }
 
+/* ----- Fälligkeitsfeld mit "Nächste Stunde"-Button (Hausaufgaben) ----- */
+.due-date-row {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+}
+.due-date-row input {
+    flex: 1;
+    min-width: 0;
+}
+.due-date-row .btn-small {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .grades-box-header {
     display: flex;
     align-items: center;

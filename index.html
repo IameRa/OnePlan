@@ -322,7 +322,8 @@
                             </div>
                         </div>
                         <label class="form-field-label" for="hw-subject">Fach</label>
-                        <input type="text" id="hw-subject" placeholder="Fach">
+                        <input type="text" id="hw-subject" placeholder="Fach" list="hw-subject-list">
+                        <datalist id="hw-subject-list"></datalist>
 
                         <label class="form-field-label" for="hw-task">Aufgabe</label>
                         <textarea id="hw-task" placeholder="Aufgabe"></textarea>
@@ -330,7 +331,12 @@
                         <div class="grade-form-row">
                             <div>
                                 <label class="form-field-label" for="hw-due">Fällig am</label>
-                                <input type="date" id="hw-due">
+                                <div class="due-date-row">
+                                    <input type="date" id="hw-due">
+                                    <button type="button" class="btn-small btn-secondary" id="hw-due-next-lesson" title="Auf nächste Stunde des Fachs setzen">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label class="form-field-label" for="hw-priority">Priorität</label>

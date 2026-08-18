@@ -1786,7 +1786,12 @@ const App = {
     // ===== Homework =====
     setupHomework() {
         document.getElementById('add-homework').addEventListener('click', () => this.addHomework());
-        
+
+        const nextLessonBtn = document.getElementById('hw-due-next-lesson');
+        if (nextLessonBtn) {
+            nextLessonBtn.addEventListener('click', () => this.fillDueWithNextLesson('hw-subject', 'hw-due'));
+        }
+
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -1796,7 +1801,83 @@ const App = {
             });
         });
 
+        this.populateHomeworkSubjectList();
         this.renderHomework();
+    },
+
+    populateHomeworkSubjectList() {
+        const dl = document.getElementById('hw-subject-list');
+        if (!dl) return;
+        dl.innerHTML = this.getKnownSubjects().map(s => `<option value="${this.escapeHtml(s)}"></option>`).join('');
+    },
+
+    // Sucht ausgehend von jetzt den nächsten Schultag (Mo-Fr, keine SH-Ferien),
+    // an dem das übergebene Fach laut Stundenplan unterrichtet wird, und gibt
+    // dessen Datum (YYYY-MM-DD) zurück. Liegt heute noch eine passende Stunde
+    // in der Zukunft, wird der heutige Tag zurückgegeben. Ohne Treffer (z.B.
+    // Fach nicht im Stundenplan hinterlegt) wird null zurückgegeben.
+    getNextLessonDateForSubject(subject) {
+        const target = (subject || '').trim().toLowerCase();
+        if (!target) return null;
+
+        const hasSubjectOnDay = (dayIdx, fromPeriod) => {
+            for (let p = fromPeriod; p < TIMETABLE_PERIODS.length; p++) {
+                const cell = (this.timetable[p] || [])[dayIdx];
+                if (cell && cell.subject && cell.subject.trim().toLowerCase() === target) return true;
+            }
+            return false;
+        };
+
+        const now = new Date();
+        const nowHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const todayIdx = (now.getDay() + 6) % 7; // Montag = 0 ... Sonntag = 6
+
+        // Ist heute noch eine passende Stunde übrig?
+        if (todayIdx <= 4 && !this.getFerienForDate(this.todayStr())) {
+            let fromPeriod = TIMETABLE_PERIODS.length;
+            for (let p = 0; p < TIMETABLE_PERIODS.length; p++) {
+                if (TIMETABLE_PERIODS[p].end > nowHM) { fromPeriod = p; break; }
+            }
+            if (fromPeriod < TIMETABLE_PERIODS.length && hasSubjectOnDay(todayIdx, fromPeriod)) {
+                return this.todayStr();
+            }
+        }
+
+        // Kommende Schultage durchsuchen (max. 60 Tage voraus)
+        for (let daysAhead = 1; daysAhead <= 60; daysAhead++) {
+            const searchDate = new Date(now);
+            searchDate.setDate(searchDate.getDate() + daysAhead);
+            const dayIdx = (searchDate.getDay() + 6) % 7;
+            if (dayIdx > 4) continue; // Wochenende überspringen
+            const searchDateStr = searchDate.toISOString().split('T')[0];
+            if (this.getFerienForDate(searchDateStr)) continue; // Ferien überspringen
+            if (hasSubjectOnDay(dayIdx, 0)) return searchDateStr;
+        }
+        return null;
+    },
+
+    // Füllt das Fälligkeits-Feld (dueFieldId) anhand des Fachs im Feld
+    // subjectFieldId automatisch mit dem Datum der nächsten Stunde dieses
+    // Fachs. Wird sowohl beim Anlegen als auch beim Bearbeiten genutzt.
+    fillDueWithNextLesson(subjectFieldId, dueFieldId) {
+        const subjectEl = document.getElementById(subjectFieldId);
+        const dueEl = document.getElementById(dueFieldId);
+        if (!subjectEl || !dueEl) return;
+
+        const subject = subjectEl.value.trim();
+        if (!subject) {
+            this.showNotification('Bitte zuerst ein Fach eintragen', 'warning');
+            return;
+        }
+
+        const dateStr = this.getNextLessonDateForSubject(subject);
+        if (!dateStr) {
+            this.showNotification('Kein Stundenplan-Eintrag für dieses Fach gefunden', 'warning');
+            return;
+        }
+
+        dueEl.value = dateStr;
+        this.showNotification(`Fällig am ${this.formatDate(dateStr)} gesetzt`, 'success');
     },
 
     addHomework() {
@@ -1954,7 +2035,7 @@ const App = {
             ${hw.recurrenceId ? '<p class="field-hint"><i class="fas fa-repeat"></i> Diese Aufgabe ist Teil einer wiederkehrenden Serie. Die Änderung betrifft nur diesen Termin.</p>' : ''}
 
             <label class="form-field-label" for="edit-hw-subject">Fach</label>
-            <input type="text" id="edit-hw-subject" placeholder="Fach" value="${this.escapeJsAttr(hw.subject)}">
+            <input type="text" id="edit-hw-subject" placeholder="Fach" value="${this.escapeJsAttr(hw.subject)}" list="hw-subject-list">
 
             <label class="form-field-label" for="edit-hw-task">Aufgabe</label>
             <textarea id="edit-hw-task" placeholder="Aufgabe">${this.escapeHtml(hw.task)}</textarea>
@@ -1962,7 +2043,12 @@ const App = {
             <div class="grade-form-row">
                 <div>
                     <label class="form-field-label" for="edit-hw-due">Fällig am</label>
-                    <input type="date" id="edit-hw-due" value="${this.escapeJsAttr(hw.due)}">
+                    <div class="due-date-row">
+                        <input type="date" id="edit-hw-due" value="${this.escapeJsAttr(hw.due)}">
+                        <button type="button" class="btn-small btn-secondary" title="Auf nächste Stunde des Fachs setzen" onclick="App.fillDueWithNextLesson('edit-hw-subject','edit-hw-due')">
+                            <i class="fas fa-calendar-check"></i>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label class="form-field-label" for="edit-hw-priority">Priorität</label>
