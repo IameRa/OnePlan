@@ -1240,6 +1240,10 @@ textarea {
     min-width: 0;
 }
 
+.grade-form-row > div {
+    min-width: 0;
+}
+
 .grade-form-row input,
 .grade-form-row select {
     width: 100%;
@@ -1251,6 +1255,7 @@ textarea {
     display: flex;
     gap: 6px;
     align-items: stretch;
+    container-type: inline-size;
 }
 .due-date-row input {
     flex: 1;
@@ -1269,6 +1274,11 @@ textarea {
     font-size: 0.85rem;
 }
 @media (max-width: 380px) {
+    .due-date-row .btn-due-next-label {
+        display: none;
+    }
+}
+@container (max-width: 190px) {
     .due-date-row .btn-due-next-label {
         display: none;
     }
