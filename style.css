@@ -115,10 +115,18 @@ html {
     /* Verhindert, dass Samsung Internet / Chrome auf Android Text und
        Layout beim ersten Laden automatisch "aufblasen" (Text-Autosizing),
        was besonders auf dem Dashboard-Grid zu einem überdimensionierten
-       Start-Rendering führt. */
+       Start-Rendering führt. text-size-adjust allein reicht bei Samsung
+       Internet oft nicht aus – der Browser boostet Text trotzdem, wenn er
+       eine Höhe "errät". Ein explizites (sehr großes) max-height auf
+       html/body unterbindet diese Heuristik zuverlässig. */
     -webkit-text-size-adjust: 100%;
     -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    max-height: 1000000px;
+}
+
+body {
+    max-height: 1000000px;
 }
 
 body {
@@ -1250,12 +1258,18 @@ textarea {
     min-width: 0;
 }
 
+/* Im schmalen Hausaufgaben-Formular reicht nebeneinander nicht genug Platz
+   für Fälligkeitsdatum+Button UND Priorität – deshalb hier untereinander,
+   damit die "Nächste Stunde"-Beschriftung immer sichtbar bleibt. */
+.homework-form .grade-form-row {
+    grid-template-columns: 1fr;
+}
+
 /* ----- Fälligkeitsfeld mit "Nächste Stunde"-Button (Hausaufgaben) ----- */
 .due-date-row {
     display: flex;
     gap: 6px;
     align-items: stretch;
-    container-type: inline-size;
 }
 .due-date-row input {
     flex: 1;
@@ -1274,11 +1288,6 @@ textarea {
     font-size: 0.85rem;
 }
 @media (max-width: 380px) {
-    .due-date-row .btn-due-next-label {
-        display: none;
-    }
-}
-@container (max-width: 190px) {
     .due-date-row .btn-due-next-label {
         display: none;
     }
@@ -2175,6 +2184,13 @@ textarea {
 @media (max-width: 768px) {
     .sidebar {
         display: none;
+    }
+
+    /* Verhindert, dass iOS Safari beim Antippen eines Formularfelds
+       automatisch reinzoomt (passiert bei jeder Schriftgröße < 16px)
+       und die Seite danach vergrößert stehen bleibt. */
+    input, select, textarea {
+        font-size: 16px;
     }
 
     .main-content {
