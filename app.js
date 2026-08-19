@@ -1837,6 +1837,13 @@ const App = {
         const target = (subject || '').trim().toLowerCase();
         if (!target) return null;
 
+        // Schutz gegen Absturz, falls die Stundenplan-Daten (z.B. bei langsamer
+        // Verbindung) beim Klick noch nicht vom Server geladen wurden. Ohne
+        // diesen Guard bricht die Funktion mit einem TypeError ab und der
+        // Button reagiert scheinbar gar nicht (kein Fehler sichtbar, keine
+        // Notification).
+        if (!Array.isArray(this.timetable)) return undefined;
+
         const hasSubjectOnDay = (dayIdx, fromPeriod) => {
             for (let p = fromPeriod; p < TIMETABLE_PERIODS.length; p++) {
                 const cell = (this.timetable[p] || [])[dayIdx];
@@ -1888,6 +1895,10 @@ const App = {
         }
 
         const dateStr = this.getNextLessonDateForSubject(subject);
+        if (dateStr === undefined) {
+            this.showNotification('Stundenplan wird noch geladen – bitte kurz warten und erneut versuchen', 'warning');
+            return;
+        }
         if (!dateStr) {
             this.showNotification('Kein Stundenplan-Eintrag für dieses Fach gefunden', 'warning');
             return;
