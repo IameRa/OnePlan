@@ -2199,6 +2199,49 @@ textarea {
         padding-bottom: 90px;
     }
 
+    /* Hausaufgaben-Seite auf dem Handy etwas kompakter: weniger Innenabstand
+       in der "Neue Hausaufgabe"-Box und etwas kleinere Formularfelder, damit
+       die Seite nicht unnötig breit/hoch wirkt. Betrifft nur < 768px, Desktop/
+       Tablet bleiben unverändert. */
+    .homework-container {
+        gap: 14px;
+    }
+
+    .homework-form.grades-box {
+        padding: 16px;
+    }
+
+    .grades-box-header {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .grades-box-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    .homework-form input,
+    .homework-form select,
+    .homework-form textarea {
+        padding: 9px 12px;
+        margin-bottom: 10px;
+    }
+
+    .homework-form textarea {
+        min-height: 70px;
+    }
+
+    .homework-list {
+        gap: 10px;
+    }
+
+    .homework-item {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
     .timetable-card {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;

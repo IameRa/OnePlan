@@ -1,5 +1,5 @@
 // OnePlan Service Worker
-const CACHE_VERSION = 'oneplan-v43';
+const CACHE_VERSION = 'oneplan-v44';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
