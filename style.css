@@ -3869,6 +3869,62 @@ textarea {
     margin: 0;
 }
 
+.fc-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 55vh;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.fc-card-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--bg-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.fc-card-list-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.fc-card-list-item-text .fc-q {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fc-card-list-item-text .fc-a {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fc-card-list-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.event-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .ki-card-gen-header {
     display: flex;
     align-items: flex-start;

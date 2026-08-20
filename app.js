@@ -1504,12 +1504,103 @@ const App = {
                     <span>${event.subject ? `<span class="subject-dot" style="background:${color};"></span>${this.escapeHtml(event.subject)} · ` : ''}${this.formatDate(event.date)}${event.time ? ' um ' + event.time : ''}</span>
                     ${event.description ? `<p>${this.escapeHtml(event.description)}</p>` : ''}
                 </div>
-                <button class="btn-small btn-danger" onclick="App.deleteEvent(${event.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="event-item-actions">
+                    <button class="btn-small" onclick="App.openEditEventModal(${event.id})" title="Termin bearbeiten">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button class="btn-small btn-danger" onclick="App.deleteEvent(${event.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
         }).join('');
+    },
+
+    // Öffnet ein Fenster, um einen bereits erstellten Termin zu bearbeiten.
+    // Bei wiederkehrenden Terminen wird nur diese eine Instanz der Serie
+    // geändert, die Wiederholungsregel selbst bleibt unangetastet.
+    openEditEventModal(id) {
+        const event = this.events.find(e => e.id === id);
+        if (!event) return;
+
+        const reminderOptions = [
+            ['0', 'Keine Erinnerung'],
+            ['5', '5 Minuten vorher'],
+            ['15', '15 Minuten vorher'],
+            ['30', '30 Minuten vorher'],
+            ['60', '1 Stunde vorher'],
+            ['1440', '1 Tag vorher']
+        ];
+
+        this.showModal(`
+            <h3><i class="fas fa-pen"></i> Termin bearbeiten</h3>
+            ${event.recurrenceId ? '<p class="field-hint"><i class="fas fa-repeat"></i> Dieser Termin ist Teil einer wiederkehrenden Serie. Die Änderung betrifft nur diesen Termin.</p>' : ''}
+
+            <label class="form-field-label" for="edit-event-title">Titel</label>
+            <input type="text" id="edit-event-title" placeholder="Titel" value="${this.escapeJsAttr(event.title)}">
+
+            <label class="form-field-label" for="edit-event-subject">Fach (optional)</label>
+            <input type="text" id="edit-event-subject" placeholder="Fach (optional)" value="${this.escapeJsAttr(event.subject || '')}" list="event-subject-list">
+
+            <label class="checkbox-label">
+                <input type="checkbox" id="edit-event-exam" ${event.exam ? 'checked' : ''}> <i class="fas fa-graduation-cap"></i> Prüfung/Klausur
+            </label>
+
+            <div class="grade-form-row">
+                <div>
+                    <label class="form-field-label" for="edit-event-date">Datum</label>
+                    <input type="date" id="edit-event-date" value="${this.escapeJsAttr(event.date)}">
+                </div>
+                <div>
+                    <label class="form-field-label" for="edit-event-time">Uhrzeit</label>
+                    <input type="time" id="edit-event-time" value="${this.escapeJsAttr(event.time || '')}">
+                </div>
+            </div>
+
+            <label class="form-field-label" for="edit-event-reminder">Erinnerung</label>
+            <select id="edit-event-reminder">
+                ${reminderOptions.map(([val, label]) =>
+                    `<option value="${val}" ${String(event.reminder || 0) === val ? 'selected' : ''}>${label}</option>`
+                ).join('')}
+            </select>
+
+            <label class="form-field-label" for="edit-event-description">Beschreibung</label>
+            <textarea id="edit-event-description" placeholder="Beschreibung">${this.escapeHtml(event.description || '')}</textarea>
+
+            <button class="btn-primary btn-full" style="margin-top:10px;" onclick="App.saveEventEdit(${event.id})">
+                <i class="fas fa-check"></i> Speichern
+            </button>
+        `);
+    },
+
+    saveEventEdit(id) {
+        const event = this.events.find(e => e.id === id);
+        if (!event) return;
+
+        const title = document.getElementById('edit-event-title').value.trim();
+        const date = document.getElementById('edit-event-date').value;
+
+        if (!title || !date) {
+            this.showNotification('Bitte Titel und Datum eingeben', 'error');
+            return;
+        }
+
+        event.title = title;
+        event.subject = document.getElementById('edit-event-subject').value.trim() || null;
+        event.exam = document.getElementById('edit-event-exam').checked;
+        event.date = date;
+        event.time = document.getElementById('edit-event-time').value;
+        event.reminder = parseInt(document.getElementById('edit-event-reminder').value);
+        event.description = document.getElementById('edit-event-description').value.trim();
+        event.reminded = false; // neue/geänderte Erinnerung soll wieder auslösen können
+
+        this.saveData('events', this.events);
+        this.renderCalendar();
+        this.renderEventList();
+        this.populateEventSubjectList();
+        this.closeModal();
+        this.showNotification('Termin aktualisiert', 'success');
     },
 
     deleteEvent(id, deleteSeries) {
@@ -3529,6 +3620,9 @@ Einfach damit anmelden – das Passwort kannst du danach in den Einstellungen je
                         <button class="btn-secondary btn-small" onclick="App.startLearn('${this.escapeJsAttr(subject)}', false)">
                             <i class="fas fa-redo"></i> Alle üben
                         </button>
+                        <button class="btn-secondary btn-small" onclick="App.openDeckCardsModal('${this.escapeJsAttr(subject)}')" title="Karten bearbeiten">
+                            <i class="fas fa-pen"></i>
+                        </button>
                         <button class="btn-secondary btn-small" onclick="App.shareDeck('${this.escapeJsAttr(subject)}')" title="Diesen Stapel teilen">
                             <i class="fas fa-share-alt"></i>
                         </button>
@@ -3539,6 +3633,106 @@ Einfach damit anmelden – das Passwort kannst du danach in den Einstellungen je
                 </div>
             `;
         }).join('');
+    },
+
+    // Zeigt alle Karten eines Stapels als Liste, mit Bearbeiten/Löschen pro Karte.
+    openDeckCardsModal(subject) {
+        const cards = this.flashcards.filter(c => c.subject === subject);
+        if (cards.length === 0) {
+            this.closeModal();
+            this.renderFlashcardDecks();
+            return;
+        }
+
+        this.showModal(`
+            <h3><i class="fas fa-layer-group"></i> ${this.escapeHtml(subject)} – Karten bearbeiten</h3>
+            <div class="fc-card-list">
+                ${cards.map(c => `
+                    <div class="fc-card-list-item">
+                        <div class="fc-card-list-item-text">
+                            <div class="fc-q">${this.escapeHtml(c.front)}</div>
+                            <div class="fc-a">${this.escapeHtml(c.back)}</div>
+                        </div>
+                        <div class="fc-card-list-item-actions">
+                            <button class="btn-icon" onclick="App.openEditFlashcardModal(${c.id})" title="Karte bearbeiten">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="btn-icon" onclick="App.deleteFlashcardCard(${c.id})" title="Karte löschen">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `);
+    },
+
+    // Öffnet ein Fenster, um eine einzelne Karteikarte (Fach/Frage/Antwort) zu bearbeiten.
+    openEditFlashcardModal(id) {
+        const card = this.flashcards.find(c => c.id === id);
+        if (!card) return;
+
+        this.showModal(`
+            <h3><i class="fas fa-pen"></i> Karteikarte bearbeiten</h3>
+
+            <label class="form-field-label" for="edit-fc-subject">Fach</label>
+            <input type="text" id="edit-fc-subject" placeholder="Fach" value="${this.escapeJsAttr(card.subject)}">
+
+            <label class="form-field-label" for="edit-fc-front">Vorderseite (Frage)</label>
+            <input type="text" id="edit-fc-front" placeholder="Vorderseite (Frage)" value="${this.escapeJsAttr(card.front)}">
+
+            <label class="form-field-label" for="edit-fc-back">Rückseite (Antwort)</label>
+            <textarea id="edit-fc-back" placeholder="Rückseite (Antwort)">${this.escapeHtml(card.back)}</textarea>
+
+            <button class="btn-primary btn-full" style="margin-top:10px;" onclick="App.saveFlashcardEdit(${card.id})">
+                <i class="fas fa-check"></i> Speichern
+            </button>
+            <button class="btn-secondary btn-full" style="margin-top:8px;" onclick="App.openDeckCardsModal('${this.escapeJsAttr(card.subject)}')">
+                <i class="fas fa-arrow-left"></i> Zurück zur Kartenliste
+            </button>
+        `);
+    },
+
+    saveFlashcardEdit(id) {
+        const card = this.flashcards.find(c => c.id === id);
+        if (!card) return;
+
+        const subject = document.getElementById('edit-fc-subject').value.trim();
+        const front = document.getElementById('edit-fc-front').value.trim();
+        const back = document.getElementById('edit-fc-back').value.trim();
+
+        if (!subject || !front || !back) {
+            this.showNotification('Bitte alle Felder ausfüllen', 'error');
+            return;
+        }
+
+        card.subject = subject;
+        card.front = front;
+        card.back = back;
+
+        this.saveData('flashcards', this.flashcards);
+        this.renderFlashcardDecks();
+        this.closeModal();
+        this.showNotification('Karteikarte aktualisiert', 'success');
+    },
+
+    deleteFlashcardCard(id) {
+        const card = this.flashcards.find(c => c.id === id);
+        if (!card) return;
+        if (!confirm('Diese Karteikarte löschen?')) return;
+
+        const subject = card.subject;
+        this.flashcards = this.flashcards.filter(c => c.id !== id);
+        this.saveData('flashcards', this.flashcards);
+        this.renderFlashcardDecks();
+
+        const remaining = this.flashcards.filter(c => c.subject === subject);
+        if (remaining.length > 0) {
+            this.openDeckCardsModal(subject);
+        } else {
+            this.closeModal();
+        }
+        this.showNotification('Karteikarte gelöscht', 'success');
     },
 
     // onlyDue: true = nur fällige Karten (normales Lernen), false = ganzer Stapel ("Alle üben")
