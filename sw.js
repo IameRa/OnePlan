@@ -130,3 +130,41 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Push-Subscription-Erneuerung: Der Browser kann eine bestehende Push-
+// Subscription jederzeit von sich aus ungültig machen und erneuern (z. B. bei
+// Schlüsselrotation des Push-Dienstes). Ohne diesen Handler würde die App
+// davon nichts mitbekommen und stumm keine Benachrichtigungen mehr erhalten.
+// Wir erzeugen daher eine neue Subscription mit demselben Public Key und
+// informieren alle offenen Clients, damit app.js die neue Subscription an
+// die Supabase Edge Function übermitteln und die alte dort ersetzen kann.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      try {
+        const oldSubscription = event.oldSubscription;
+        const applicationServerKey = oldSubscription
+          ? oldSubscription.options.applicationServerKey
+          : event.applicationServerKey || undefined;
+
+        const newSubscription = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey
+        });
+
+        const clientsArr = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clientsArr.forEach((client) => {
+          client.postMessage({
+            type: 'PUSH_SUBSCRIPTION_CHANGED',
+            oldEndpoint: oldSubscription ? oldSubscription.endpoint : null,
+            subscription: newSubscription.toJSON()
+          });
+        });
+      } catch (err) {
+        // Erneuerung fehlgeschlagen (z. B. Berechtigung entzogen) – nichts
+        // weiter zu tun, die App erkennt beim nächsten Öffnen den fehlenden
+        // Subscription-Status und kann erneut um Erlaubnis bitten.
+      }
+    })()
+  );
+});

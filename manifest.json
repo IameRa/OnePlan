@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "OnePlan - Deine Planungsapp",
   "short_name": "OnePlan",
   "description": "Kalender, Stundenplan, Hausaufgaben, Notenrechner, Karteikarten, Pomodoro und KI-Assistent in einer App.",
@@ -70,6 +71,29 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Hausaufgaben",
+      "short_name": "Hausaufgaben",
+      "description": "Direkt zu deinen Hausaufgaben springen",
+      "url": "./index.html?view=homework",
+      "icons": [{ "src": "icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Stundenplan",
+      "short_name": "Stundenplan",
+      "description": "Direkt zum Stundenplan springen",
+      "url": "./index.html?view=timetable",
+      "icons": [{ "src": "icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Pomodoro",
+      "short_name": "Pomodoro",
+      "description": "Direkt zum Pomodoro-Timer springen",
+      "url": "./index.html?view=pomodoro",
+      "icons": [{ "src": "icon-96.png", "sizes": "96x96", "type": "image/png" }]
     }
   ]
 }

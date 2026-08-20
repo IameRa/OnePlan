@@ -94,6 +94,36 @@ const Push = {
     async init() {
         this.on('btn-enable-push', 'click', () => this.toggle());
         await this.syncButtonUI();
+        this.listenForSubscriptionChanges();
+    },
+
+    // Der Service Worker kann eine bestehende Push-Subscription jederzeit von
+    // sich aus erneuern (z. B. Schlüsselrotation des Push-Diensts, siehe
+    // 'pushsubscriptionchange' in sw.js) und schickt uns danach per postMessage
+    // die neue Subscription. Die muss in Supabase die alte ersetzen, sonst
+    // laufen künftige Benachrichtigungen ins Leere.
+    listenForSubscriptionChanges() {
+        if (!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.addEventListener('message', async (event) => {
+            if (!event.data || event.data.type !== 'PUSH_SUBSCRIPTION_CHANGED') return;
+            const { oldEndpoint, subscription } = event.data;
+            try {
+                if (oldEndpoint) {
+                    await supabase.from('push_subscriptions').delete().eq('endpoint', oldEndpoint);
+                }
+                const { error } = await supabase.from('push_subscriptions').upsert({
+                    user_id: App.userId,
+                    endpoint: subscription.endpoint,
+                    p256dh: subscription.keys.p256dh,
+                    auth: subscription.keys.auth
+                }, { onConflict: 'endpoint' });
+                if (error) throw error;
+                console.info('[Push] Subscription automatisch erneuert');
+            } catch (err) {
+                console.error('[Push] Erneuerte Subscription konnte nicht gespeichert werden:', err);
+            }
+            this.syncButtonUI();
+        });
     },
 
     async getExistingSubscription() {
@@ -842,6 +872,15 @@ const App = {
         const importCode = new URLSearchParams(location.search).get('import');
         if (importCode) {
             this.openImportModal(importCode.toUpperCase());
+            history.replaceState(null, '', location.pathname);
+        }
+
+        // Wurde die App über einen PWA-Shortcut (?view=...) geöffnet, z. B.
+        // von der App-Icon-Kontextmenü-Verknüpfung aus manifest.json?
+        const requestedView = new URLSearchParams(location.search).get('view');
+        const VALID_SHORTCUT_VIEWS = ['dashboard', 'kalender', 'stundenplan', 'hausaufgaben', 'noten', 'karteikarten', 'pomodoro', 'fortschritt', 'shop'];
+        if (requestedView && VALID_SHORTCUT_VIEWS.includes(requestedView)) {
+            this.navigateTo(requestedView);
             history.replaceState(null, '', location.pathname);
         }
 
