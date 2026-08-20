@@ -3818,9 +3818,10 @@ textarea {
 }
 
 .ki-fc-preview-card {
+    position: relative;
     background: var(--bg-color);
     border-radius: var(--radius-sm);
-    padding: 14px 16px;
+    padding: 14px 40px 14px 16px;
     border-left: 3px solid var(--ki-accent);
     display: flex;
     flex-direction: column;
@@ -3830,6 +3831,26 @@ textarea {
 
 .ki-fc-preview-card:hover {
     transform: translateX(2px);
+}
+
+.ki-fc-preview-card-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px 7px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: var(--transition);
+}
+
+.ki-fc-preview-card-delete:hover {
+    color: var(--danger-color);
+    background: rgba(239, 68, 68, 0.12);
 }
 
 .ki-fc-preview-card .fc-q {

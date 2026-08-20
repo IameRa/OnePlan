@@ -4674,8 +4674,11 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
         const preview = document.getElementById('ki-fc-preview');
         document.getElementById('ki-fc-result-title').textContent = `${cards.length} Karten für "${subject}" erstellt`;
 
-        preview.innerHTML = cards.map((c) => `
+        preview.innerHTML = cards.map((c, i) => `
             <div class="ki-fc-preview-card">
+                <button class="ki-fc-preview-card-delete" onclick="App.deleteGeneratedFlashcard(${i})" title="Karte entfernen" aria-label="Karte entfernen">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div class="fc-q"><i class="fas fa-question-circle" style="color:var(--primary-color);margin-right:6px;"></i>${this.renderMarkdown(c.front)}</div>
                 <div class="fc-a"><i class="fas fa-lightbulb" style="color:var(--warning-color);margin-right:6px;"></i>${this.renderMarkdown(c.back)}</div>
             </div>
@@ -4760,6 +4763,26 @@ Die Fragen sollen lernwirksam und präzise sein. Die Antworten sollen kurz und k
         await this.saveData('kiFcGenerations', this.kiFcHistory);
         this.updateKiFcHistoryBadge();
         this.openKiFcHistory();
+    },
+
+    // Entfernt eine einzelne Karte aus der noch nicht gespeicherten Vorschau
+    // (z. B. wenn die KI eine Frage doppelt oder unpassend erzeugt hat).
+    // Der bereits gespeicherte Verlaufseintrag (kiFcHistory) bleibt davon
+    // unberührt – dort steht weiterhin die vollständige Original-Generierung.
+    deleteGeneratedFlashcard(index) {
+        if (!this.kiGeneratedCards) return;
+        this.kiGeneratedCards.cards.splice(index, 1);
+        const { subject, cards } = this.kiGeneratedCards;
+
+        if (cards.length === 0) {
+            document.getElementById('ki-fc-result').style.display = 'none';
+            this.kiGeneratedCards = null;
+            this.showNotification('Alle Karten entfernt', 'success');
+            return;
+        }
+
+        this.renderGeneratedFlashcards(subject, cards);
+        this.showNotification('Karte entfernt', 'success');
     },
 
     saveGeneratedFlashcards() {
